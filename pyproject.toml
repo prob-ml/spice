@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "spatial"
+version = "0.1.0"
+description = "Deep Generative Models for Spatial Transcriptomics"
+authors = ["Roman Kouznetsov, Ariel Polani, Jackson Loper, Jeffrey Regier"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+torch = "^1.7.1"
+torch-scatter = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu102/torch_scatter-2.0.5-cp38-cp38-linux_x86_64.whl" }
+torch-sparse = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu102/torch_sparse-0.6.8-cp38-cp38-linux_x86_64.whl" }
+torch-cluster = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu102/torch_cluster-1.5.8-cp38-cp38-linux_x86_64.whl" }
+torch-spline-conv = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu102/torch_spline_conv-1.2.0-cp38-cp38-linux_x86_64.whl" }
+torch-geometric = "^1.6.3"
+scikit-learn = "^0.24.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.1"
+black = "^20.8b1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
