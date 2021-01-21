@@ -3,7 +3,6 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from torch.utils.data import random_split
-from torchvision import transforms
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.metrics.functional import accuracy
