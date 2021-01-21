@@ -43,11 +43,3 @@ jobs:
       run: |
         poetry run pytest --cov=./spatial --cov-report=xml --durations=0
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v1
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        env_vars: OS,PYTHON
-        name: codecov-umbrella
-        fail_ci_if_error: true
