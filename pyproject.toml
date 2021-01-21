@@ -6,7 +6,7 @@ authors = ["Roman Kouznetsov, Ariel Polani, Jackson Loper, Jeffrey Regier"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "3.8"
+python = "^3.8"
 torch = { url = "https://download.pytorch.org/whl/cu110/torch-1.7.1%2Bcu110-cp38-cp38-linux_x86_64.whl" }
 torch-scatter = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_scatter-2.0.5-cp38-cp38-linux_x86_64.whl" }
 torch-sparse = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_sparse-0.6.8-cp38-cp38-linux_x86_64.whl" }
