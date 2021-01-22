@@ -1,3 +1,10 @@
+'''
+Jeff Regier Lab
+MIT License
+
+A graph convolutional autoencoder.
+'''
+
 import os
 import torch
 import torch.nn.functional as F
@@ -18,114 +25,109 @@ from torch_geometric.nn import max_pool_x
 from torch_geometric.nn import global_mean_pool
 from pytorch_lightning.callbacks import ModelCheckpoint
 
+def calc_pseudo(edge_index, pos):
+    '''
+    Input:
+    - edge_index, an (N_edges x 2) long tensor indicating edges of a graph
+    - pos, an (N_vertices x 2) float tensor indicating coordinates of nodes
+
+    Output:
+    - pseudo, an (N_edges x 2) float tensor indicating edge-values (to be used in graph-convnet)
+    '''
+    coord1 = pos[edge_index[0]]
+    coord2 = pos[edge_index[1]]
+    edge_dir = coord2 - coord1
+    rho = torch.sqrt(edge_dir[:, 0] ** 2 + edge_dir[:, 1] ** 2).unsqueeze(-1)
+    theta = torch.atan2(edge_dir[:, 1], edge_dir[:, 0]).unsqueeze(-1)
+    return torch.cat((rho, theta), dim=1)
+
 class MonetAutoencoder(pl.LightningModule):
+    '''
+    Autoencoder for graph data whose nodes are embedded in 2d
+    '''
 
-    def __init__(self, in_dim, hidden_dims, out_dim, pseudo_dim=2, kernel_size=25):
+    def __init__(self, observables_dimension,latent_dimension):
+        '''
+        observables_dimension -- number of values associated with each node of the graph
+        latent_dimension -- number of latent values to associate with each node of the graph
+        '''
         super().__init__()
-        # Initializing Attributes
-        self.in_dim = in_dim
-        self.hidden_dims = hidden_dims
-        self.out_dim = out_dim
-        self.pseudo_dim = pseudo_dim
-        self.k = kernel_size
 
-        self.conv1enc = GMMConv(1, 50, dim=2, kernel_size=25)
+        self.conv1enc = GMMConv(observables_dimension, 50, dim=2, kernel_size=25)
         self.conv2enc = GMMConv(50, 25, dim=2, kernel_size=25)
-        self.conv3enc = GMMConv(25, 10, dim=2, kernel_size=25)
+        self.conv3enc = GMMConv(25, latent_dimension, dim=2, kernel_size=25)
 
-        self.conv1dec = GMMConv(10, 25, dim=2, kernel_size=25)
+        self.conv1dec = GMMConv(latent_dimension, 25, dim=2, kernel_size=25)
         self.conv2dec = GMMConv(25, 50, dim=2, kernel_size=25)
-        self.conv3dec = GMMConv(50, 1, dim=2, kernel_size=25)
+        self.conv3dec = GMMConv(50, observables_dimension, dim=2, kernel_size=25)
 
         self.batchnorm1enc = torch.nn.BatchNorm1d(50)
         self.batchnorm2enc = torch.nn.BatchNorm1d(25)
-        self.batchnorm3enc = torch.nn.BatchNorm1d(10)
+        self.batchnorm3enc = torch.nn.BatchNorm1d(latent_dimension)
 
         self.batchnorm1dec = torch.nn.BatchNorm1d(25)
         self.batchnorm2dec = torch.nn.BatchNorm1d(50)
-        self.batchnorm3dec = torch.nn.BatchNorm1d(1)
 
-        self.fc1 = nn.Linear(10, 10)
-        # Ensures that the hyperparameters are saveable.
-        self.save_hyperparameters()
+        self.fc1 = nn.Linear(latent_dimension, latent_dimension)
 
-    def pseudo(self, edge_index, pos=None, coord="deg"):
-        if coord == "deg":
-            coord1 = torch.tensor(degree(edge_index[0])[edge_index[0]]).unsqueeze(-1)
-            coord2 = torch.tensor(degree(edge_index[1])[edge_index[1]]).unsqueeze(-1)
-            return torch.cat((1 / torch.sqrt(coord1), 1 / torch.sqrt(coord2)), dim=1)
-        if coord == "polar":
-            coord1 = pos[edge_index[0]]
-            coord2 = pos[edge_index[1]]
-            edge_dir = coord2 - coord1
-            rho = torch.sqrt(edge_dir[:, 0] ** 2 + edge_dir[:, 1] ** 2).unsqueeze(-1)
-            theta = torch.atan2(edge_dir[:, 1], edge_dir[:, 0]).unsqueeze(-1)
-            return torch.cat((rho, theta), dim=1)
+    def encoder(self,X,E,pseudo):
+        tmp = F.relu(self.batchnorm1enc(self.conv1enc(X, E, pseudo)))
+        tmp = F.relu(self.batchnorm2enc(self.conv2enc(tmp, E, pseudo)))
+        Z = self.fc1(F.relu(self.batchnorm3enc(self.conv3enc(tmp, E, pseudo))))
+        return Z
 
-    def forward(self, data):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        data.to(device)
-        data.input = data.x.clone()
+    def decoder(self,Z,E,pseudo):
+        tmp = F.relu(self.batchnorm1dec(self.conv1dec(Z, E,pseudo)))
+        tmp = F.relu(self.batchnorm2dec(self.conv2dec(tmp, E,pseudo)))
+        reconstruction = self.conv3dec(tmp, E,pseudo)
+        return reconstruction
 
-        # Encoder
-        value = self.pseudo(data.edge_index, pos=data.pos, coord="polar").cuda()
+    def forward(self, batch):
+        # observable data at each vertex
+        X = batch.x
+        E = batch.edge_index
+        P = batch.pos
 
-        data.x = F.relu(self.batchnorm1enc(self.conv1enc(data.x, data.edge_index, value)))
+        # calculate edge weights
+        pseudo = calc_pseudo(E,P)
 
-        data.x = F.relu(self.batchnorm2enc(self.conv2enc(data.x, data.edge_index, value)))
+        # run encoder
+        Z = self.encoder(X,E,pseudo)
 
-        data.x = self.fc1(F.relu(self.batchnorm3enc(self.conv3enc(data.x, data.edge_index, value))))
+        # run decoder
+        X_reconstruction = self.decoder(Z,E,pseudo)
 
-        # Decoder
-
-        data.x = F.relu(self.batchnorm1dec(self.conv1dec(data.x, data.edge_index, value)))
-
-        data.x = F.relu(self.batchnorm2dec(self.conv2dec(data.x, data.edge_index, value)))
-
-        data.x = F.relu(self.batchnorm3dec(self.conv3dec(data.x, data.edge_index, value)))
-
-        return data.x
+        return X_reconstruction
 
     def training_step(self, batch, batch_idx):
-        out = self(batch)
-        loss = F.mse_loss(out, batch.input.cuda())
+        batch=batch.to('cuda')
+        reconstruction = self(batch)
+        loss = F.mse_loss(reconstruction, batch.x)
         self.log('train_loss', loss, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        out = self(batch)
-        loss = F.mse_loss(out, batch.input.cuda())
+        batch=batch.to('cuda')
+        reconstruction = self(batch)
+        loss = F.mse_loss(reconstruction, batch.x)
         self.log('val_loss', loss, prog_bar=True)
         return loss
 
     def test_step(self, batch, batch_idx):
+        batch=batch.to('cuda')
         return self.validation_step(batch, batch_idx)
 
     def configure_optimizers(self):
-        return torch.optim.SGD(model.parameters(), lr=0.001)
+        return torch.optim.SGD(self.parameters(), lr=0.001)
 
-    def setup(self, stage=None):
-        train75_loader = MNISTSuperpixels("GNN Data", train=True)
-        # train75_loader = MNISTSuperpixels("~/Monet/GNN Data", train=True)
-        self.mnist_train, self.mnist_val = random_split(train75_loader, [55000, 5000])
-        # self.mnist_test = MNISTSuperpixels("~/Monet/GNN Data", train=False)
-        self.mnist_test = MNISTSuperpixels("GNN Data", train=False)
 
-    def train_dataloader(self):
-        return DataLoader(self.mnist_train, batch_size=10, shuffle=False)
+if __name__=='__main__':
+    train75_loader = MNISTSuperpixels("GNN Data", train=True)
+    mnist_train, mnist_val = random_split(train75_loader, [55000, 5000])
+    mnist_test = MNISTSuperpixels("GNN Data", train=False)
 
-    def val_dataloader(self):
-        return DataLoader(self.mnist_val, batch_size=10, shuffle=False)
-
-    def test_dataloader(self):
-        return DataLoader(self.mnist_test, batch_size=10, shuffle=False)
-
-model = MonetAutoencoder(1, 10, 10)
-checkpoint = ModelCheckpoint(filepath='checkpoints/',
-                             monitor='val_loss',
-                             mode='min',
-                             save_top_k=20)
-trainer = pl.Trainer(checkpoint_callback=checkpoint, gpus=1, auto_select_gpus=True,
-                     max_epochs=1000, progress_bar_refresh_rate=100)
-trainer.fit(model)
-trainer.test()
+    model = MonetAutoencoder(1, 2)
+    trainer = pl.Trainer(flush_logs_every_n_steps=12,log_every_n_steps=12, gpus=1,max_epochs=1)
+    trainer.fit(model,DataLoader(mnist_train,batch_size=10,num_workers=2),
+                DataLoader(mnist_val,batch_size=10,shuffle=False))
+    trainer.test(model,DataLoader(mnist_test,batch_size=10))
