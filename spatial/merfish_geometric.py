@@ -1,116 +1,118 @@
-import itertools
-
+import types
 import pandas as pd
 import torch
-from sklearn.neighbors import NearestNeighbors
-from torch.utils.data import random_split
-from torch_geometric.data import Data, InMemoryDataset
+import sklearn.neighbors
+import torch_geometric
+import h5py
+import numpy as np
+import requests
 
 
-class Merfish(InMemoryDataset):
-    def __init__(self, csv, root, transform=None, pre_transform=None, train=True):
-        self.csv = csv
-        self.root = root
-        data_idx = 0 if train else 1
-        self.data, self.slices = torch.load(self.processed_paths[data_idx])
-        super().__init__(root, transform, pre_transform)
+class Merfish(torch_geometric.data.InMemoryDataset):
+    def __init__(self, root, n_neighbors=3, train=True):
+        super().__init__(root)
+
+        data_list = self.construct_graphs(n_neighbors)
+
+        with h5py.File(self.raw_dir + "/merfish.hdf5", "r") as h5f:
+            self.gene_names = h5f["gene_names"][:].astype("U")[~self.bad_genes]
+
+        # we use the first 150 slices for training
+        if train:
+            self.data, self.slices = self.collate(data_list[:150])
+        else:
+            self.data, self.slices = self.collate(data_list[150:])
+
+    url = "https://datadryad.org/stash/downloads/file_stream/68364"
+
+    behavior_types = [
+        "Naive",
+        "Parenting",
+        "Virgin Parenting",
+        "Aggression to pup",
+        "Aggression to adult",
+        "Mating",
+    ]
+    behavior_lookup = {x: i for (i, x) in enumerate(behavior_types)}
+
+    bad_genes = np.zeros(161, dtype=np.bool)
+    bad_genes[144] = True
 
     @property
     def raw_file_names(self):
-        return ["train.pt", "test.pt"]
-
-    @property
-    def processed_file_names(self):
-        return ["train.pt", "test.pt"]
+        return ["merfish.csv", "merfish.hdf5"]
 
     def download(self):
-        # available from https://datadryad.org/stash/dataset/doi:10.5061/dryad.8t8s248
-        # Download to `self.raw_dir`.
-        pass  # for now
+        with open(self.raw_dir + "/merfish.csv", "wb") as csvf:
+            csvf.write(requests.get(self.url).content)
 
-    def process(self):
-        # Read data into huge `Data` list.
+        dataframe = pd.read_csv(self.raw_dir + "/merfish.csv")
 
-        def cell_graph(merfish, animal, bregma):
-            merfish = merfish[
-                (merfish["Animal_ID"] == animal) & (merfish["Bregma"] == bregma)
-            ]
-            if len(merfish.index) == 0:
-                return "No Data"
-            print(
-                "Animal: {0}, Bregma: {1}, Cells: {2}".format(
-                    animal, bregma, len(merfish.index)
-                )
+        with h5py.File(self.raw_dir + "/merfish.hdf5", "w") as h5f:
+            for colnm, dtype in zip(dataframe.keys()[:9], dataframe.dtypes[:9]):
+                if dtype.kind == "O":
+                    h5f.create_dataset(
+                        colnm, data=np.require(dataframe[colnm], dtype="S36")
+                    )
+                else:
+                    h5f.create_dataset(colnm, data=np.require(dataframe[colnm]))
+            h5f.create_dataset(
+                "expression",
+                data=np.array(dataframe[dataframe.keys()[9:]]).astype(np.float16),
             )
-            pos = pd.DataFrame(merfish, columns=["Centroid_X", "Centroid_Y"]).to_numpy()
-            x = torch.tensor(merfish.iloc[:, 11:].to_numpy())
-            cell_id = pd.DataFrame(merfish, columns=["Cell_ID"]).to_numpy()
-            celltype = pd.DataFrame(merfish, columns=["Cell_class"]).to_numpy()
-            behavior = pd.DataFrame(merfish, columns=["Behavior"])
-            behavior = behavior.iloc[:, 0].map(
-                {
-                    "Naive": 0,
-                    "Parenting": 1,
-                    "Virgin Parenting": 2,
-                    "Aggression to pup": 3,
-                    "Aggression to adult": 4,
-                    "Mating": 5,
-                }
+            h5f.create_dataset(
+                "gene_names", data=np.array(dataframe.keys()[9:], dtype="S80")
             )
-            behavior = torch.tensor(behavior.to_numpy())
-            nbrs = NearestNeighbors(n_neighbors=3, algorithm="ball_tree").fit(pos)
-            distances, neighbors = nbrs.kneighbors(pos)
-            pairwise_neighbors = list(
-                map(lambda x: list(itertools.product([x[0]], x[1:])), neighbors)
-            )
-            edge_index = torch.tensor(
-                list(itertools.chain.from_iterable(pairwise_neighbors))
-            ).T
-            return (x, cell_id, celltype, behavior, edge_index, pos)
 
+    def construct_graph(self, data, anid, breg, n_neighbors):
+        # get subset of cells in this slice
+        good = (data.anids == anid) & (data.bregs == breg)
+
+        # figure out neighborhood structure
+        locations_for_this_slice = data.locations[good]
+        nbrs = sklearn.neighbors.NearestNeighbors(
+            n_neighbors=n_neighbors + 1, algorithm="ball_tree"
+        )
+        nbrs.fit(locations_for_this_slice)
+        _, neighbors = nbrs.kneighbors(locations_for_this_slice)
+        edges = np.concatenate(
+            [np.c_[neighbors[:, 0], neighbors[:, i + 1]] for i in range(n_neighbors)],
+            axis=0,
+        )
+        edges = torch.tensor(edges, dtype=torch.long).T
+
+        # remove gene 144.  which is bad.  for some reason.
+        subexpression = data.expression[good]
+        subexpression = subexpression[:, ~self.bad_genes]
+
+        # get behavior ids
+        behavior_ids = np.array([self.behavior_lookup[x] for x in data.behavior[good]])
+
+        # make it into a torch geometric data object, add it to the list!
+        return torch_geometric.data.Data(
+            x=torch.tensor(subexpression.astype(np.float32)),
+            edge_index=edges,
+            pos=torch.tensor(locations_for_this_slice.astype(np.float32)),
+            y=torch.tensor(behavior_ids),
+        )
+
+    def construct_graphs(self, n_neighbors):
+        # load hdf5
+        with h5py.File(self.raw_dir + "/merfish.hdf5", "r") as h5f:
+            data = types.SimpleNamespace(
+                anids=h5f["Animal_ID"][:],
+                bregs=h5f["Bregma"][:],
+                expression=h5f["expression"][:],
+                locations=np.c_[h5f["Centroid_X"][:], h5f["Centroid_Y"][:]],
+                behavior=h5f["Behavior"][:].astype("U"),
+            )
+
+        # get the (animal_id,bregma) pairs that define a unique slice
+        unique_slices = np.unique(np.c_[data.anids, data.bregs], axis=0)
+
+        # store all the slices in this list...
         data_list = []
-        merfish_df = pd.read_csv(self.csv)
-        for i in range(35):
-            for j in (
-                0.26,
-                0.21,
-                0.16,
-                0.11,
-                0.06,
-                0.01,
-                -0.04,
-                -0.09,
-                -0.14,
-                -0.19,
-                -0.24,
-                -0.29,
-            ):
-                try:
-                    x, cell_id, celltype, behavior, edge_index, pos = cell_graph(
-                        merfish_df, i + 1, j
-                    )
-                    animal_data = Data(
-                        x=x, edge_index=edge_index, pos=torch.tensor(pos), y=behavior
-                    )
-                    data_list.append(animal_data)
-                except ValueError:
-                    print(
-                        "No data found for (Animal_ID: {0}, Bregma: {1})".format(
-                            i + 1, j
-                        )
-                    )
+        for anid, breg in unique_slices:
+            data_list.append(self.construct_graph(data, anid, breg, n_neighbors))
 
-        if self.pre_filter is not None:
-            data_list = [data for data in data_list if self.pre_filter(data)]
-
-        if self.pre_transform is not None:
-            data_list = [self.pre_transform(data) for data in data_list]
-
-        n = len(data_list)
-        train_n = round(n * 6 / 7)
-        print(train_n)
-        train_list, test_list = random_split(data_list, [train_n, n - train_n])
-        train_data, train_slices = self.collate(train_list)
-        test_data, test_slices = self.collate(test_list)
-        torch.save((train_data, train_slices), self.processed_paths[0])
-        torch.save((test_data, test_slices), self.processed_paths[1])
+        return data_list
