@@ -30,3 +30,7 @@ disable=
     missing-function-docstring,
     missing-module-docstring,
     missing-class-docstring,
+
+    # suppress Unused argument 'batch_idx' (unused-argument) warnings.
+    # I wish there were a way to do this just for arguments named `batch_idx`
+    unused-argument,
