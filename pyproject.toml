@@ -12,7 +12,7 @@ torch-scatter = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/tor
 torch-sparse = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_sparse-0.6.8-cp38-cp38-linux_x86_64.whl" }
 torch-cluster = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_cluster-1.5.8-cp38-cp38-linux_x86_64.whl" }
 torch-spline-conv = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_spline_conv-1.2.0-cp38-cp38-linux_x86_64.whl" }
-torch-geometric = "^1.6.3"
+torch-geometric = "^1.6"
 scikit-learn = "^0.24.1"
 jupyter = "^1.0.0"
 pytorch-lightning = "^1.1.5"

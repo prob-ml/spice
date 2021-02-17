@@ -37,8 +37,6 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install numba==0.51.2
-        pip install llvmlite==0.35.0rc3
         poetry install
 
     - name: Run Tests
