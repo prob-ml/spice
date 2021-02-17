@@ -7,7 +7,6 @@ import h5py
 import numpy as np
 import requests
 
-
 class Merfish(torch_geometric.data.InMemoryDataset):
     def __init__(self, root, n_neighbors=3, train=True):
         super().__init__(root)
