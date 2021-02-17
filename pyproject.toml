@@ -27,6 +27,9 @@ pylint = "^2.6.0"
 pre-commit-hooks = "^3.4.0"
 pre-commit = "^2.10.1"
 
+[tool.poetry.scripts]
+spatial = "spatial.monet_merfish_ae:merfish_main"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"

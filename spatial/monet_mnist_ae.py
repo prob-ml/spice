@@ -109,7 +109,7 @@ class MonetAutoencoder(pl.LightningModule):
         return torch.optim.SGD(self.parameters(), lr=0.001)
 
 
-if __name__ == "__main__":
+def mnist_main():
     train75_loader = MNISTSuperpixels("GNN Data", train=True)
     mnist_train, mnist_val = random_split(train75_loader, [55000, 5000])
     mnist_test = MNISTSuperpixels("GNN Data", train=False)

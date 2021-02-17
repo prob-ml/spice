@@ -10,7 +10,7 @@ from torch.utils.data import random_split
 from torch_geometric.data import DataLoader
 from torch_geometric.nn import GMMConv
 
-from merfish_geometric import Merfish
+from spatial.merfish_geometric import Merfish
 
 
 def calc_pseudo(edge_index, pos):
@@ -110,7 +110,7 @@ class MonetAutoencoder(pl.LightningModule):
         return torch.optim.SGD(self.parameters(), lr=0.001)
 
 
-if __name__ == "__main__":
+def merfish_main():
     train75_loader = Merfish("../data", train=True)
     merfish_train, mnist_val = random_split(train75_loader, [139, 13])
     merfish_test = Merfish("../data", train=False)
