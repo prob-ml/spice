@@ -113,6 +113,3 @@ class Merfish(InMemoryDataset):
         test_data, test_slices = self.collate(test_list)
         torch.save((train_data, train_slices), self.processed_paths[0])
         torch.save((test_data, test_slices), self.processed_paths[1])
-
-
-Merfish("../data")
