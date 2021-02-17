@@ -132,3 +132,4 @@ dmypy.json
 GNN Data
 data
 lightning_logs
+.vscode

@@ -1,39 +1,26 @@
-'''
-Jeff Regier Lab
-MIT License
+"""
+A graph convolutional autoencoder for MNIST data.
+"""
 
-A graph convolutional autoencoder.
-'''
-
-import os
-import torch
-import torch.nn.functional as F
-import torch.nn as nn
-from torch.utils.data import random_split
 import pytorch_lightning as pl
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.metrics.functional import accuracy
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import random_split
+from torch_geometric.data import DataLoader
 from torch_geometric.datasets import MNISTSuperpixels
-from torch_geometric.data import Data, DataLoader
 from torch_geometric.nn import GMMConv
-from torch_geometric.nn import avg_pool
-from torch_geometric.nn import max_pool
-from torch_geometric.nn import graclus
-from torch_geometric.data import Batch
-from torch_geometric.utils import degree
-from torch_geometric.nn import max_pool_x
-from torch_geometric.nn import global_mean_pool
-from pytorch_lightning.callbacks import ModelCheckpoint
+
 
 def calc_pseudo(edge_index, pos):
-    '''
+    """
     Input:
     - edge_index, an (N_edges x 2) long tensor indicating edges of a graph
     - pos, an (N_vertices x 2) float tensor indicating coordinates of nodes
 
     Output:
     - pseudo, an (N_edges x 2) float tensor indicating edge-values (to be used in graph-convnet)
-    '''
+    """
     coord1 = pos[edge_index[0]]
     coord2 = pos[edge_index[1]]
     edge_dir = coord2 - coord1
@@ -41,16 +28,17 @@ def calc_pseudo(edge_index, pos):
     theta = torch.atan2(edge_dir[:, 1], edge_dir[:, 0]).unsqueeze(-1)
     return torch.cat((rho, theta), dim=1)
 
-class MonetAutoencoder(pl.LightningModule):
-    '''
-    Autoencoder for graph data whose nodes are embedded in 2d
-    '''
 
-    def __init__(self, observables_dimension,latent_dimension):
-        '''
+class MonetAutoencoder(pl.LightningModule):
+    """
+    Autoencoder for graph data whose nodes are embedded in 2d
+    """
+
+    def __init__(self, observables_dimension, latent_dimension):
+        """
         observables_dimension -- number of values associated with each node of the graph
         latent_dimension -- number of latent values to associate with each node of the graph
-        '''
+        """
         super().__init__()
 
         self.conv1enc = GMMConv(observables_dimension, 50, dim=2, kernel_size=25)
@@ -70,16 +58,16 @@ class MonetAutoencoder(pl.LightningModule):
 
         self.fc1 = nn.Linear(latent_dimension, latent_dimension)
 
-    def encoder(self,X,E,pseudo):
+    def encoder(self, X, E, pseudo):
         tmp = F.relu(self.batchnorm1enc(self.conv1enc(X, E, pseudo)))
         tmp = F.relu(self.batchnorm2enc(self.conv2enc(tmp, E, pseudo)))
         Z = self.fc1(F.relu(self.batchnorm3enc(self.conv3enc(tmp, E, pseudo))))
         return Z
 
-    def decoder(self,Z,E,pseudo):
-        tmp = F.relu(self.batchnorm1dec(self.conv1dec(Z, E,pseudo)))
-        tmp = F.relu(self.batchnorm2dec(self.conv2dec(tmp, E,pseudo)))
-        reconstruction = self.conv3dec(tmp, E,pseudo)
+    def decoder(self, Z, E, pseudo):
+        tmp = F.relu(self.batchnorm1dec(self.conv1dec(Z, E, pseudo)))
+        tmp = F.relu(self.batchnorm2dec(self.conv2dec(tmp, E, pseudo)))
+        reconstruction = self.conv3dec(tmp, E, pseudo)
         return reconstruction
 
     def forward(self, batch):
@@ -89,45 +77,50 @@ class MonetAutoencoder(pl.LightningModule):
         P = batch.pos
 
         # calculate edge weights
-        pseudo = calc_pseudo(E,P)
+        pseudo = calc_pseudo(E, P)
 
         # run encoder
-        Z = self.encoder(X,E,pseudo)
+        Z = self.encoder(X, E, pseudo)
 
         # run decoder
-        X_reconstruction = self.decoder(Z,E,pseudo)
+        X_reconstruction = self.decoder(Z, E, pseudo)
 
         return X_reconstruction
 
     def training_step(self, batch, batch_idx):
-        batch=batch.to('cuda')
+        batch = batch.to("cuda")
         reconstruction = self(batch)
         loss = F.mse_loss(reconstruction, batch.x)
-        self.log('train_loss', loss, prog_bar=True)
+        self.log("train_loss", loss, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        batch=batch.to('cuda')
+        batch = batch.to("cuda")
         reconstruction = self(batch)
         loss = F.mse_loss(reconstruction, batch.x)
-        self.log('val_loss', loss, prog_bar=True)
+        self.log("val_loss", loss, prog_bar=True)
         return loss
 
     def test_step(self, batch, batch_idx):
-        batch=batch.to('cuda')
+        batch = batch.to("cuda")
         return self.validation_step(batch, batch_idx)
 
     def configure_optimizers(self):
         return torch.optim.SGD(self.parameters(), lr=0.001)
 
 
-if __name__=='__main__':
+def mnist_main():
     train75_loader = MNISTSuperpixels("GNN Data", train=True)
     mnist_train, mnist_val = random_split(train75_loader, [55000, 5000])
     mnist_test = MNISTSuperpixels("GNN Data", train=False)
 
     model = MonetAutoencoder(1, 2)
-    trainer = pl.Trainer(flush_logs_every_n_steps=12,log_every_n_steps=12, gpus=1,max_epochs=1)
-    trainer.fit(model,DataLoader(mnist_train,batch_size=10,num_workers=2),
-                DataLoader(mnist_val,batch_size=10,shuffle=False))
-    trainer.test(model,DataLoader(mnist_test,batch_size=10))
+    trainer = pl.Trainer(
+        flush_logs_every_n_steps=12, log_every_n_steps=12, gpus=1, max_epochs=1
+    )
+    trainer.fit(
+        model,
+        DataLoader(mnist_train, batch_size=10, num_workers=2),
+        DataLoader(mnist_val, batch_size=10, shuffle=False),
+    )
+    trainer.test(model, DataLoader(mnist_test, batch_size=10))
