@@ -130,3 +130,5 @@ dmypy.json
 
 # added
 GNN Data
+data
+lightning_logs
