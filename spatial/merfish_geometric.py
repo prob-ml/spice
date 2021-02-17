@@ -8,12 +8,12 @@ from torch_geometric.data import Data, InMemoryDataset
 
 
 class Merfish(InMemoryDataset):
-    def __init__(self, root, transform=None, pre_transform=None, train=True):
+    def __init__(self, csv, root, transform=None, pre_transform=None, train=True):
+        self.csv = csv
+        self.root = root
+        data_idx = 0 if train else 1
+        self.data, self.slices = torch.load(self.processed_paths[data_idx])
         super().__init__(root, transform, pre_transform)
-        if train:
-            self.data, self.slices = torch.load(self.processed_paths[0])
-        else:
-            self.data, self.slices = torch.load(self.processed_paths[1])
 
     @property
     def raw_file_names(self):
@@ -24,8 +24,9 @@ class Merfish(InMemoryDataset):
         return ["train.pt", "test.pt"]
 
     def download(self):
-        pass  # for now
+        # available from https://datadryad.org/stash/dataset/doi:10.5061/dryad.8t8s248
         # Download to `self.raw_dir`.
+        pass  # for now
 
     def process(self):
         # Read data into huge `Data` list.
@@ -68,7 +69,7 @@ class Merfish(InMemoryDataset):
             return (x, cell_id, celltype, behavior, edge_index, pos)
 
         data_list = []
-        merfish_df = pd.read_csv("../data/merfish.csv")
+        merfish_df = pd.read_csv(self.csv)
         for i in range(35):
             for j in (
                 0.26,

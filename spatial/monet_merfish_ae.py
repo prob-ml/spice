@@ -110,10 +110,10 @@ class MonetAutoencoder(pl.LightningModule):
         return torch.optim.SGD(self.parameters(), lr=0.001)
 
 
-def merfish_main():
-    train75_loader = Merfish("../data", train=True)
+def merfish_main(csv="../data/merfish.csv"):
+    train75_loader = Merfish(csv, ".", train=True)
     merfish_train, mnist_val = random_split(train75_loader, [139, 13])
-    merfish_test = Merfish("../data", train=False)
+    merfish_test = Merfish(csv, ".", train=False)
 
     model = MonetAutoencoder(159, 2)
     trainer = pl.Trainer(
