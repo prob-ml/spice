@@ -6,24 +6,20 @@ A graph convolutional autoencoder.
 """
 
 import os
-import torch
-import torch.nn.functional as F
-import torch.nn as nn
-from torch.utils.data import random_split
+
 import pytorch_lightning as pl
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.metrics.functional import accuracy
+from torch.utils.data import random_split
+from torch_geometric.data import Batch, Data, DataLoader
 from torch_geometric.datasets import MNISTSuperpixels
-from torch_geometric.data import Data, DataLoader
-from torch_geometric.nn import GMMConv
-from torch_geometric.nn import avg_pool
-from torch_geometric.nn import max_pool
-from torch_geometric.nn import graclus
-from torch_geometric.data import Batch
+from torch_geometric.nn import (GMMConv, avg_pool, global_mean_pool, graclus,
+                                max_pool, max_pool_x)
 from torch_geometric.utils import degree
-from torch_geometric.nn import max_pool_x
-from torch_geometric.nn import global_mean_pool
-from pytorch_lightning.callbacks import ModelCheckpoint
 
 
 def calc_pseudo(edge_index, pos):

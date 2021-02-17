@@ -1,29 +1,24 @@
-import os
-import numpy as np
-import scipy.spatial
-import pandas as pd
 import itertools
-import torch
-from torch_geometric.data import InMemoryDataset
-import torch.nn.functional as F
-import torch.nn as nn
-from torch.utils.data import random_split
-from torchvision import transforms
+import os
+
+import numpy as np
+import pandas as pd
 import pytorch_lightning as pl
+import scipy.spatial
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.metrics.functional import accuracy
-from torch_geometric.datasets import MNISTSuperpixels
-from torch_geometric.data import Data, DataLoader
-from torch_geometric.nn import GMMConv
-from torch_geometric.nn import avg_pool
-from torch_geometric.nn import max_pool
-from torch_geometric.nn import graclus
-from torch_geometric.data import Batch
-from torch_geometric.utils import degree
-from torch_geometric.nn import max_pool_x
-from torch_geometric.nn import global_mean_pool
-from pytorch_lightning.callbacks import ModelCheckpoint
 from sklearn.neighbors import NearestNeighbors
+from torch.utils.data import random_split
+from torch_geometric.data import Batch, Data, DataLoader, InMemoryDataset
+from torch_geometric.datasets import MNISTSuperpixels
+from torch_geometric.nn import (GMMConv, avg_pool, global_mean_pool, graclus,
+                                max_pool, max_pool_x)
+from torch_geometric.utils import degree
+from torchvision import transforms
 
 
 class Merfish(InMemoryDataset):
