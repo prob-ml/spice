@@ -28,9 +28,12 @@ from sklearn.neighbors import NearestNeighbors
 
 class Merfish(InMemoryDataset):
 
-    def __init__(self, root, transform=None, pre_transform=None):
+    def __init__(self, root, transform=None, pre_transform=None, train=True):
         super(Merfish, self).__init__(root, transform, pre_transform)
-        self.data, self.slices = torch.load(self.processed_paths[0])
+        if train:
+            self.data, self.slices = torch.load(self.processed_paths[0])
+        else:
+            self.data, self.slices = torch.load(self.processed_paths[1])
 
     @property
     def raw_file_names(self):
@@ -38,7 +41,7 @@ class Merfish(InMemoryDataset):
 
     @property
     def processed_file_names(self):
-        return ['data.pt']
+        return ['train.pt', 'test.pt']
 
     def download(self):
         pass # for now
@@ -53,7 +56,7 @@ class Merfish(InMemoryDataset):
                 return "No Data"
             print("Animal: {0}, Bregma: {1}, Cells: {2}".format(animal, bregma, len(merfish.index)))
             pos = pd.DataFrame(merfish, columns=["Centroid_X", "Centroid_Y"]).to_numpy()
-            x = torch.tensor(merfish.iloc[:, 9:].to_numpy())
+            x = torch.tensor(merfish.iloc[:, 11:].to_numpy())
             cell_id = pd.DataFrame(merfish, columns=["Cell_ID"]).to_numpy()
             celltype = pd.DataFrame(merfish, columns=["Cell_class"]).to_numpy()
             behavior = pd.DataFrame(merfish, columns=["Behavior"])
@@ -85,7 +88,13 @@ class Merfish(InMemoryDataset):
         if self.pre_transform is not None:
             data_list = [self.pre_transform(data) for data in data_list]
 
-        data, slices = self.collate(data_list)
-        torch.save((data, slices), self.processed_paths[0])
+        n = len(data_list)
+        train_n = round(n*6/7)
+        print(train_n)
+        train_list, test_list = random_split(data_list, [train_n, n - train_n])
+        train_data, train_slices = self.collate(train_list)
+        test_data, test_slices = self.collate(test_list)
+        torch.save((train_data, train_slices), self.processed_paths[0])
+        torch.save((test_data, test_slices), self.processed_paths[1])
 
 Merfish("../data")
