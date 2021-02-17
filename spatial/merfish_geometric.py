@@ -1,29 +1,15 @@
 import itertools
-import os
 
-import numpy as np
 import pandas as pd
-import pytorch_lightning as pl
-import scipy.spatial
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.metrics.functional import accuracy
 from sklearn.neighbors import NearestNeighbors
 from torch.utils.data import random_split
-from torch_geometric.data import Batch, Data, DataLoader, InMemoryDataset
-from torch_geometric.datasets import MNISTSuperpixels
-from torch_geometric.nn import (GMMConv, avg_pool, global_mean_pool, graclus,
-                                max_pool, max_pool_x)
-from torch_geometric.utils import degree
-from torchvision import transforms
+from torch_geometric.data import Data, InMemoryDataset
 
 
 class Merfish(InMemoryDataset):
     def __init__(self, root, transform=None, pre_transform=None, train=True):
-        super(Merfish, self).__init__(root, transform, pre_transform)
+        super().__init__(root, transform, pre_transform)
         if train:
             self.data, self.slices = torch.load(self.processed_paths[0])
         else:

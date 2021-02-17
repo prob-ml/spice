@@ -1,25 +1,14 @@
 """
-Jeff Regier Lab
-MIT License
-
-A graph convolutional autoencoder.
+A graph convolutional autoencoder for MERFISH data.
 """
-
-import os
 
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.metrics.functional import accuracy
 from torch.utils.data import random_split
-from torch_geometric.data import Batch, Data, DataLoader
-from torch_geometric.datasets import MNISTSuperpixels
-from torch_geometric.nn import (GMMConv, avg_pool, global_mean_pool, graclus,
-                                max_pool, max_pool_x)
-from torch_geometric.utils import degree
+from torch_geometric.data import DataLoader
+from torch_geometric.nn import GMMConv
 
 from merfish_geometric import Merfish
 
