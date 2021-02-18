@@ -35,6 +35,10 @@ jobs:
         pip install --upgrade pip
         pip install "poetry >=1.1.4, <2.0.0"
 
+    - name: Debug poetry
+      run: |
+        poetry debug
+
     - name: Install dependencies
       run: |
         poetry install
@@ -52,4 +56,3 @@ jobs:
         env_vars: OS,PYTHON
         name: codecov-umbrella
         fail_ci_if_error: true
-
