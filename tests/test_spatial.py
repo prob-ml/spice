@@ -1,5 +1,8 @@
+import pathlib
+
 from spatial.monet_merfish_ae import merfish_main
 
 
 def test_merfish_main():
-    merfish_main(csv="/home/regier/spatial/tests/data/ten_rows_of_moffitt.csv")
+    test_dir = pathlib.Path(__file__).parent.absolute()
+    merfish_main(test_dir + "data/ten_rows_of_moffitt.csv")

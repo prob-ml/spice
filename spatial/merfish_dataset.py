@@ -1,13 +1,15 @@
 import types
-import pandas as pd
-import torch
-import sklearn.neighbors
-import torch_geometric
+
 import h5py
 import numpy as np
+import pandas as pd
 import requests
+import sklearn.neighbors
+import torch
+import torch_geometric
 
-class Merfish(torch_geometric.data.InMemoryDataset):
+
+class MerfishDataset(torch_geometric.data.InMemoryDataset):
     def __init__(self, root, n_neighbors=3, train=True):
         super().__init__(root)
 
