@@ -1544,6 +1544,7 @@ typing-extensions = "*"
 [package.source]
 type = "url"
 url = "https://download.pytorch.org/whl/cu110/torch-1.7.1%2Bcu110-cp38-cp38-linux_x86_64.whl"
+
 [[package]]
 name = "torch-cluster"
 version = "1.5.8"
@@ -1558,6 +1559,7 @@ test = ["pytest", "pytest-cov", "scipy"]
 [package.source]
 type = "url"
 url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_cluster-1.5.8-cp38-cp38-linux_x86_64.whl"
+
 [[package]]
 name = "torch-geometric"
 version = "1.6.3"
@@ -1600,6 +1602,7 @@ test = ["pytest", "pytest-cov"]
 [package.source]
 type = "url"
 url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_scatter-2.0.5-cp38-cp38-linux_x86_64.whl"
+
 [[package]]
 name = "torch-sparse"
 version = "0.6.8"
@@ -1617,6 +1620,7 @@ test = ["pytest", "pytest-cov"]
 [package.source]
 type = "url"
 url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_sparse-0.6.8-cp38-cp38-linux_x86_64.whl"
+
 [[package]]
 name = "torch-spline-conv"
 version = "1.2.0"
@@ -1628,6 +1632,7 @@ python-versions = ">=3.6"
 [package.source]
 type = "url"
 url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_spline_conv-1.2.0-cp38-cp38-linux_x86_64.whl"
+
 [[package]]
 name = "tornado"
 version = "6.1"
@@ -1771,7 +1776,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "99a41d03a1176d3eb49f4a93e0b70c85a494aeb3604569133bf1de91e582eed5"
+content-hash = "ab4e422a0d1adda214c63790e1116df0ffddde1a201c54a286c6915ba2fc464b"
 
 [metadata.files]
 absl-py = [

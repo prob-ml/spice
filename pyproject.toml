@@ -2,7 +2,7 @@
 name = "spatial"
 version = "0.1.0"
 description = "Deep Generative Models for Spatial Transcriptomics"
-authors = ["Roman Kouznetsov, Ariel Polani, Jackson Loper, Jeffrey Regier"]
+authors = ["Roman Kouznetsov, Jackson Loper, Jeffrey Regier"]
 license = "MIT"
 
 [tool.poetry.dependencies]
@@ -27,6 +27,7 @@ jupyter = "^1.0.0"
 pylint = "^2.6.0"
 pre-commit-hooks = "^3.4.0"
 pre-commit = "^2.10.1"
+isort = "^5.7.0"
 
 [tool.poetry.scripts]
 spatial = "spatial.monet_merfish_ae:merfish_main"
