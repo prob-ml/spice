@@ -37,6 +37,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        poetry debug
         poetry install
 
     - name: Run Tests
@@ -52,4 +53,3 @@ jobs:
         env_vars: OS,PYTHON
         name: codecov-umbrella
         fail_ci_if_error: true
-
