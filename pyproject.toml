@@ -28,6 +28,7 @@ pylint = "^2.6.0"
 pre-commit-hooks = "^3.4.0"
 pre-commit = "^2.10.1"
 isort = "^5.7.0"
+rope = "^0.18.0"
 
 [tool.poetry.scripts]
 spatial = "spatial.monet_merfish_ae:merfish_main"

@@ -9,7 +9,7 @@ import torch
 import torch_geometric
 
 
-class Merfish(torch_geometric.data.InMemoryDataset):
+class MerfishDataset(torch_geometric.data.InMemoryDataset):
     def __init__(self, root, n_neighbors=3, train=True):
         super().__init__(root)
 
