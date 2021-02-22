@@ -23,3 +23,7 @@ repos:
         entry: pylint
         language: system
         types: [python]
+        args:
+        - --disable=no-member
+        - --disable=no-else-return
+        - --disable=too-many-instance-attributes
