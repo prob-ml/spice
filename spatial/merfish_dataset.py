@@ -13,16 +13,13 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
     def __init__(self, root, n_neighbors=3, train=True):
         super().__init__(root)
 
-        data_list = self.construct_graphs(n_neighbors)
+        data_list = self.construct_graphs(n_neighbors, train)
 
         with h5py.File(self.raw_dir + "/merfish.hdf5", "r") as h5f:
-            self.gene_names = h5f["gene_names"][:].astype("U")[~self.bad_genes]
+            # pylint: disable=no-member
+            self.gene_names = h5f["gene_names"][:][~self.bad_genes].astype("U")
 
-        # we use the first 150 slices for training
-        if train:
-            self.data, self.slices = self.collate(data_list[:150])
-        else:
-            self.data, self.slices = self.collate(data_list[150:])
+        self.data, self.slices = self.collate(data_list)
 
     url = "https://datadryad.org/stash/downloads/file_stream/68364"
 
@@ -35,6 +32,25 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         "Mating",
     ]
     behavior_lookup = {x: i for (i, x) in enumerate(behavior_types)}
+    cell_types = [
+        "Ambiguous",
+        "Astrocyte",
+        "Endothelial 1",
+        "Endothelial 2",
+        "Endothelial 3",
+        "Ependymal",
+        "Excitatory",
+        "Inhibitory",
+        "Microglia",
+        "OD Immature 1",
+        "OD Immature 2",
+        "OD Mature 1",
+        "OD Mature 2",
+        "OD Mature 3",
+        "OD Mature 4",
+        "Pericytes",
+    ]
+    celltype_lookup = {x: i for (i, x) in enumerate(cell_types)}
 
     bad_genes = np.zeros(161, dtype=np.bool)
     bad_genes[144] = True
@@ -88,28 +104,35 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
         # get behavior ids
         behavior_ids = np.array([self.behavior_lookup[x] for x in data.behavior[good]])
+        celltype_ids = np.array([self.celltype_lookup[x] for x in data.celltypes[good]])
+        labelinfo = np.c_[behavior_ids, celltype_ids]
 
         # make it into a torch geometric data object, add it to the list!
         return torch_geometric.data.Data(
             x=torch.tensor(subexpression.astype(np.float32)),
             edge_index=edges,
             pos=torch.tensor(locations_for_this_slice.astype(np.float32)),
-            y=torch.tensor(behavior_ids),
+            y=torch.tensor(labelinfo),
         )
 
-    def construct_graphs(self, n_neighbors):
+    def construct_graphs(self, n_neighbors, train):
         # load hdf5
         with h5py.File(self.raw_dir + "/merfish.hdf5", "r") as h5f:
+            # pylint: disable=no-member
             data = types.SimpleNamespace(
                 anids=h5f["Animal_ID"][:],
                 bregs=h5f["Bregma"][:],
                 expression=h5f["expression"][:],
                 locations=np.c_[h5f["Centroid_X"][:], h5f["Centroid_Y"][:]],
                 behavior=h5f["Behavior"][:].astype("U"),
+                celltypes=h5f["Cell_class"][:].astype("U"),
             )
 
         # get the (animal_id,bregma) pairs that define a unique slice
         unique_slices = np.unique(np.c_[data.anids, data.bregs], axis=0)
+
+        # are we looking at train or test sets?
+        unique_slices = unique_slices[:150] if train else unique_slices[150:]
 
         # store all the slices in this list...
         data_list = []
