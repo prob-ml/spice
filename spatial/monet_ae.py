@@ -4,9 +4,8 @@ A graph convolutional autoencoder for MERFISH data.
 
 import pytorch_lightning as pl
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch_geometric.nn import GMMConv
+
+from . import base_networks
 
 
 def calc_pseudo(edge_index, pos):
@@ -26,7 +25,45 @@ def calc_pseudo(edge_index, pos):
     return torch.cat((rho, theta), dim=1)
 
 
-class TrivialAutoencoder(pl.LightningModule):
+class BasicAEMixin:
+    """
+    Mixin implementing
+    - loss calculations
+    - training_step, validation_step,test_step,configure_optimizers for pytorchlightning
+    """
+
+    def calc_loss(self, pred, val):
+        if self.loss_type == "mse_against_log1pdata":
+            return torch.sum((pred - torch.log(1 + val)) ** 2)
+        elif self.loss_type == "mse":
+            return torch.sum((pred - val) ** 2)
+        else:
+            raise NotImplementedError(self.loss_type)
+
+    def training_step(self, batch, batch_idx):
+        batch = batch.to("cuda")
+        _, reconstruction = self(batch)
+        loss = self.calc_loss(reconstruction, batch.x)
+
+        self.log("train_loss", loss, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        batch = batch.to("cuda")
+        _, reconstruction = self(batch)
+        loss = self.calc_loss(reconstruction, batch.x)
+        self.log("val_loss", loss, prog_bar=True)
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        batch = batch.to("cuda")
+        return self.validation_step(batch, batch_idx)
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters())
+
+
+class TrivialAutoencoder(BasicAEMixin, pl.LightningModule):
     """
     Autoencoder for graph data, ignoring the graph structure
     """
@@ -40,80 +77,21 @@ class TrivialAutoencoder(pl.LightningModule):
 
         self.loss_type = loss_type
 
-        self.conv1enc = torch.nn.Linear(observables_dimension, 50)
-        self.conv2enc = torch.nn.Linear(50, 25)
-        self.conv3enc = torch.nn.Linear(25, latent_dimension)
+        self.encoder_network = base_networks.construct_dense_relu_network(
+            [observables_dimension, 50, 25, latent_dimension],
+        )
 
-        self.conv1dec = torch.nn.Linear(latent_dimension, 25)
-        self.conv2dec = torch.nn.Linear(25, 50)
-        self.conv3dec = torch.nn.Linear(50, observables_dimension)
-
-        self.batchnorm1enc = torch.nn.BatchNorm1d(50)
-        self.batchnorm2enc = torch.nn.BatchNorm1d(25)
-        self.batchnorm3enc = torch.nn.BatchNorm1d(latent_dimension)
-
-        self.batchnorm1dec = torch.nn.BatchNorm1d(25)
-        self.batchnorm2dec = torch.nn.BatchNorm1d(50)
-
-        self.fc1 = nn.Linear(latent_dimension, latent_dimension)
-
-    def encoder(self, expr, edges, pseudo):
-        tmp = F.relu(self.batchnorm1enc(self.conv1enc(expr)))
-        tmp = F.relu(self.batchnorm2enc(self.conv2enc(tmp)))
-        latent = self.fc1(F.relu(self.batchnorm3enc(self.conv3enc(tmp))))
-        return latent
-
-    def calc_loss(self, pred, val):
-        if self.loss_type == "mse_against_log1pdata":
-            return torch.sum((pred - torch.log(1 + val)) ** 2)
-        elif self.loss_type == "mse":
-            return torch.sum((pred - val) ** 2)
-        else:
-            raise NotImplementedError(self.loss_type)
-
-    def decoder(self, latent, edges, pseudo):
-        tmp = F.relu(self.batchnorm1dec(self.conv1dec(latent)))
-        tmp = F.relu(self.batchnorm2dec(self.conv2dec(tmp)))
-        reconstruction = self.conv3dec(tmp)
-        return reconstruction
+        self.decoder_network = base_networks.construct_dense_relu_network(
+            [latent_dimension, 25, 50, observables_dimension],
+        )
 
     def forward(self, batch):
-        # calculate edge weights
-        pseudo = calc_pseudo(batch.edge_index, batch.pos)
-
-        # run encoder
-        latent_loadings = self.encoder(batch.x, batch.edge_index, pseudo)
-
-        # run decoder
-        expr_reconstruction = self.decoder(latent_loadings, batch.edge_index, pseudo)
-
-        return expr_reconstruction
-
-    def training_step(self, batch, batch_idx):
-        batch = batch.to("cuda")
-        reconstruction = self(batch)
-        loss = self.calc_loss(reconstruction, batch.x)
-
-        self.log("train_loss", loss, prog_bar=True)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        batch = batch.to("cuda")
-        reconstruction = self(batch)
-        loss = self.calc_loss(reconstruction, batch.x)
-        self.log("val_loss", loss, prog_bar=True)
-        return loss
-
-    def test_step(self, batch, batch_idx):
-        batch = batch.to("cuda")
-        return self.validation_step(batch, batch_idx)
-
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters())
-        # return torch.optim.SGD(self.parameters(), lr=0.001)
+        latent_loadings = self.encoder_network(batch.x)
+        expr_reconstruction = self.decoder_network(latent_loadings)
+        return latent_loadings, expr_reconstruction
 
 
-class MonetAutoencoder(pl.LightningModule):
+class MonetAutoencoder(BasicAEMixin, pl.LightningModule):
     """
     Autoencoder for graph data whose nodes are embedded in 2d
     """
@@ -127,73 +105,17 @@ class MonetAutoencoder(pl.LightningModule):
 
         self.loss_type = loss_type
 
-        self.conv1enc = GMMConv(observables_dimension, 50, dim=2, kernel_size=25)
-        self.conv2enc = GMMConv(50, 25, dim=2, kernel_size=25)
-        self.conv3enc = GMMConv(25, latent_dimension, dim=2, kernel_size=25)
-
-        self.conv1dec = GMMConv(latent_dimension, 25, dim=2, kernel_size=25)
-        self.conv2dec = GMMConv(25, 50, dim=2, kernel_size=25)
-        self.conv3dec = GMMConv(50, observables_dimension, dim=2, kernel_size=25)
-
-        self.batchnorm1enc = torch.nn.BatchNorm1d(50)
-        self.batchnorm2enc = torch.nn.BatchNorm1d(25)
-        self.batchnorm3enc = torch.nn.BatchNorm1d(latent_dimension)
-
-        self.batchnorm1dec = torch.nn.BatchNorm1d(25)
-        self.batchnorm2dec = torch.nn.BatchNorm1d(50)
-
-        self.fc1 = nn.Linear(latent_dimension, latent_dimension)
-
-    def encoder(self, expr, edges, pseudo):
-        tmp = F.relu(self.batchnorm1enc(self.conv1enc(expr, edges, pseudo)))
-        tmp = F.relu(self.batchnorm2enc(self.conv2enc(tmp, edges, pseudo)))
-        latent = self.fc1(F.relu(self.batchnorm3enc(self.conv3enc(tmp, edges, pseudo))))
-        return latent
-
-    def calc_loss(self, pred, val):
-        if self.loss_type == "mse_against_log1pdata":
-            return torch.sum((pred - torch.log(1 + val)) ** 2)
-        elif self.loss_type == "mse":
-            return torch.sum((pred - val) ** 2)
-        else:
-            raise NotImplementedError(self.loss_type)
-
-    def decoder(self, latent, edges, pseudo):
-        tmp = F.relu(self.batchnorm1dec(self.conv1dec(latent, edges, pseudo)))
-        tmp = F.relu(self.batchnorm2dec(self.conv2dec(tmp, edges, pseudo)))
-        reconstruction = self.conv3dec(tmp, edges, pseudo)
-        return reconstruction
+        self.encoder_network = base_networks.DenseReluGMMConvNetwork(
+            [observables_dimension, 50, 25, latent_dimension], dim=2, kernel_size=25
+        )
+        self.decoder_network = base_networks.DenseReluGMMConvNetwork(
+            [latent_dimension, 25, 50, observables_dimension], dim=2, kernel_size=25
+        )
 
     def forward(self, batch):
-        # calculate edge weights
         pseudo = calc_pseudo(batch.edge_index, batch.pos)
-
-        # run encoder
-        latent_loadings = self.encoder(batch.x, batch.edge_index, pseudo)
-
-        # run decoder
-        expr_reconstruction = self.decoder(latent_loadings, batch.edge_index, pseudo)
-
-        return expr_reconstruction
-
-    def training_step(self, batch, batch_idx):
-        batch = batch.to("cuda")
-        reconstruction = self(batch)
-        loss = self.calc_loss(reconstruction, batch.x)
-        self.log("train_loss", loss, prog_bar=True)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        batch = batch.to("cuda")
-        reconstruction = self(batch)
-        loss = self.calc_loss(reconstruction, batch.x)
-        self.log("val_loss", loss, prog_bar=True)
-        return loss
-
-    def test_step(self, batch, batch_idx):
-        batch = batch.to("cuda")
-        return self.validation_step(batch, batch_idx)
-
-    def configure_optimizers(self):
-        # return torch.optim.SGD(self.parameters(), lr=0.001)
-        return torch.optim.Adam(self.parameters())
+        latent_loadings = self.encoder_network(batch.x, batch.edge_index, pseudo)
+        expr_reconstruction = self.decoder_network(
+            latent_loadings, batch.edge_index, pseudo
+        )
+        return latent_loadings, expr_reconstruction

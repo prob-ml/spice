@@ -13,16 +13,13 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
     def __init__(self, root, n_neighbors=3, train=True):
         super().__init__(root)
 
-        data_list = self.construct_graphs(n_neighbors)
+        data_list = self.construct_graphs(n_neighbors, train)
 
         with h5py.File(self.raw_dir + "/merfish.hdf5", "r") as h5f:
+            # pylint: disable=no-member
             self.gene_names = h5f["gene_names"][:][~self.bad_genes].astype("U")
 
-        # we use the first 150 slices for training
-        if train:
-            self.data, self.slices = self.collate(data_list[:150])
-        else:
-            self.data, self.slices = self.collate(data_list[150:])
+        self.data, self.slices = self.collate(data_list)
 
     url = "https://datadryad.org/stash/downloads/file_stream/68364"
 
@@ -118,9 +115,10 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             y=torch.tensor(labelinfo),
         )
 
-    def construct_graphs(self, n_neighbors):
+    def construct_graphs(self, n_neighbors, train):
         # load hdf5
         with h5py.File(self.raw_dir + "/merfish.hdf5", "r") as h5f:
+            # pylint: disable=no-member
             data = types.SimpleNamespace(
                 anids=h5f["Animal_ID"][:],
                 bregs=h5f["Bregma"][:],
@@ -132,6 +130,12 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
         # get the (animal_id,bregma) pairs that define a unique slice
         unique_slices = np.unique(np.c_[data.anids, data.bregs], axis=0)
+
+        # are we looking at train or test sets?
+        if train:
+            unique_slices = unique_slices[:150]
+        else:
+            unique_slices = unique_slices[150:]
 
         # store all the slices in this list...
         data_list = []
