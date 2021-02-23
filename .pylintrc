@@ -21,6 +21,10 @@ disable=
     # we often don't want to override lightning's abstract methods
     abstract-method,
 
+    # Jackson opines that the traditional alternative
+    # to no-else-return is antipattern
+    no-else-return,
+
     # these not-callable warnings come from an issue with pytorch
     # that may be resolved in pytorch version 1.7.2
     not-callable,

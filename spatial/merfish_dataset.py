@@ -132,10 +132,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         unique_slices = np.unique(np.c_[data.anids, data.bregs], axis=0)
 
         # are we looking at train or test sets?
-        if train:
-            unique_slices = unique_slices[:150]
-        else:
-            unique_slices = unique_slices[150:]
+        unique_slices = unique_slices[:150] if train else unique_slices[150:]
 
         # store all the slices in this list...
         data_list = []

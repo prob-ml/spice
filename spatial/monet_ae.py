@@ -41,7 +41,6 @@ class BasicAEMixin:
             raise NotImplementedError(self.loss_type)
 
     def training_step(self, batch, batch_idx):
-        batch = batch.to("cuda")
         _, reconstruction = self(batch)
         loss = self.calc_loss(reconstruction, batch.x)
 
@@ -49,14 +48,12 @@ class BasicAEMixin:
         return loss
 
     def validation_step(self, batch, batch_idx):
-        batch = batch.to("cuda")
         _, reconstruction = self(batch)
         loss = self.calc_loss(reconstruction, batch.x)
         self.log("val_loss", loss, prog_bar=True)
         return loss
 
     def test_step(self, batch, batch_idx):
-        batch = batch.to("cuda")
         return self.validation_step(batch, batch_idx)
 
     def configure_optimizers(self):
