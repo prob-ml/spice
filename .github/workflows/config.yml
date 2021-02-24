@@ -35,6 +35,14 @@ jobs:
         pip install --upgrade pip
         pip install "poetry >=1.1.4, <2.0.0"
 
+    - name: Run pylint
+      run: |
+        poetry run pylint spatial/ tests/
+
+    - name: Run black
+      run: |
+        poetry run black --check .
+
     - name: Install dependencies
       run: |
         poetry install
