@@ -34,6 +34,12 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
             )
         self.gmms = torch.nn.ModuleList(lst)
 
+        # and some linears ("self-edges")
+        lst = []
+        for i in range(len(sizes) - 1):
+            lst.append(torch.nn.Linear(sizes[i], sizes[i + 1], bias=False))
+        self.linears = torch.nn.ModuleList(lst)
+
         # construct batchnorm layers we need
         if use_batchnorm:
             self.batchnorms = torch.nn.ModuleList(
@@ -41,8 +47,8 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
             )
 
     def forward(self, vals, edges, pseudo):
-        for i, gmmlayer in enumerate(self.gmms):
-            vals = gmmlayer(vals, edges, pseudo)
+        for i, (dense, gmmlayer) in enumerate(zip(self.linears, self.gmms)):
+            vals = gmmlayer(vals, edges, pseudo) + dense(vals)
 
             # do batchnorm
             if self.use_batchnorm:

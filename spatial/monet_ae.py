@@ -88,7 +88,7 @@ class TrivialAutoencoder(BasicAEMixin, pl.LightningModule):
         return latent_loadings, expr_reconstruction
 
 
-class MonetAutoencoder(BasicAEMixin, pl.LightningModule):
+class MonetAutoencoder2D(BasicAEMixin, pl.LightningModule):
     """
     Autoencoder for graph data whose nodes are embedded in 2d
     """
