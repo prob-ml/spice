@@ -1,3 +1,4 @@
+import os
 import types
 
 import h5py
@@ -52,7 +53,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
     ]
     celltype_lookup = {x: i for (i, x) in enumerate(cell_types)}
 
-    bad_genes = np.zeros(161, dtype=np.bool)
+    bad_genes = np.zeros(161, dtype=bool)
     bad_genes[144] = True
 
     @property
@@ -60,10 +61,14 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         return ["merfish.csv", "merfish.hdf5"]
 
     def download(self):
-        with open(self.raw_dir + "/merfish.csv", "wb") as csvf:
-            csvf.write(requests.get(self.url).content)
+        # download csv if necessary
+        csvfn = self.raw_dir + "/merfish.csv"
+        if not os.path.exists(csvfn):
+            with open(csvfn, "wb") as csvf:
+                csvf.write(requests.get(self.url).content)
 
-        dataframe = pd.read_csv(self.raw_dir + "/merfish.csv")
+        # process csv if necessary
+        dataframe = pd.read_csv(csvfn)
 
         with h5py.File(self.raw_dir + "/merfish.hdf5", "w") as h5f:
             for colnm, dtype in zip(dataframe.keys()[:9], dataframe.dtypes[:9]):
