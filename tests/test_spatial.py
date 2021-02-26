@@ -2,22 +2,22 @@ import pathlib
 
 import numpy as np
 import numpy.random as npr
-import pandas as pd
 import pytorch_lightning as pl
 import torch
 import torch_geometric
 
-import spatial
-import spatial.monet_ae
 
+def test_merfish_dataset():
+    import spatial.merfish_dataset
 
-def test_merfish_main():
     test_dir = pathlib.Path(__file__).parent.absolute()
-    test_data = test_dir.joinpath("data/ten_rows_of_moffitt.csv")
-    pd.read_csv(test_data)
+    test_data_dir = test_dir.joinpath("data")
+    mfd = spatial.merfish_dataset.MerfishDataset(test_data_dir)
+    mfd.get(0)
 
 
 def test_monetae2d():
+    import spatial.monet_ae
 
     ###################
     # make simulation
