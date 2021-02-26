@@ -5,9 +5,9 @@ import h5py
 import numpy as np
 import pandas as pd
 import requests
-import sklearn.neighbors
 import torch
 import torch_geometric
+from sklearn import neighbors
 
 
 class MerfishDataset(torch_geometric.data.InMemoryDataset):
@@ -92,13 +92,13 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
         # figure out neighborhood structure
         locations_for_this_slice = data.locations[good]
-        nbrs = sklearn.neighbors.NearestNeighbors(
+        nbrs = neighbors.NearestNeighbors(
             n_neighbors=n_neighbors + 1, algorithm="ball_tree"
         )
         nbrs.fit(locations_for_this_slice)
-        _, neighbors = nbrs.kneighbors(locations_for_this_slice)
+        _, kneighbors = nbrs.kneighbors(locations_for_this_slice)
         edges = np.concatenate(
-            [np.c_[neighbors[:, 0], neighbors[:, i + 1]] for i in range(n_neighbors)],
+            [np.c_[kneighbors[:, 0], kneighbors[:, i + 1]] for i in range(n_neighbors)],
             axis=0,
         )
         edges = torch.tensor(edges, dtype=torch.long).T

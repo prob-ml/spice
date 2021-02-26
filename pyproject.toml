@@ -29,6 +29,7 @@ pre-commit = "^2.10.1"
 rope = "^0.18.0"
 isort = "^5.7.0"
 jedi = "^0.17.2"
+wemake-python-styleguide = "^0.15.1"
 
 [tool.poetry.scripts]
 spatial = "spatial.monet_merfish_ae:merfish_main"

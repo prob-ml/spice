@@ -1,6 +1,6 @@
 import torch
-import torch.nn.functional as F
 import torch_geometric
+from torch.nn import functional as fcl
 
 
 def construct_dense_relu_network(sizes, use_batchnorm=True, final_relu=False):
@@ -56,6 +56,6 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
 
             # do relu (or not, if final_relu=False and we're on the last layer)
             if self.final_relu or (i != len(self.gmms) - 1):
-                vals = F.relu(vals)
+                vals = fcl.relu(vals)
 
         return vals

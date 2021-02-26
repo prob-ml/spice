@@ -1,23 +1,23 @@
 import pathlib
 
 import numpy as np
-import numpy.random as npr
 import pytorch_lightning as pl
 import torch
 import torch_geometric
+from numpy import random as npr
 
 
 def test_merfish_dataset():
-    import spatial.merfish_dataset
+    from spatial import merfish_dataset
 
     test_dir = pathlib.Path(__file__).parent.absolute()
     test_data_dir = test_dir.joinpath("data")
-    mfd = spatial.merfish_dataset.MerfishDataset(test_data_dir)
+    mfd = merfish_dataset.MerfishDataset(test_data_dir)
     mfd.get(0)
 
 
 def test_monetae2d():
-    import spatial.monet_ae
+    from spatial import monet_ae
 
     ###################
     # make simulation
@@ -60,7 +60,7 @@ def test_monetae2d():
 
     latent_dimension = 2
 
-    model = spatial.monet_ae.MonetAutoencoder2D(
+    model = monet_ae.MonetAutoencoder2D(
         data_dimension, latent_dimension, loss_type="mse"
     )
     trainer = pl.Trainer(gpus=1, max_epochs=5)
