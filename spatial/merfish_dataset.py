@@ -5,9 +5,9 @@ import h5py
 import numpy as np
 import pandas as pd
 import requests
-import sklearn.neighbors
 import torch
 import torch_geometric
+from sklearn import neighbors
 
 
 class MerfishDataset(torch_geometric.data.InMemoryDataset):
@@ -16,8 +16,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
         data_list = self.construct_graphs(n_neighbors, train)
 
-        with h5py.File(self.raw_dir + "/merfish.hdf5", "r") as h5f:
-            # pylint: disable=no-member
+        with h5py.File(self.merfish_hdf5, "r") as h5f:
             self.gene_names = h5f["gene_names"][:][~self.bad_genes].astype("U")
 
         self.data, self.slices = self.collate(data_list)
@@ -60,31 +59,36 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
     def raw_file_names(self):
         return ["merfish.csv", "merfish.hdf5"]
 
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "merfish.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "merfish.hdf5")
+
     def download(self):
         # download csv if necessary
-        csvfn = self.raw_dir + "/merfish.csv"
-        if not os.path.exists(csvfn):
-            with open(csvfn, "wb") as csvf:
+        if not os.path.exists(self.merfish_csv):
+            with open(self.merfish_csv, "wb") as csvf:
                 csvf.write(requests.get(self.url).content)
 
         # process csv if necessary
-        dataframe = pd.read_csv(csvfn)
+        dataframe = pd.read_csv(self.merfish_csv)
 
-        with h5py.File(self.raw_dir + "/merfish.hdf5", "w") as h5f:
+        with h5py.File(self.merfish_hdf5, "w") as h5f:
             for colnm, dtype in zip(dataframe.keys()[:9], dataframe.dtypes[:9]):
                 if dtype.kind == "O":
-                    h5f.create_dataset(
-                        colnm, data=np.require(dataframe[colnm], dtype="S36")
-                    )
+                    data = np.require(dataframe[colnm], dtype="S36")
+                    h5f.create_dataset(colnm, data=data)
                 else:
                     h5f.create_dataset(colnm, data=np.require(dataframe[colnm]))
-            h5f.create_dataset(
-                "expression",
-                data=np.array(dataframe[dataframe.keys()[9:]]).astype(np.float16),
-            )
-            h5f.create_dataset(
-                "gene_names", data=np.array(dataframe.keys()[9:], dtype="S80")
-            )
+
+            expression = np.array(dataframe[dataframe.keys()[9:]]).astype(np.float16)
+            h5f.create_dataset("expression", data=expression)
+
+            gene_names = np.array(dataframe.keys()[9:], dtype="S80")
+            h5f.create_dataset("gene_names", data=gene_names)
 
     def construct_graph(self, data, anid, breg, n_neighbors):
         # get subset of cells in this slice
@@ -92,13 +96,13 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
         # figure out neighborhood structure
         locations_for_this_slice = data.locations[good]
-        nbrs = sklearn.neighbors.NearestNeighbors(
+        nbrs = neighbors.NearestNeighbors(
             n_neighbors=n_neighbors + 1, algorithm="ball_tree"
         )
         nbrs.fit(locations_for_this_slice)
-        _, neighbors = nbrs.kneighbors(locations_for_this_slice)
+        _, kneighbors = nbrs.kneighbors(locations_for_this_slice)
         edges = np.concatenate(
-            [np.c_[neighbors[:, 0], neighbors[:, i + 1]] for i in range(n_neighbors)],
+            [np.c_[kneighbors[:, 0], kneighbors[:, i + 1]] for i in range(n_neighbors)],
             axis=0,
         )
         edges = torch.tensor(edges, dtype=torch.long).T
@@ -122,7 +126,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
     def construct_graphs(self, n_neighbors, train):
         # load hdf5
-        with h5py.File(self.raw_dir + "/merfish.hdf5", "r") as h5f:
+        with h5py.File(self.merfish_hdf5, "r") as h5f:
             # pylint: disable=no-member
             data = types.SimpleNamespace(
                 anids=h5f["Animal_ID"][:],

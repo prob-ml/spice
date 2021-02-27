@@ -1,21 +1,22 @@
-"""
-A graph convolutional autoencoder for MERFISH data.
-"""
+"""A graph convolutional autoencoder for MERFISH data."""
 
 import pytorch_lightning as pl
 import torch
 
-from . import base_networks
+from spatial import base_networks
 
 
 def calc_pseudo(edge_index, pos):
     """
+    Calculate pseudo
+
     Input:
-    - edge_index, an (N_edges x 2) long tensor indicating edges of a graph
-    - pos, an (N_vertices x 2) float tensor indicating coordinates of nodes
+      - edge_index, an (N_edges x 2) long tensor indicating edges of a graph
+      - pos, an (N_vertices x 2) float tensor indicating coordinates of nodes
 
     Output:
-    - pseudo, an (N_edges x 2) float tensor indicating edge-values (to be used in graph-convnet)
+      - pseudo, an (N_edges x 2) float tensor indicating edge-values
+        (to be used in graph-convnet)
     """
     coord1 = pos[edge_index[0]]
     coord2 = pos[edge_index[1]]
@@ -28,6 +29,7 @@ def calc_pseudo(edge_index, pos):
 class BasicAEMixin:
     """
     Mixin implementing
+
     - loss calculations
     - training_step, validation_step,test_step,configure_optimizers for pytorchlightning
     """
@@ -61,14 +63,12 @@ class BasicAEMixin:
 
 
 class TrivialAutoencoder(BasicAEMixin, pl.LightningModule):
-    """
-    Autoencoder for graph data, ignoring the graph structure
-    """
+    """Autoencoder for graph data, ignoring the graph structurea"""
 
     def __init__(self, observables_dimension, latent_dimension, loss_type):
         """
-        observables_dimension -- number of values associated with each node of the graph
-        latent_dimension -- number of latent values to associate with each node of the graph
+        observables_dimension -- number of values associated with each graph node
+        latent_dimension -- number of latent values to associate with each graph node
         """
         super().__init__()
 
@@ -89,14 +89,12 @@ class TrivialAutoencoder(BasicAEMixin, pl.LightningModule):
 
 
 class MonetAutoencoder2D(BasicAEMixin, pl.LightningModule):
-    """
-    Autoencoder for graph data whose nodes are embedded in 2d
-    """
+    """Autoencoder for graph data whose nodes are embedded in 2d"""
 
     def __init__(self, observables_dimension, latent_dimension, loss_type):
         """
-        observables_dimension -- number of values associated with each node of the graph
-        latent_dimension -- number of latent values to associate with each node of the graph
+        observables_dimension -- number of values associated with each graph node
+        latent_dimension -- number of latent values to associate with each graph node
         """
         super().__init__()
 
