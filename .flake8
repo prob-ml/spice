@@ -24,7 +24,7 @@ ignore =
     # number of local variables is already checked by pylint
     WPS210,
 
-    # a redundant subscript can be more readible that defining an temp value
+    # a redundant subscript can be more readible that defining a temp value
     WPS349,
 
     # not sure what is wrong with comparing an array to a float
@@ -33,7 +33,7 @@ ignore =
     # only makes sense once we're using proper docstrings
     D205, D400, DAR201, DAR101,
 
-    # useless else has it's moments
+    # useless else has its moments
     WPS503,
 
     # no need to explicitly inherit from object
