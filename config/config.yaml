@@ -1,0 +1,7 @@
+defaults:
+  model: DenseReluGMMConvNetwork
+  n_neighbors: 3
+
+mode: train
+
+# paths to be added once I understand what $ means. Data path should be here for sure.
