@@ -17,7 +17,7 @@ def test_merfish_dataset():
 
 
 def test_monetae2d():
-    from spatial import monet_ae
+    from spatial.models import monet_ae
 
     ###################
     # make simulation

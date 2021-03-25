@@ -3,7 +3,7 @@
 import pytorch_lightning as pl
 import torch
 
-from spatial import base_networks
+from spatial.models import base_networks
 
 
 def calc_pseudo(edge_index, pos):
