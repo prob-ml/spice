@@ -26,7 +26,7 @@ def calc_pseudo(edge_index, pos):
     return torch.cat((rho, theta), dim=1)
 
 
-class BasicAEMixin:
+class BasicAEMixin(pl.LightningModule):
     """
     Mixin implementing
 
@@ -62,7 +62,7 @@ class BasicAEMixin:
         return torch.optim.Adam(self.parameters())
 
 
-class TrivialAutoencoder(BasicAEMixin, pl.LightningModule):
+class TrivialAutoencoder(BasicAEMixin):
     """Autoencoder for graph data, ignoring the graph structurea"""
 
     def __init__(self, observables_dimension, latent_dimension, loss_type):
@@ -88,7 +88,7 @@ class TrivialAutoencoder(BasicAEMixin, pl.LightningModule):
         return latent_loadings, expr_reconstruction
 
 
-class MonetAutoencoder2D(BasicAEMixin, pl.LightningModule):
+class MonetAutoencoder2D(BasicAEMixin):
     """Autoencoder for graph data whose nodes are embedded in 2d"""
 
     def __init__(self, observables_dimension, latent_dimension, loss_type):
