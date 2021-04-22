@@ -1,4 +1,4 @@
-"""A graph convolutional autoencoder for MERFISH data."""
+"""A graph convolutional autoencoder for MERFISH graph data."""
 
 import pytorch_lightning as pl
 import torch
