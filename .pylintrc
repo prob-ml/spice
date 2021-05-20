@@ -45,3 +45,6 @@ disable=
     # suppress Unused argument 'batch_idx' (unused-argument) warnings.
     # I wish there were a way to do this just for arguments named `batch_idx`
     unused-argument,
+
+    # our autoencoder has more than 5 arguments
+    too-many-arguments,

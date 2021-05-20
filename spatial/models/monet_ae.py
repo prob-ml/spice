@@ -65,9 +65,12 @@ class BasicAEMixin(pl.LightningModule):
 class TrivialAutoencoder(BasicAEMixin):
     """Autoencoder for graph data, ignoring the graph structurea"""
 
-    def __init__(self, observables_dimension, latent_dimension, loss_type):
+    def __init__(
+        self, observables_dimension, hidden_dimensions, latent_dimension, loss_type
+    ):
         """
         observables_dimension -- number of values associated with each graph node
+        hidden_dimensions -- list of hidden values to associate with each graph node
         latent_dimension -- number of latent values to associate with each graph node
         """
         super().__init__()
@@ -75,14 +78,17 @@ class TrivialAutoencoder(BasicAEMixin):
         self.loss_type = loss_type
 
         self.encoder_network = base_networks.construct_dense_relu_network(
-            [observables_dimension, 50, 25, latent_dimension],
+            [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
         )
 
         self.decoder_network = base_networks.construct_dense_relu_network(
-            [latent_dimension, 25, 50, observables_dimension],
+            [latent_dimension]
+            + list(reversed(hidden_dimensions))
+            + [observables_dimension],
         )
 
     def forward(self, batch):
+
         latent_loadings = self.encoder_network(batch.x)
         expr_reconstruction = self.decoder_network(latent_loadings)
         return latent_loadings, expr_reconstruction
@@ -91,7 +97,15 @@ class TrivialAutoencoder(BasicAEMixin):
 class MonetAutoencoder2D(BasicAEMixin):
     """Autoencoder for graph data whose nodes are embedded in 2d"""
 
-    def __init__(self, observables_dimension, latent_dimension, loss_type):
+    def __init__(
+        self,
+        observables_dimension,
+        hidden_dimensions,
+        latent_dimension,
+        loss_type,
+        dim,
+        kernel_size,
+    ):
         """
         observables_dimension -- number of values associated with each graph node
         latent_dimension -- number of latent values to associate with each graph node
@@ -101,10 +115,16 @@ class MonetAutoencoder2D(BasicAEMixin):
         self.loss_type = loss_type
 
         self.encoder_network = base_networks.DenseReluGMMConvNetwork(
-            [observables_dimension, 50, 25, latent_dimension], dim=2, kernel_size=25
+            [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
+            dim=2,
+            kernel_size=25,
         )
         self.decoder_network = base_networks.DenseReluGMMConvNetwork(
-            [latent_dimension, 25, 50, observables_dimension], dim=2, kernel_size=25
+            [latent_dimension]
+            + list(reversed(hidden_dimensions))
+            + [observables_dimension],
+            dim=2,
+            kernel_size=25,
         )
 
     def forward(self, batch):

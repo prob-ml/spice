@@ -133,3 +133,10 @@ GNN Data
 data
 lightning_logs
 .vscode
+
+# hydra outputs
+# !/outputs
+outputs
+# !/outputs/lightning_logs
+# /outputs/lightning_logs/*
+# !/outputs/lightning_logs/checkpoints
