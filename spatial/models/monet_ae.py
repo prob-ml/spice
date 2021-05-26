@@ -118,15 +118,15 @@ class MonetAutoencoder2D(BasicAEMixin):
 
         self.encoder_network = base_networks.DenseReluGMMConvNetwork(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
-            dim=2,
-            kernel_size=25,
+            dim=dim,
+            kernel_size=kernel_size,
         )
         self.decoder_network = base_networks.DenseReluGMMConvNetwork(
             [latent_dimension]
             + list(reversed(hidden_dimensions))
             + [observables_dimension],
-            dim=2,
-            kernel_size=25,
+            dim=dim,
+            kernel_size=kernel_size,
         )
 
     def forward(self, batch):
