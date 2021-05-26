@@ -1,16 +1,18 @@
 defaults:
-  optimizer: SGD
-  model: DenseReluGMMConvNetwork
-  n_neighbors: 3
-  training: default
+  - optimizer: sgd
+  - model: MonetAutoencoder2D
+  - training: default
 
 mode: train
+
+n_neighbors:
+  - 3
 
 gpus:
   - 2
 
 paths:
-  root: $env{SPATIAL_HOME}
+  root: ${env:SPATIAL_HOME}
   data: ${paths.root}/data
   models: ${paths.root}/models
-  output: ${paths.root}/output
+  output: ${paths.root}/outputs

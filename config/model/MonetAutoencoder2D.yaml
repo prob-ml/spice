@@ -1,0 +1,9 @@
+# @package _group_
+name: MonetAutoencoder2D
+kwargs:
+  observables_dimension: 160
+  hidden_dimensions: [50, 25]
+  latent_dimension: 10
+  loss_type: "mse"
+  dim: 2
+  kernel_size: 25

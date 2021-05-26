@@ -1,0 +1,13 @@
+# @package _group_
+
+bands:
+  - 2
+
+# i/o parameters
+checkpoint: ${paths.root}/models/sleep_sdss_measure.ckpt
+device: "cuda:${gpus.0}"
+output_file: "${paths.data}/var_params.pt"
+save_model_summary: True
+
+# coverage for tests
+testing: False
