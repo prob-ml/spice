@@ -1,10 +1,12 @@
+# @package _group_
 plotting: True
 n_epochs: 600
+logger_name: 'lightning_logs'
+save_model_summary: True
 trainer:
   profiler: null
   logger: True
-    name: "lightning_logs"
-  checkpoint_callback: False
+  checkpoint_callback: True
   reload_dataloaders_every_epoch: False
   max_epochs: ${training.n_epochs}
   min_epochs: ${training.n_epochs}

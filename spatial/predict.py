@@ -30,6 +30,8 @@ def test(cfg: DictConfig):
     test_loader = DataLoader(
         MerfishDataset(cfg.paths.data, train=False), batch_size=4, num_workers=2
     )
+
+    # Create trainer.
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
     trainer_dict.update(dict(logger=logger, checkpoint_callback=checkpoint_callback))
     trainer = pl.Trainer(**trainer_dict)

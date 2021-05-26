@@ -45,7 +45,6 @@ class BasicAEMixin(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         _, reconstruction = self(batch)
         loss = self.calc_loss(reconstruction, batch.x)
-
         self.log("train_loss", loss, prog_bar=True)
         return loss
 
@@ -56,7 +55,10 @@ class BasicAEMixin(pl.LightningModule):
         return loss
 
     def test_step(self, batch, batch_idx):
-        return self.validation_step(batch, batch_idx)
+        _, reconstruction = self(batch)
+        loss = self.calc_loss(reconstruction, batch.x)
+        self.log("test_loss", loss, prog_bar=True)
+        return loss
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters())

@@ -48,3 +48,8 @@ disable=
 
     # our autoencoder has more than 5 arguments
     too-many-arguments,
+
+    # test_spatial has 16 local variables but I really like the way it
+    # looks. Each variable is well named and what test_spatial does
+    # is super clear because of it.
+    too-many-locals,

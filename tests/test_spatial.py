@@ -58,10 +58,16 @@ def test_monetae2d():
     ###################
     # fitmodel
 
+    hidden_dimensions = [100, 50, 25, 10]
     latent_dimension = 2
 
     model = monet_ae.MonetAutoencoder2D(
-        data_dimension, latent_dimension, loss_type="mse"
+        data_dimension,
+        hidden_dimensions,
+        latent_dimension,
+        dim=2,
+        kernel_size=25,
+        loss_type="mse",
     )
     trainer = pl.Trainer(gpus=1, max_epochs=5)
 
