@@ -38,7 +38,6 @@ def setup_checkpoint_callback(cfg, logger):
             monitor="val_loss",
             mode="min",
             prefix="",
-            filename=cfg.model.label,
         )
 
     return checkpoint_callback
@@ -63,6 +62,8 @@ def train(cfg: DictConfig):
 
     train_loader = DataLoader(train_data, batch_size=4, num_workers=2)
     val_loader = DataLoader(val_data, batch_size=4, num_workers=2)
+    print(len(train_loader))
+    print(train_loader)
 
     # setup trainer
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
