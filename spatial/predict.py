@@ -3,6 +3,7 @@ from omegaconf import DictConfig, OmegaConf
 from torch_geometric.data import DataLoader
 
 from spatial.merfish_dataset import MerfishDataset
+from spatial.models.monet_ae import MonetAutoencoder2D, TrivialAutoencoder
 from spatial.train import setup_checkpoint_callback, setup_logger
 
 
@@ -16,19 +17,23 @@ def test(cfg: DictConfig):
     checkpoint_callback = setup_checkpoint_callback(cfg, logger)
 
     # Load the best model.
-    model_class = globals()[cfg.model.name]
-    print(model_class)
-    model = model_class.load_from_checkpoint(
-        checkpoint_path=f"{cfg.paths.output}/lightning_logs/"
-        "checkpoints/{cfg.model.name}.ckpt",
-        **cfg.model.kwargs,
-    )
-    print(model)
+    if cfg.model.name == "TrivialAutoencoder":
+        model = TrivialAutoencoder.load_from_checkpoint(
+            checkpoint_path=f"{cfg.paths.output}/lightning_logs/"
+            f"checkpoints/{cfg.model.label}.ckpt",
+            **cfg.model.kwargs,
+        )
+    if cfg.model.name == "MonetAutoencoder2D":
+        model = MonetAutoencoder2D.load_from_checkpoint(
+            checkpoint_path=f"{cfg.paths.output}/lightning_logs/"
+            f"checkpoints/{cfg.model.label}.ckpt",
+            **cfg.model.kwargs,
+        )
 
     # Set up testing data.
 
     test_loader = DataLoader(
-        MerfishDataset(cfg.paths.data, train=False), batch_size=4, num_workers=2
+        MerfishDataset(cfg.paths.data, train=False), batch_size=1, num_workers=2
     )
 
     # Create trainer.
