@@ -58,6 +58,21 @@ class BasicAEMixin(pl.LightningModule):
         _, reconstruction = self(batch)
         loss = self.calc_loss(reconstruction, batch.x)
         self.log("test_loss", loss, prog_bar=True)
+
+        # save input and output images
+        tensorboard = self.logger.experiment
+        tensorboard.add_image(
+            f"{self.__class__.__name__}/{self.logger.version}/{batch_idx}/input",
+            batch.x,
+            dataformats="HW",
+        )
+        tensorboard.add_image(
+            f"{self.__class__.__name__}/"
+            f"{self.logger.version}/{batch_idx}/reconstruction",
+            reconstruction,
+            dataformats="HW",
+        )
+
         return loss
 
     def configure_optimizers(self):
