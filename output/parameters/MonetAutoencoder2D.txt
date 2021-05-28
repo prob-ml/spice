@@ -1,0 +1,9 @@
+  | Name            | Type                    | Params
+------------------------------------------------------------
+0 | encoder_network | DenseReluGMMConvNetwork | 257 K
+1 | decoder_network | DenseReluGMMConvNetwork | 257 K
+------------------------------------------------------------
+514 K     Trainable params
+0         Non-trainable params
+514 K     Total params
+2.058     Total estimated model params size (MB)
