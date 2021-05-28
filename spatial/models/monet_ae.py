@@ -58,7 +58,7 @@ class BasicAEMixin(pl.LightningModule):
         _, reconstruction = self(batch)
         loss = self.calc_loss(reconstruction, batch.x)
         self.log("test_loss", loss, prog_bar=True)
-        
+
         # save input and output images
         tensorboard = self.logger.experiment
         tensorboard.add_image(
