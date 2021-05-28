@@ -1,6 +1,5 @@
 # @package _group_
 name: TrivialAutoencoder
-label: TrivialAutoencoder
 kwargs:
   observables_dimension: 160
   hidden_dimensions: [50, 25]
