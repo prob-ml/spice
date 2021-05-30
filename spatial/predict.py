@@ -4,6 +4,7 @@ from torch_geometric.data import DataLoader
 
 from spatial.merfish_dataset import MerfishDataset
 from spatial.models.monet_ae import MonetAutoencoder2D, TrivialAutoencoder
+
 from spatial.train import setup_checkpoint_callback, setup_logger
 
 
