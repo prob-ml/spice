@@ -140,3 +140,9 @@ outputs
 # !/outputs/lightning_logs
 # /outputs/lightning_logs/*
 # !/outputs/lightning_logs/checkpoints
+
+# model info and output
+output
+
+# toy jupyter notebooks for exploring
+examples
