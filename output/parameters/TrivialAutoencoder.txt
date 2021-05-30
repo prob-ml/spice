@@ -1,9 +1,0 @@
-  | Name            | Type       | Params
------------------------------------------------
-0 | encoder_network | Sequential | 9.8 K
-1 | decoder_network | Sequential | 10.2 K
------------------------------------------------
-20.0 K    Trainable params
-0         Non-trainable params
-20.0 K    Total params
-0.080     Total estimated model params size (MB)
