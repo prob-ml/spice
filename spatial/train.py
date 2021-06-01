@@ -44,7 +44,7 @@ def setup_checkpoint_callback(cfg, logger):
     return checkpoint_callback
 
 
-def train(cfg: DictConfig):
+def train(cfg: DictConfig, data=None):
 
     # setup logger
     logger = setup_logger(cfg)
@@ -56,7 +56,8 @@ def train(cfg: DictConfig):
     model = models[cfg.model.name](**cfg.model.kwargs)
 
     # setup training data
-    data = MerfishDataset(cfg.paths.data, train=True)
+    if data is None:
+        data = MerfishDataset(cfg.paths.data, train=True)
     n_data = len(data)
     train_n = round(n_data * 11 / 12)
     train_data, val_data = random_split(data, [train_n, n_data - train_n])
@@ -114,3 +115,5 @@ def train(cfg: DictConfig):
 
     # train!
     trainer.fit(model, train_loader, val_loader)
+
+    return model
