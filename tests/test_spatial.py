@@ -64,6 +64,7 @@ def test_monetae2d():
     # fitmodel with updated hydra config
 
     overrides = {
+        "gpu": 0,
         "model": "MonetAutoencoder2D",
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
@@ -103,6 +104,7 @@ def test_trivial():
     # fitmodel with updated hydra config
 
     overrides = {
+        "gpu": 0,
         "model": "TrivialAutoencoder",
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
