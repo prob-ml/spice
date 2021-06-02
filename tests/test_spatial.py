@@ -16,7 +16,7 @@ def test_merfish_dataset():
     mfd.get(0)
 
 
-def simulate_data():
+def simulate_data(n_samples):
     datalist = []
 
     # this problem should be pretty easy!
@@ -27,7 +27,7 @@ def simulate_data():
     torch.manual_seed(0)
 
     # generate random graphs
-    for _ in range(12):
+    for _ in range(n_samples):
         # random (but varying!) number of nodes
         n_nodes = npr.randint(10, 20)
 
@@ -54,84 +54,133 @@ def simulate_data():
 
 
 def test_monetae2d():
-    from spatial import train
+    from spatial import predict, train
 
     ###################
     # make simulation
-    simulated_data, data_dimension = simulate_data()
+    train_simulated_data, data_dimension = simulate_data(12)
+    test_simulated_data, data_dimension = simulate_data(2)
 
     ###################
     # fitmodel with updated hydra config
 
-    overrides = {
+    overrides_train = {
         "gpus": 0,
         "model": "MonetAutoencoder2D",
+        "model.label": "test-MonetAutoencoder2D",
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
         "training.n_epochs": 10,
     }
-    overrides_list = [f"{k}={v}" for k, v in overrides.items()]
+    overrides_train_list = [f"{k}={v}" for k, v in overrides_train.items()]
 
     with initialize(config_path="../config"):
-        cfg = compose(config_name="config", overrides=overrides_list)
-        trained_model = train.train(cfg, data=simulated_data)
+        cfg = compose(config_name="config", overrides=overrides_train_list)
+        trained_model = train.train(cfg, data=train_simulated_data)
 
     ###################
     # check our performance on a training example
 
     # get loss if our network outputs all zeros
-    loss_if_we_are_dumb = np.sum(simulated_data[0].x.detach().cpu().numpy() ** 2)
+    loss_if_we_are_dumb = np.sum(train_simulated_data[0].x.detach().cpu().numpy() ** 2)
 
     # get loss from trained network
-    _, recon = trained_model(simulated_data[0])
-    loss = trained_model.calc_loss(recon, simulated_data[0].x)
+    _, recon = trained_model(train_simulated_data[0])
+    train_loss = trained_model.calc_loss(recon, train_simulated_data[0].x)
+
+    # check if test loss is lower than dummy loss
+    overrides_test = overrides_train.copy()
+    test_addons = {
+        "mode": "predict",
+        "predict.verbose": False,
+    }
+    overrides_test.update(test_addons)
+
+    overrides_test_list = [f"{k}={v}" for k, v in overrides_test.items()]
+
+    with initialize(config_path="../config"):
+        cfg = compose(config_name="config", overrides=overrides_test_list)
+        test_loss = (
+            predict.test(cfg, data=test_simulated_data)
+            .callback_metrics["test_loss"]
+            .item()
+        )
 
     # make sure we are doing better than the trivial answer
-    assert loss.detach().cpu() < 0.4 * loss_if_we_are_dumb
+    # train case
+    assert train_loss.detach().cpu() < 0.6 * loss_if_we_are_dumb
+    # test case
+    assert test_loss < 0.6 * loss_if_we_are_dumb
 
-    return loss
+    return train_loss, test_loss
 
 
 def test_trivial():
-    from spatial import train
+    from spatial import predict, train
 
     ###################
     # make simulation
-    simulated_data, data_dimension = simulate_data()
+    train_simulated_data, data_dimension = simulate_data(12)
+    test_simulated_data, data_dimension = simulate_data(2)
 
     ###################
     # fitmodel with updated hydra config
 
-    overrides = {
+    overrides_train = {
         "gpus": 0,
         "model": "TrivialAutoencoder",
+        "model.label": "test-TrivialAutoencoder",
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
         "training.n_epochs": 10,
     }
-    overrides_list = [f"{k}={v}" for k, v in overrides.items()]
+    overrides_train_list = [f"{k}={v}" for k, v in overrides_train.items()]
 
     with initialize(config_path="../config"):
-        cfg = compose(config_name="config", overrides=overrides_list)
-        trained_model = train.train(cfg, data=simulated_data)
+        cfg = compose(config_name="config", overrides=overrides_train_list)
+        trained_model = train.train(cfg, data=train_simulated_data)
 
     ###################
     # check our performance on a training example
 
     # get loss if our network outputs all zeros
-    loss_if_we_are_dumb = np.sum(simulated_data[0].x.detach().cpu().numpy() ** 2)
+    loss_if_we_are_dumb = np.sum(train_simulated_data[0].x.detach().cpu().numpy() ** 2)
 
     # get loss from trained network
-    _, recon = trained_model(simulated_data[0])
-    loss = trained_model.calc_loss(recon, simulated_data[0].x)
+    _, recon = trained_model(train_simulated_data[0])
+    train_loss = trained_model.calc_loss(recon, train_simulated_data[0].x)
+
+    # check if test loss is lower than dummy loss
+    overrides_test = overrides_train.copy()
+    test_addons = {
+        "mode": "predict",
+        "predict.verbose": False,
+    }
+    overrides_test.update(test_addons)
+
+    overrides_test_list = [f"{k}={v}" for k, v in overrides_test.items()]
+
+    with initialize(config_path="../config"):
+        cfg = compose(config_name="config", overrides=overrides_test_list)
+        test_loss = (
+            predict.test(cfg, data=test_simulated_data)
+            .callback_metrics["test_loss"]
+            .item()
+        )
 
     # make sure we are doing better than the trivial answer
-    assert loss.detach().cpu() < 0.4 * loss_if_we_are_dumb
+    # train case
+    assert train_loss.detach().cpu() < 0.6 * loss_if_we_are_dumb
+    # test case
+    assert test_loss < 0.6 * loss_if_we_are_dumb
 
-    return loss
+    return train_loss, test_loss
 
 
 def test_accuracy():
-    assert test_monetae2d() < 0.85 * test_trivial()
+    monet_train_loss, monet_test_loss = test_monetae2d()
+    trivial_train_loss, trivial_test_loss = test_trivial()
+    assert monet_train_loss < 0.85 * trivial_train_loss
+    assert monet_test_loss < 0.85 * trivial_test_loss

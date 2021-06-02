@@ -7,7 +7,7 @@ from spatial.models.monet_ae import MonetAutoencoder2D, TrivialAutoencoder
 from spatial.train import setup_checkpoint_callback, setup_logger
 
 
-def test(cfg: DictConfig):
+def test(cfg: DictConfig, data=None):
 
     # FOR NOW I NEED THIS TO KEEP TABS ON TESTING LOSS
     # setup logger
@@ -20,28 +20,31 @@ def test(cfg: DictConfig):
     if cfg.model.name == "TrivialAutoencoder":
         model = TrivialAutoencoder.load_from_checkpoint(
             checkpoint_path=f"{cfg.paths.output}/lightning_logs/"
-            f"checkpoints/{cfg.model.label}.ckpt",
+            f"checkpoints/{cfg.model.name}/{cfg.model.label}.ckpt",
             **cfg.model.kwargs,
         )
     if cfg.model.name == "MonetAutoencoder2D":
         model = MonetAutoencoder2D.load_from_checkpoint(
             checkpoint_path=f"{cfg.paths.output}/lightning_logs/"
-            f"checkpoints/{cfg.model.label}.ckpt",
+            f"checkpoints/{cfg.model.name}/{cfg.model.label}.ckpt",
             **cfg.model.kwargs,
         )
 
     # Set up testing data.
+    if data is None:
+        data = MerfishDataset(cfg.paths.data, train=False)
 
-    test_loader = DataLoader(
-        MerfishDataset(cfg.paths.data, train=False), batch_size=1, num_workers=2
-    )
+    test_loader = DataLoader(data, batch_size=1, num_workers=2)
 
     # Create trainer.
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
     trainer_dict.update(dict(logger=logger, checkpoint_callback=checkpoint_callback))
     trainer = pl.Trainer(**trainer_dict)
 
-    # Return the testing loss and accuracy.
-    trainer.test(model, test_loader)
+    # # Return the testing loss and accuracy.
+    # try:
+    #     trainer.test(model, test_loader)
+    # except ValueError:
+    trainer.test(model, test_loader, verbose=cfg.predict.verbose)
 
-    # return trainer
+    return trainer
