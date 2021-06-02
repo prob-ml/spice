@@ -1,10 +1,10 @@
 # @package _group_
-
 bands:
   - 2
 
 # i/o parameters
-checkpoint: ${paths.root}/models/sleep_sdss_measure.ckpt
+verbose: True
+checkpoint: ${paths.root}
 device: "cuda:${gpus.0}"
 output_file: "${paths.data}/var_params.pt"
 save_model_summary: True
