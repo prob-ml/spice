@@ -70,8 +70,9 @@ def train(cfg: DictConfig, data=None):
     trainer_dict.update(
         dict(
             logger=logger,
-            checkpoint_callback=checkpoint_callback,
-            callbacks=pl.callbacks.progress.ProgressBar().enable(),
+            callbacks=[checkpoint_callback],
+            # checkpoint_callback=checkpoint_callback,
+            # callbacks=pl.callbacks.progress.ProgressBar().enable(),
         )
     )
     trainer = pl.Trainer(**trainer_dict)

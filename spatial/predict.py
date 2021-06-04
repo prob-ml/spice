@@ -38,7 +38,7 @@ def test(cfg: DictConfig, data=None):
 
     # Create trainer.
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
-    trainer_dict.update(dict(logger=logger, checkpoint_callback=checkpoint_callback))
+    trainer_dict.update(dict(logger=logger, callbacks=[checkpoint_callback]))
     trainer = pl.Trainer(**trainer_dict)
 
     # # Return the testing loss and accuracy.
