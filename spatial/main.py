@@ -1,4 +1,5 @@
 import hydra
+from hydra.experimental import compose, initialize
 
 
 @hydra.main(config_path="../config", config_name="config")
@@ -12,3 +13,9 @@ def main(cfg):
     else:
         raise KeyError
     task(cfg)
+
+
+if __name__ == "__main__":
+    with initialize(config_path="../config"):
+        cfg_from_terminal = compose(config_name="config")
+        main(cfg_from_terminal)
