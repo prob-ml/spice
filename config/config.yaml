@@ -21,4 +21,4 @@ paths:
 hydra:
   job:
     env_set:
-      CUDA_VISIBLE_DEVICES: '2'
+      CUDA_VISIBLE_DEVICES: '0'
