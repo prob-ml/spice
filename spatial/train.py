@@ -62,8 +62,8 @@ def train(cfg: DictConfig, data=None):
     train_n = round(n_data * 11 / 12)
     train_data, val_data = random_split(data, [train_n, n_data - train_n])
 
-    train_loader = DataLoader(train_data, batch_size=4, num_workers=2)
-    val_loader = DataLoader(val_data, batch_size=4, num_workers=2)
+    train_loader = DataLoader(train_data, batch_size=1, num_workers=2)
+    val_loader = DataLoader(val_data, batch_size=1, num_workers=2)
 
     # setup trainer
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
@@ -71,8 +71,6 @@ def train(cfg: DictConfig, data=None):
         dict(
             logger=logger,
             callbacks=[checkpoint_callback],
-            # checkpoint_callback=checkpoint_callback,
-            # callbacks=pl.callbacks.progress.ProgressBar().enable(),
         )
     )
     trainer = pl.Trainer(**trainer_dict)
