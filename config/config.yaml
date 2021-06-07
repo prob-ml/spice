@@ -10,10 +10,15 @@ n_neighbors:
   - 3
 
 gpus:
-  - 2
+  - 0
 
 paths:
   root: ${env:SPATIAL_HOME}
   data: ${paths.root}/data
   models: ${paths.root}/models
   output: ${paths.root}/output
+
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: '2'
