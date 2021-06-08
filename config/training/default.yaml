@@ -1,6 +1,6 @@
 # @package _group_
 plotting: True
-n_epochs: 10
+n_epochs: 50
 logger_name: 'lightning_logs'
 save_model_summary: True
 trainer:
