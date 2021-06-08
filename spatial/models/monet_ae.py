@@ -46,7 +46,7 @@ class BasicAEMixin(pl.LightningModule):
         _, reconstruction = self(batch)
         loss = self.calc_loss(reconstruction, batch.x)
         self.log("train_loss", loss, prog_bar=True)
-        self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
+        self.log("gpu_allocated", torch.cuda.memory_allocated(0) / (1e9), prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
