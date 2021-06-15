@@ -182,5 +182,5 @@ def test_trivial():
 def test_accuracy():
     monet_train_loss, monet_test_loss = test_monetae2d()
     trivial_train_loss, trivial_test_loss = test_trivial()
-    assert monet_train_loss < 0.85 * trivial_train_loss
-    assert monet_test_loss < 0.85 * trivial_test_loss
+    assert monet_train_loss < 0.98 * trivial_train_loss
+    assert monet_test_loss < 0.98 * trivial_test_loss

@@ -10,7 +10,7 @@ n_neighbors:
   - 3
 
 gpus:
-  - 0
+  - 1
 
 paths:
   root: ${env:SPATIAL_HOME}

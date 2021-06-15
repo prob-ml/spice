@@ -7,6 +7,8 @@ import torch
 
 from spatial.models import base_networks
 
+# from torch._C import device
+
 
 def calc_pseudo(edge_index, pos):
     """
@@ -47,13 +49,13 @@ class BasicAEMixin(pl.LightningModule):
     def mask_cells(self, batch):
         n_cells, n_genes = batch.x.shape[0], batch.x.shape[1]
         masked_indeces = random.sample(range(n_cells), round(self.mask_prop * n_cells))
-        batch.x[[masked_indeces]] = torch.cuda.FloatTensor([0.0] * n_genes)
+        batch.x[[masked_indeces]] = torch.tensor([0.0] * n_genes)
         return batch
 
     def mask_genes(self, batch):
         n_cells, n_genes = batch.x.shape[0], batch.x.shape[1]
         masked_indeces = random.sample(range(n_genes), round(self.mask_prop * n_genes))
-        batch.x[:, masked_indeces] = torch.cuda.FloatTensor([0.0] * n_cells)
+        batch.x[:, masked_indeces] = torch.tensor([0.0] * n_cells)
         return batch
 
     def training_step(self, batch, batch_idx):
