@@ -1,5 +1,7 @@
 """A graph convolutional autoencoder for MERFISH data."""
 
+import random
+
 import pytorch_lightning as pl
 import torch
 
@@ -42,8 +44,24 @@ class BasicAEMixin(pl.LightningModule):
         else:
             raise NotImplementedError(self.loss_type)
 
+    def mask_cells(self, batch):
+        n_cells, n_genes = batch.x.shape[0], batch.x.shape[1]
+        masked_indeces = random.sample(range(n_cells), round(self.mask_prop * n_cells))
+        batch.x[[masked_indeces]] = torch.cuda.FloatTensor([0.0] * n_genes)
+        return batch
+
+    def mask_genes(self, batch):
+        n_cells, n_genes = batch.x.shape[0], batch.x.shape[1]
+        masked_indeces = random.sample(range(n_genes), round(self.mask_prop * n_genes))
+        batch.x[:, masked_indeces] = torch.cuda.FloatTensor([0.0] * n_cells)
+        return batch
+
     def training_step(self, batch, batch_idx):
-        _, reconstruction = self(batch)
+        if self.mask_prop > 0:
+            _, reconstruction = self(self.mask_cells(batch))
+        else:
+            _, reconstruction = self(batch)
+        # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(reconstruction, batch.x)
         self.log("train_loss", loss, prog_bar=True)
         self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
@@ -84,7 +102,12 @@ class TrivialAutoencoder(BasicAEMixin):
     """Autoencoder for graph data, ignoring the graph structurea"""
 
     def __init__(
-        self, observables_dimension, hidden_dimensions, latent_dimension, loss_type
+        self,
+        observables_dimension,
+        hidden_dimensions,
+        latent_dimension,
+        loss_type,
+        mask_prop,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -94,6 +117,7 @@ class TrivialAutoencoder(BasicAEMixin):
         super().__init__()
 
         self.loss_type = loss_type
+        self.mask_prop = mask_prop
 
         self.encoder_network = base_networks.construct_dense_relu_network(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
@@ -123,6 +147,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         loss_type,
         dim,
         kernel_size,
+        mask_prop,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -131,6 +156,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         super().__init__()
 
         self.loss_type = loss_type
+        self.mask_prop = mask_prop
 
         self.encoder_network = base_networks.DenseReluGMMConvNetwork(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],

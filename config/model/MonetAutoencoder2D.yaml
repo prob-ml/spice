@@ -8,3 +8,4 @@ kwargs:
   loss_type: "mse"
   dim: 2
   kernel_size: 25
+  mask_prop: 0.1
