@@ -21,6 +21,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
         self.data, self.slices = self.collate(data_list)
 
+    # from https://datadryad.org/stash/dataset/doi:10.5061/dryad.8t8s248
     url = "https://datadryad.org/stash/downloads/file_stream/67671"
 
     behavior_types = [
