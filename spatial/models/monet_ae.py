@@ -47,14 +47,14 @@ class BasicAEMixin(pl.LightningModule):
     def mask_cells(self, batch):
         n_cells = batch.x.shape[0]
         masked_indeces = torch.rand((n_cells, 1)) < self.mask_cells_prop
-        batch.x = batch.x * masked_indeces
-        return batch
+        new_batch_obj = batch.x * masked_indeces
+        return new_batch_obj
 
     def mask_genes(self, batch):
         n_genes = batch.x.shape[1]
         masked_indeces = torch.rand((1, n_genes)) < self.mask_genes_prop
-        batch.x = batch.x * masked_indeces
-        return batch
+        new_batch_obj = batch.x * masked_indeces
+        return new_batch_obj
 
     def training_step(self, batch, batch_idx):
         if self.mask_cells_prop > 0:
