@@ -4,13 +4,13 @@ defaults:
   - training: default
   - predict: default
 
-mode: train
+mode: predict
 
 n_neighbors:
   - 3
 
 gpus:
-  - 1
+  - 0
 
 paths:
   root: ${env:SPATIAL_HOME}
