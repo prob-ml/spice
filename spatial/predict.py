@@ -41,15 +41,11 @@ def test(cfg: DictConfig, data=None):
     trainer_dict.update(dict(logger=logger, callbacks=[checkpoint_callback]))
     trainer = pl.Trainer(**trainer_dict)
 
-    # # Return the testing loss and accuracy.
-    # try:
-    #     trainer.test(model, test_loader)
-    # except ValueError:
     trainer.test(model, test_loader, verbose=cfg.predict.verbose)
 
-    l1_losses = abs(model.inputs - model.gene_expressions)
+    # l1_losses = abs(model.inputs - model.gene_expressions)
 
-    import pandas as pd
+    # import pandas as pd
 
     # maxes = {}
     # for i in range(160):
@@ -63,28 +59,27 @@ def test(cfg: DictConfig, data=None):
     # print(maxes)
     # print("MESSI: " + str([0.37, 0.38, 0.387, 0.389, 0.392]))
     # return trainer
+    # non_response_genes = []
+    # all_pairs_columns = [
+    #     "Ligand.ApprovedSymbol",
+    #     "Receptor.ApprovedSymbol",
+    # ]
+    # df_file = pd.ExcelFile("~/spatial-main/data/messi.xlsx")
+    # messi_df = pd.read_excel(df_file, "All.Pairs")
+    # merfish_df = pd.read_csv("~/spatial-main/data/merfish.csv")
+    # print(messi_df["Ligand.ApprovedSymbol"])
+    # for column in all_pairs_columns:
+    #     for gene in merfish_df.columns:
+    #         if (
+    #             gene.upper() in list(messi_df[column])
+    #             and gene.upper() not in non_response_genes
+    #         ):
+    #             non_response_genes.append(gene)
+    # print(non_response_genes)
+    # print(
+    #     "There are "
+    #     + str(len(non_response_genes))
+    #     + " genes recognized as either ligands or receptors."
+    # )
 
-    non_response_genes = []
-    all_pairs_columns = [
-        "Ligand.ApprovedSymbol",
-        "Receptor.ApprovedSymbol",
-    ]
-    df_file = pd.ExcelFile("~/spatial-main/data/messi.xlsx")
-    messi_df = pd.read_excel(df_file, "All.Pairs")
-    merfish_df = pd.read_csv("~/spatial-main/data/merfish.csv")
-    print(messi_df["Ligand.ApprovedSymbol"])
-    for column in all_pairs_columns:
-        for gene in merfish_df.columns:
-            if (
-                gene.upper() in list(messi_df[column])
-                and gene.upper() not in non_response_genes
-            ):
-                non_response_genes.append(gene)
-    print(non_response_genes)
-    print(
-        "There are "
-        + str(len(non_response_genes))
-        + " genes recognized as either ligands or receptors."
-    )
-
-    return l1_losses
+    return trainer

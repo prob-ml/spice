@@ -102,11 +102,11 @@ class BasicAEMixin(pl.LightningModule):
 
         return loss
 
-    def test_step_end(self, output_results):
-        # this out is now the full size of the batch
-        self.L1_losses.append(
-            torch.nn.functional.l1_loss(self.inputs, self.gene_expressions)
-        )
+    # def test_step_end(self, output_results):
+    #     # this out is now the full size of the batch
+    #     self.L1_losses.append(
+    #         torch.nn.functional.l1_loss(self.inputs, self.gene_expressions)
+    #     )
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters())
