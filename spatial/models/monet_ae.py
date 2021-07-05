@@ -5,6 +5,8 @@ import torch
 
 from spatial.models import base_networks
 
+# from torch._C import device
+
 
 def calc_pseudo(edge_index, pos):
     """
@@ -42,8 +44,24 @@ class BasicAEMixin(pl.LightningModule):
         else:
             raise NotImplementedError(self.loss_type)
 
+    def mask_cells(self, batch):
+        n_cells = batch.x.shape[0]
+        masked_indeces = torch.rand((n_cells, 1)) < self.mask_cells_prop
+        new_batch_obj = batch.x * masked_indeces
+        return new_batch_obj
+
+    def mask_genes(self, batch):
+        n_genes = batch.x.shape[1]
+        masked_indeces = torch.rand((1, n_genes)) < self.mask_genes_prop
+        new_batch_obj = batch.x * masked_indeces
+        return new_batch_obj
+
     def training_step(self, batch, batch_idx):
-        _, reconstruction = self(batch)
+        if self.mask_cells_prop > 0:
+            _, reconstruction = self(self.mask_cells(batch))
+        else:
+            _, reconstruction = self(batch)
+        # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(reconstruction, batch.x)
         self.log("train_loss", loss, prog_bar=True)
         self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
@@ -54,6 +72,9 @@ class BasicAEMixin(pl.LightningModule):
         loss = self.calc_loss(reconstruction, batch.x)
         self.log("val_loss", loss, prog_bar=True)
         return loss
+
+    gene_expressions = torch.tensor([])
+    inputs = torch.tensor([])
 
     def test_step(self, batch, batch_idx):
         _, reconstruction = self(batch)
@@ -74,7 +95,18 @@ class BasicAEMixin(pl.LightningModule):
             dataformats="HW",
         )
 
+        self.inputs = torch.cat((self.inputs, batch.x.cpu()), 0)
+        self.gene_expressions = torch.cat(
+            (self.gene_expressions, reconstruction.cpu()), 0
+        )
+
         return loss
+
+    # def test_step_end(self, output_results):
+    #     # this out is now the full size of the batch
+    #     self.L1_losses.append(
+    #         torch.nn.functional.l1_loss(self.inputs, self.gene_expressions)
+    #     )
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters())
@@ -84,7 +116,13 @@ class TrivialAutoencoder(BasicAEMixin):
     """Autoencoder for graph data, ignoring the graph structurea"""
 
     def __init__(
-        self, observables_dimension, hidden_dimensions, latent_dimension, loss_type
+        self,
+        observables_dimension,
+        hidden_dimensions,
+        latent_dimension,
+        loss_type,
+        mask_cells_prop,
+        mask_genes_prop,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -94,6 +132,8 @@ class TrivialAutoencoder(BasicAEMixin):
         super().__init__()
 
         self.loss_type = loss_type
+        self.mask_cells_prop = mask_cells_prop
+        self.mask_genes_prop = mask_genes_prop
 
         self.encoder_network = base_networks.construct_dense_relu_network(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
@@ -123,6 +163,8 @@ class MonetAutoencoder2D(BasicAEMixin):
         loss_type,
         dim,
         kernel_size,
+        mask_cells_prop,
+        mask_genes_prop,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -131,6 +173,8 @@ class MonetAutoencoder2D(BasicAEMixin):
         super().__init__()
 
         self.loss_type = loss_type
+        self.mask_cells_prop = mask_cells_prop
+        self.mask_genes_prop = mask_genes_prop
 
         self.encoder_network = base_networks.DenseReluGMMConvNetwork(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
