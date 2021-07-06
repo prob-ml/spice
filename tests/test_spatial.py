@@ -102,7 +102,7 @@ def test_monetae2d():
     with initialize(config_path="../config"):
         cfg = compose(config_name="config", overrides=overrides_test_list)
         test_loss = (
-            predict.test(cfg, data=test_simulated_data)
+            predict.test(cfg, data=test_simulated_data)[0]
             .callback_metrics["test_loss"]
             .item()
         )
@@ -165,7 +165,7 @@ def test_trivial():
     with initialize(config_path="../config"):
         cfg = compose(config_name="config", overrides=overrides_test_list)
         test_loss = (
-            predict.test(cfg, data=test_simulated_data)
+            predict.test(cfg, data=test_simulated_data)[0]
             .callback_metrics["test_loss"]
             .item()
         )
