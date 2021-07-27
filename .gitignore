@@ -143,6 +143,7 @@ outputs
 
 # model info and output
 output
+multirun
 
 # toy jupyter notebooks for exploring
 # examples

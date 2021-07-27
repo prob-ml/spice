@@ -1,6 +1,5 @@
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
-from torch.nn import functional as F
 from torch_geometric.data import DataLoader
 
 from spatial.merfish_dataset import MerfishDataset
@@ -44,7 +43,7 @@ def test(cfg: DictConfig, data=None):
 
     trainer.test(model, test_loader, verbose=cfg.predict.verbose)
 
-    l1_losses = F.l1_loss(model.inputs, model.gene_expressions)
+    l1_losses = abs(model.inputs - model.gene_expressions)
 
     # first is needed for testing, the rest is for jupyter notebook exploration fun!
     return trainer, l1_losses, model.inputs, model.gene_expressions

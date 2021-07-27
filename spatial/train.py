@@ -62,8 +62,8 @@ def train(cfg: DictConfig, data=None):
     train_n = round(n_data * 11 / 12)
     train_data, val_data = random_split(data, [train_n, n_data - train_n])
 
-    train_loader = DataLoader(train_data, batch_size=1, num_workers=2)
-    val_loader = DataLoader(val_data, batch_size=1, num_workers=2)
+    train_loader = DataLoader(train_data, batch_size=4, num_workers=2)
+    val_loader = DataLoader(val_data, batch_size=4, num_workers=2)
 
     # setup trainer
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
@@ -83,14 +83,14 @@ def train(cfg: DictConfig, data=None):
         # architecture
         try:
             sys.stdout = open(
-                os.path.join(output, f"architecture/{cfg.model.name}.txt"), "w"
+                os.path.join(output, f"architecture/{cfg.model.label}.txt"), "w"
             )
             print(model)
             sys.stdout.close()
         except FileNotFoundError:
             os.makedirs(os.path.join(output, "architecture/"))
             sys.stdout = open(
-                os.path.join(output, f"architecture/{cfg.model.name}.txt"), "w"
+                os.path.join(output, f"architecture/{cfg.model.label}.txt"), "w"
             )
             print(model)
             sys.stdout.close()
@@ -98,14 +98,14 @@ def train(cfg: DictConfig, data=None):
         # parameters (and model memory size)
         try:
             sys.stdout = open(
-                os.path.join(output, f"parameters/{cfg.model.name}.txt"), "w"
+                os.path.join(output, f"parameters/{cfg.model.label}.txt"), "w"
             )
             print(model.summarize(mode=trainer.weights_summary))
             sys.stdout.close()
         except FileNotFoundError:
             os.makedirs(os.path.join(output, "parameters/"))
             sys.stdout = open(
-                os.path.join(output, f"parameters/{cfg.model.name}.txt"), "w"
+                os.path.join(output, f"parameters/{cfg.model.label}.txt"), "w"
             )
             print(model.summarize(mode=trainer.weights_summary))
             sys.stdout.close()

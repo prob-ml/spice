@@ -67,7 +67,8 @@ def test_monetae2d():
     overrides_train = {
         "gpus": 0,
         "model": "MonetAutoencoder2D",
-        "model.label": "test-MonetAutoencoder2D",
+        "model.name": "MonetAutoencoder2D",
+        "model.label": "gitpush",
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
@@ -130,7 +131,8 @@ def test_trivial():
     overrides_train = {
         "gpus": 0,
         "model": "TrivialAutoencoder",
-        "model.label": "test-TrivialAutoencoder",
+        "model.name": "TrivialAutoencoder",
+        "model.label": "gitpush",
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,

@@ -36,11 +36,17 @@ class BasicAEMixin(pl.LightningModule):
     - training_step, validation_step,test_step,configure_optimizers for pytorchlightning
     """
 
-    def calc_loss(self, pred, val):
+    def calc_loss(self, pred, val, alpha=0.5):
         if self.loss_type == "mse_against_log1pdata":
             return torch.sum((pred - torch.log(1 + val)) ** 2)
         elif self.loss_type == "mse":
-            return torch.sum((pred - val) ** 2)
+            return torch.mean((pred - val) ** 2)
+        elif self.loss_type == "mae":
+            return torch.mean((pred - val).abs())
+        elif self.loss_type == "convex_loss":
+            return alpha * torch.mean((pred - val) ** 2) + (1 - alpha) * torch.mean(
+                (pred - val).abs()
+            )
         else:
             raise NotImplementedError(self.loss_type)
 
