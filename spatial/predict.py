@@ -1,6 +1,5 @@
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
-from torch.nn import functional as F
 from torch_geometric.data import DataLoader
 
 from spatial.merfish_dataset import MerfishDataset
