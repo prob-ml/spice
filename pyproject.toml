@@ -18,6 +18,7 @@ jupyter = "^1.0.0"
 pytorch-lightning = "^1.1.5"
 pandas = "^1.2.2"
 hydra-core = "^1.0.6"
+nbstripout = ">=0.5.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.1"

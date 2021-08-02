@@ -3,6 +3,7 @@ plotting: True
 n_epochs: 50
 logger_name: 'lightning_logs'
 save_model_summary: True
+batch_size: 4
 trainer:
   profiler: null
   logger: True

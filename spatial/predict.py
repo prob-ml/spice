@@ -35,7 +35,7 @@ def test(cfg: DictConfig, data=None):
     if data is None:
         data = MerfishDataset(cfg.paths.data, train=False)
 
-    test_loader = DataLoader(data, batch_size=1, num_workers=2)
+    test_loader = DataLoader(data, batch_size=cfg.predict.batch_size, num_workers=2)
 
     # Create trainer.
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)

@@ -19,7 +19,13 @@ def setup_logger(cfg):
     logger = False
     if cfg.training.trainer.logger:
         logger = TensorBoardLogger(
-            save_dir=cfg.paths.output, name=cfg.training.logger_name
+            save_dir=cfg.paths.output,
+            name=cfg.training.logger_name,
+            version=(
+                f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
+                f"__{cfg.model.kwargs.hidden_dimensions}__"
+                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+            ),
         )
     return logger
 
@@ -62,8 +68,10 @@ def train(cfg: DictConfig, data=None):
     train_n = round(n_data * 11 / 12)
     train_data, val_data = random_split(data, [train_n, n_data - train_n])
 
-    train_loader = DataLoader(train_data, batch_size=4, num_workers=2)
-    val_loader = DataLoader(val_data, batch_size=4, num_workers=2)
+    train_loader = DataLoader(
+        train_data, batch_size=cfg.training.batch_size, num_workers=2
+    )
+    val_loader = DataLoader(val_data, batch_size=cfg.training.batch_size, num_workers=2)
 
     # setup trainer
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
