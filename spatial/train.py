@@ -22,9 +22,9 @@ def setup_logger(cfg):
             save_dir=cfg.paths.output,
             name=cfg.training.logger_name,
             version=(
-                f"{cfg.model.name}__{cfg.model.name}__"
-                f"{cfg.model.observables_dimension}__{cfg.model.hidden_dimensions}__"
-                f"{cfg.model.latent_dimensions}__{cfg.n_neighbors}"
+                f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
+                f"__{cfg.model.kwargs.hidden_dimensions}__"
+                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
             ),
         )
     return logger
