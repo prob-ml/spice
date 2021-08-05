@@ -40,13 +40,20 @@ def simulate_data(n_samples):
         pos = npr.randn(n_nodes, 2)
 
         # random data
-        expr = npr.randn(n_nodes, data_dimension)
+        expr = np.zeros((n_nodes, data_dimension))
+        for i in range(expr.shape[0]):
+            for j in range(expr.shape[1]):
+                expr[i, j] = 2.2 * npr.randn() + i + j
+
+        # random celltypes FIX THIS
+        celltypes = npr.randint(0, 15, n_nodes)
 
         datalist.append(
             torch_geometric.data.Data(
                 x=torch.tensor(expr.astype(np.float32)),
                 edge_index=edges,
                 pos=torch.tensor(pos.astype(np.float32)),
+                y=torch.tensor(celltypes.astype(np.int32)),
             )
         )
 
@@ -132,7 +139,7 @@ def test_trivial():
         "gpus": 0,
         "model": "TrivialAutoencoder",
         "model.name": "TrivialAutoencoder",
-        "model.label": "gitpush2",
+        "model.label": "notebook",
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,

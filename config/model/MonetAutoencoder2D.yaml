@@ -1,11 +1,11 @@
 # @package _group_
 name: MonetAutoencoder2D
-label: gpu_test
+label: notebook
 kwargs:
   observables_dimension: 160
-  hidden_dimensions: [50, 25]
-  latent_dimension: 10
-  loss_type: "mse"
+  hidden_dimensions: [200, 200] # try (20, 100, 200) and all 160
+  latent_dimension: 200 # try (20, 100, 200) and all 160
+  loss_type: "mae" # laplace (Mae) would be better
   dim: 2
   kernel_size: 25
   mask_cells_prop: 0.0

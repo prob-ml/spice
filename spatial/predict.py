@@ -47,4 +47,4 @@ def test(cfg: DictConfig, data=None):
     l1_losses = F.l1_loss(model.inputs, model.gene_expressions)
 
     # first is needed for testing, the rest is for jupyter notebook exploration fun!
-    return trainer, l1_losses, model.inputs, model.gene_expressions
+    return trainer, l1_losses, model.inputs, model.gene_expressions, model.celltypes

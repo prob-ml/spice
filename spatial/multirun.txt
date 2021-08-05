@@ -1,0 +1,1 @@
+spatial -m n_neighbors=3,10,20 model.kwargs.hidden_dimensions=[200,200],[160,160],[100,50,25,10] model.kwargs.latent_dimension=200,160,25,10,3,2
