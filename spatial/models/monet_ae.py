@@ -38,9 +38,11 @@ class BasicAEMixin(pl.LightningModule):
 
     def calc_loss(self, pred, val):
         if self.loss_type == "mse_against_log1pdata":
-            return torch.sum((pred - torch.log(1 + val)) ** 2)
+            return torch.mean((pred - torch.log(1 + val)) ** 2)
         elif self.loss_type == "mse":
-            return torch.sum((pred - val) ** 2)
+            return torch.mean((pred - val) ** 2)
+        elif self.loss_type == "mae":
+            return torch.mean(torch.abs(pred - val))
         else:
             raise NotImplementedError(self.loss_type)
 
@@ -75,6 +77,7 @@ class BasicAEMixin(pl.LightningModule):
 
     gene_expressions = torch.tensor([])
     inputs = torch.tensor([])
+    celltypes = torch.tensor([])
 
     def test_step(self, batch, batch_idx):
         _, reconstruction = self(batch)
@@ -99,6 +102,7 @@ class BasicAEMixin(pl.LightningModule):
         self.gene_expressions = torch.cat(
             (self.gene_expressions, reconstruction.cpu()), 0
         )
+        self.celltypes = torch.cat((self.celltypes, batch.y.cpu()), 0)
 
         return loss
 

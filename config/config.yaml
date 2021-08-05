@@ -4,13 +4,13 @@ defaults:
   - training: default
   - predict: default
 
-mode: predict
+mode: train
 
 n_neighbors:
   - 3
 
 gpus:
-  - 0
+  - 1
 
 paths:
   root: ${env:SPATIAL_HOME}
@@ -21,4 +21,4 @@ paths:
 hydra:
   job:
     env_set:
-      CUDA_VISIBLE_DEVICES: '0'
+      CUDA_VISIBLE_DEVICES: '4'

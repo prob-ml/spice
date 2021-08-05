@@ -1,9 +1,9 @@
 # @package _group_
 plotting: True
-n_epochs: 50
-logger_name: 'lightning_logs'
+n_epochs: 600
+logger_name: 'logs_08_03_2021'
 save_model_summary: True
-batch_size: 4
+batch_size: 2
 trainer:
   profiler: null
   logger: True
