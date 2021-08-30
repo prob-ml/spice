@@ -4,7 +4,11 @@ from torch.nn import functional as F
 from torch_geometric.data import DataLoader
 
 from spatial.merfish_dataset import MerfishDataset
-from spatial.models.monet_ae import MonetAutoencoder2D, TrivialAutoencoder
+from spatial.models.monet_ae import (
+    MeanExpressionNN,
+    MonetAutoencoder2D,
+    TrivialAutoencoder,
+)
 from spatial.train import setup_checkpoint_callback, setup_logger
 
 
@@ -16,6 +20,10 @@ def test(cfg: DictConfig, data=None):
 
     # setup checkpoints
     checkpoint_callback = setup_checkpoint_callback(cfg, logger)
+
+    # Set up testing data.
+    if data is None:
+        data = MerfishDataset(cfg.paths.data, train=False)
 
     # Load the best model.
     if cfg.model.name == "TrivialAutoencoder":
@@ -30,10 +38,14 @@ def test(cfg: DictConfig, data=None):
             f"checkpoints/{cfg.model.name}/{cfg.model.label}.ckpt",
             **cfg.model.kwargs,
         )
-
-    # Set up testing data.
-    if data is None:
-        data = MerfishDataset(cfg.paths.data, train=False)
+    if cfg.model.name == "MeanExpressionNN":
+        model = MeanExpressionNN.load_from_checkpoint(
+            checkpoint_path=f"{cfg.paths.output}/lightning_logs/"
+            f"checkpoints/{cfg.model.name}/{cfg.model.label}.ckpt",
+            **cfg.model.kwargs,
+        )
+        for batch in data:
+            batch.x = batch.x[:, model.features]
 
     test_loader = DataLoader(data, batch_size=cfg.predict.batch_size, num_workers=2)
 
@@ -43,6 +55,9 @@ def test(cfg: DictConfig, data=None):
     trainer = pl.Trainer(**trainer_dict)
 
     trainer.test(model, test_loader, verbose=cfg.predict.verbose)
+
+    if cfg.model.name == "MeanExpressionNN":
+        return trainer, model.inputs, model.gene_expressions, model.celltypes
 
     l1_losses = F.l1_loss(model.inputs, model.gene_expressions)
 
