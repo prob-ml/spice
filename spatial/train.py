@@ -11,7 +11,11 @@ from torch_geometric.data import DataLoader
 from spatial.merfish_dataset import MerfishDataset
 from spatial.models import monet_ae
 
-_models = [monet_ae.TrivialAutoencoder, monet_ae.MonetAutoencoder2D]
+_models = [
+    monet_ae.TrivialAutoencoder,
+    monet_ae.MonetAutoencoder2D,
+    monet_ae.MeanExpressionNN,
+]
 models = {cls.__name__: cls for cls in _models}
 
 # specify logger (taken from bliss)

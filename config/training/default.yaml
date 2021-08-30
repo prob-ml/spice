@@ -1,7 +1,7 @@
 # @package _group_
 plotting: True
 n_epochs: 600
-logger_name: 'logs_08_10_2021'
+logger_name: 'logs_08_11_2021'
 save_model_summary: True
 batch_size: 2
 trainer:

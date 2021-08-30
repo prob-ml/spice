@@ -10,7 +10,7 @@ n_neighbors:
   - 3
 
 gpus:
-  - 4
+  - 0
 
 paths:
   root: ${env:SPATIAL_HOME}
@@ -21,4 +21,4 @@ paths:
 hydra:
   job:
     env_set:
-      CUDA_VISIBLE_DEVICES: '0,1,2,3,4'
+      CUDA_VISIBLE_DEVICES: '0'
