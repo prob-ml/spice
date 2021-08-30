@@ -12,6 +12,7 @@ n_neighbors:
 gpus:
   - 0
 
+
 paths:
   root: ${env:SPATIAL_HOME}
   data: ${paths.root}/data
