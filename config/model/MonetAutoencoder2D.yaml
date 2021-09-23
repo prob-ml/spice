@@ -1,6 +1,6 @@
 # @package _group_
 name: MonetAutoencoder2D
-label: gpu_testing
+label: FINAL_RESULT_W_NEIGHBORS
 kwargs:
   observables_dimension: 160
   hidden_dimensions: [200, 200] # try (20, 100, 200) and all 160

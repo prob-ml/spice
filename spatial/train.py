@@ -48,7 +48,9 @@ def setup_checkpoint_callback(cfg, logger):
             monitor="val_loss",
             mode="min",
             prefix="",
-            filename=cfg.model.label,
+            filename=f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
+            f"__{cfg.model.kwargs.hidden_dimensions}__"
+            f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}",
         )
 
     return checkpoint_callback

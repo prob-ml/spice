@@ -25,23 +25,35 @@ def test(cfg: DictConfig, data=None):
     if data is None:
         data = MerfishDataset(cfg.paths.data, train=False)
 
+    # get string of checkpoint path (FOR NEW RUNS)
+    checkpoint_path = (
+        f"{cfg.paths.output}/lightning_logs/"
+        f"checkpoints/{cfg.model.name}/{cfg.model.name}__"
+        f"{cfg.model.kwargs.observables_dimension}"
+        f"__{cfg.model.kwargs.hidden_dimensions}__"
+        f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}.ckpt"
+    )
+
+    # get string of checkpoint path (FOR NEW RUNS)
+    checkpoint_path = (
+        f"{cfg.paths.output}/lightning_logs/"
+        f"checkpoints/{cfg.model.name}/{cfg.model.label}.ckpt"
+    )
+
     # Load the best model.
     if cfg.model.name == "TrivialAutoencoder":
         model = TrivialAutoencoder.load_from_checkpoint(
-            checkpoint_path=f"{cfg.paths.output}/lightning_logs/"
-            f"checkpoints/{cfg.model.name}/{cfg.model.label}.ckpt",
+            checkpoint_path=checkpoint_path,
             **cfg.model.kwargs,
         )
     if cfg.model.name == "MonetAutoencoder2D":
         model = MonetAutoencoder2D.load_from_checkpoint(
-            checkpoint_path=f"{cfg.paths.output}/lightning_logs/"
-            f"checkpoints/{cfg.model.name}/{cfg.model.label}.ckpt",
+            checkpoint_path=checkpoint_path,
             **cfg.model.kwargs,
         )
     if cfg.model.name == "MeanExpressionNN":
         model = MeanExpressionNN.load_from_checkpoint(
-            checkpoint_path=f"{cfg.paths.output}/lightning_logs/"
-            f"checkpoints/{cfg.model.name}/{cfg.model.label}.ckpt",
+            checkpoint_path=checkpoint_path,
             **cfg.model.kwargs,
         )
         for batch in data:
