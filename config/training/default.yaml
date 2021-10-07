@@ -1,9 +1,10 @@
 # @package _group_
 plotting: True
 n_epochs: 600
-logger_name: 'logs_09_01_2021'
+logger_name: 'logs_09_23_2021'
 save_model_summary: True
 batch_size: 1
+early_stopping: True
 trainer:
   profiler: null
   logger: True

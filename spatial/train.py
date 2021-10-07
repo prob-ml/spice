@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torch.utils.data import random_split
 from torch_geometric.data import DataLoader
 
@@ -29,6 +30,7 @@ def setup_logger(cfg):
                 f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
                 f"__{cfg.model.kwargs.hidden_dimensions}__"
                 f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+                f"__{cfg.model.kwargs.mask_cells_prop}"
             ),
         )
     return logger
@@ -36,7 +38,7 @@ def setup_logger(cfg):
 
 # set up model saving (taken from bliss)
 def setup_checkpoint_callback(cfg, logger):
-    checkpoint_callback = False
+    callbacks = []
     output = cfg.paths.output
     if cfg.training.trainer.checkpoint_callback:
         checkpoint_dir = f"{output}/lightning_logs/checkpoints/{cfg.model.name}"
@@ -50,10 +52,22 @@ def setup_checkpoint_callback(cfg, logger):
             prefix="",
             filename=f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
             f"__{cfg.model.kwargs.hidden_dimensions}__"
-            f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}",
+            f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+            f"__{cfg.model.kwargs.mask_cells_prop}",
         )
+        callbacks.append(checkpoint_callback)
 
-    return checkpoint_callback
+    return callbacks
+
+
+def setup_early_stopping(cfg, callbacks):
+    early_stop_callback = False
+    if cfg.training.early_stopping:
+        early_stop_callback = EarlyStopping(
+            monitor="val_loss", min_delta=0.00, patience=10, verbose=False, mode="min"
+        )
+        callbacks.append(early_stop_callback)
+    return callbacks
 
 
 def train(cfg: DictConfig, data=None):
@@ -62,7 +76,9 @@ def train(cfg: DictConfig, data=None):
     logger = setup_logger(cfg)
 
     # setup checkpoints
-    checkpoint_callback = setup_checkpoint_callback(cfg, logger)
+    callbacks = setup_checkpoint_callback(cfg, logger)
+
+    callbacks = setup_early_stopping(cfg, callbacks)
 
     # specify model
     model = models[cfg.model.name](**cfg.model.kwargs)
@@ -84,7 +100,7 @@ def train(cfg: DictConfig, data=None):
     trainer_dict.update(
         dict(
             logger=logger,
-            callbacks=[checkpoint_callback],
+            callbacks=callbacks,
         )
     )
     trainer = pl.Trainer(**trainer_dict)

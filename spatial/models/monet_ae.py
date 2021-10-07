@@ -1,5 +1,5 @@
 """A graph convolutional autoencoder for MERFISH data."""
-
+from copy import deepcopy
 import pytorch_lightning as pl
 import torch
 
@@ -31,84 +31,9 @@ def calc_pseudo(edge_index, pos):
 class BasicAEMixin(pl.LightningModule):
 
     # non-response genes (columns) in MERFISH
-    features = [
-        19,
-        37,
-        33,
-        51,
-        20,
-        61,
-        60,
-        52,
-        0,
-        159,
-        151,
-        140,
-        155,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        40,
-        49,
-        50,
-        53,
-        87,
-        102,
-        111,
-        112,
-        113,
-        115,
-        139,
-        141,
-        142,
-        144,
-        145,
-        148,
-        149,
-        150,
-        153,
-        154,
-        157,
-        158,
-        7,
-        8,
-        17,
-        18,
-        21,
-        22,
-        34,
-        35,
-        54,
-        55,
-        63,
-        64,
-        65,
-        66,
-        69,
-        72,
-        74,
-        76,
-        85,
-        86,
-        88,
-        93,
-        94,
-        95,
-        96,
-        99,
-        104,
-        105,
-        109,
-        119,
-        121,
-        131,
-        132,
-        136,
-    ]
+    with open("spatial/models/non_response.txt", "r") as genes_file:
+        features = genes_file.read().split(",")
+        genes_file.close()
 
     # response genes (columns in MERFISH)
     responses = list(set(range(160)) - set(features))
@@ -132,8 +57,9 @@ class BasicAEMixin(pl.LightningModule):
     def mask_cells(self, batch):
         n_cells = batch.x.shape[0]
         masked_indeces = torch.rand((n_cells, 1)) < self.mask_cells_prop
-        new_batch_obj = batch.x
-        new_batch_obj[:, torch.tensor(self.responses)] *= masked_indeces
+        new_batch_obj = deepcopy(batch)
+        masked_indeces = masked_indeces.type_as(new_batch_obj.x)
+        new_batch_obj.x[:, torch.tensor(self.responses)] *= masked_indeces
         return new_batch_obj
 
     def mask_genes(self, batch):
@@ -154,7 +80,10 @@ class BasicAEMixin(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        _, reconstruction = self(batch)
+        if self.mask_cells_prop > 0:
+            _, reconstruction = self(self.mask_cells(batch))
+        else:
+            _, reconstruction = self(batch)
         loss = self.calc_loss(reconstruction, batch.x)
         self.log("val_loss", loss, prog_bar=True)
         return loss
@@ -164,7 +93,10 @@ class BasicAEMixin(pl.LightningModule):
     celltypes = torch.tensor([])
 
     def test_step(self, batch, batch_idx):
-        _, reconstruction = self(batch)
+        if self.mask_cells_prop > 0:
+            _, reconstruction = self(self.mask_cells(batch))
+        else:
+            _, reconstruction = self(batch)
         loss = self.calc_loss(reconstruction, batch.x)
         self.log("test_loss", loss, prog_bar=True)
 
@@ -201,91 +133,6 @@ class BasicAEMixin(pl.LightningModule):
 
 
 class BasicNN(BasicAEMixin):
-
-    # probably not needed since we defined this in BasicAEMixin
-    # # non-response genes (columns) in MERFISH
-    # features = [
-    #     19,
-    #     37,
-    #     33,
-    #     51,
-    #     20,
-    #     61,
-    #     60,
-    #     52,
-    #     0,
-    #     159,
-    #     151,
-    #     140,
-    #     155,
-    #     10,
-    #     11,
-    #     12,
-    #     13,
-    #     14,
-    #     15,
-    #     16,
-    #     40,
-    #     49,
-    #     50,
-    #     53,
-    #     87,
-    #     102,
-    #     111,
-    #     112,
-    #     113,
-    #     115,
-    #     139,
-    #     141,
-    #     142,
-    #     144,
-    #     145,
-    #     148,
-    #     149,
-    #     150,
-    #     153,
-    #     154,
-    #     157,
-    #     158,
-    #     7,
-    #     8,
-    #     17,
-    #     18,
-    #     21,
-    #     22,
-    #     34,
-    #     35,
-    #     54,
-    #     55,
-    #     63,
-    #     64,
-    #     65,
-    #     66,
-    #     69,
-    #     72,
-    #     74,
-    #     76,
-    #     85,
-    #     86,
-    #     88,
-    #     93,
-    #     94,
-    #     95,
-    #     96,
-    #     99,
-    #     104,
-    #     105,
-    #     109,
-    #     119,
-    #     121,
-    #     131,
-    #     132,
-    #     136,
-    # ]
-
-    # # response genes (columns in MERFISH)
-    # responses = list(set(range(160)) - set(features))
-
     def training_step(self, batch, batch_idx):
         if self.mask_cells_prop > 0:
             mean_estimate = self(self.mask_cells(batch))

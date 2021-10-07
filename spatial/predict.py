@@ -34,7 +34,7 @@ def test(cfg: DictConfig, data=None):
         f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}.ckpt"
     )
 
-    # get string of checkpoint path (FOR NEW RUNS)
+    # get string of checkpoint path (FOR OLD RUNS)
     checkpoint_path = (
         f"{cfg.paths.output}/lightning_logs/"
         f"checkpoints/{cfg.model.name}/{cfg.model.label}.ckpt"
@@ -63,7 +63,7 @@ def test(cfg: DictConfig, data=None):
 
     # Create trainer.
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
-    trainer_dict.update(dict(logger=logger, callbacks=[checkpoint_callback]))
+    trainer_dict.update(dict(logger=logger, callbacks=checkpoint_callback))
     trainer = pl.Trainer(**trainer_dict)
 
     trainer.test(model, test_loader, verbose=cfg.predict.verbose)
