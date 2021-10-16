@@ -11,10 +11,10 @@ from sklearn import neighbors
 
 
 class MerfishDataset(torch_geometric.data.InMemoryDataset):
-    def __init__(self, root, n_neighbors=3, train=True):
+    def __init__(self, root, n_neighbors=3, train=True, log_transform=True):
         super().__init__(root)
 
-        data_list = self.construct_graphs(n_neighbors, train)
+        data_list = self.construct_graphs(n_neighbors, train, log_transform)
 
         with h5py.File(self.merfish_hdf5, "r") as h5f:
             self.gene_names = h5f["gene_names"][:][~self.bad_genes].astype("U")
@@ -91,7 +91,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             gene_names = np.array(dataframe.keys()[9:], dtype="S80")
             h5f.create_dataset("gene_names", data=gene_names)
 
-    def construct_graph(self, data, anid, breg, n_neighbors):
+    def construct_graph(self, data, anid, breg, n_neighbors, log_transform):
         # get subset of cells in this slice
         good = (data.anids == anid) & (data.bregs == breg)
 
@@ -118,6 +118,16 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         labelinfo = np.c_[behavior_ids, celltype_ids]
 
         # make it into a torch geometric data object, add it to the list!
+
+        # if we want to first log transform the data, we do it here
+        if log_transform:
+            return torch_geometric.data.Data(
+                x=torch.log1p(torch.tensor(subexpression.astype(np.float32))),
+                edge_index=edges,
+                pos=torch.tensor(locations_for_this_slice.astype(np.float32)),
+                y=torch.tensor(labelinfo),
+            )
+
         return torch_geometric.data.Data(
             x=torch.tensor(subexpression.astype(np.float32)),
             edge_index=edges,
@@ -125,7 +135,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             y=torch.tensor(labelinfo),
         )
 
-    def construct_graphs(self, n_neighbors, train):
+    def construct_graphs(self, n_neighbors, train, log_transform=True):
         # load hdf5
         with h5py.File(self.merfish_hdf5, "r") as h5f:
             # pylint: disable=no-member
@@ -147,6 +157,8 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         # store all the slices in this list...
         data_list = []
         for anid, breg in unique_slices:
-            data_list.append(self.construct_graph(data, anid, breg, n_neighbors))
+            data_list.append(
+                self.construct_graph(data, anid, breg, n_neighbors, log_transform)
+            )
 
         return data_list

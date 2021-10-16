@@ -68,6 +68,8 @@ def test_monetae2d():
     train_simulated_data, data_dimension = simulate_data(12)
     test_simulated_data, data_dimension = simulate_data(2)
 
+    assert data_dimension == 2
+
     ###################
     # fitmodel with updated hydra config
 
@@ -76,7 +78,7 @@ def test_monetae2d():
         "model": "MonetAutoencoder2D",
         "model.name": "MonetAutoencoder2D",
         "model.label": "gitpush2",
-        "model.kwargs.observables_dimension": data_dimension,
+        "model.kwargs.observables_dimension": 160,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
         "training.n_epochs": 10,
@@ -95,7 +97,9 @@ def test_monetae2d():
 
     # get loss from trained network
     _, recon = trained_model(train_simulated_data[0])
-    train_loss = trained_model.calc_loss(recon, train_simulated_data[0].x)
+    train_loss = trained_model.calc_loss(
+        recon, train_simulated_data[0].x, cfg.model.kwargs.loss_type
+    )
 
     # check if test loss is lower than dummy loss
     overrides_test = overrides_train.copy()
@@ -159,7 +163,9 @@ def test_trivial():
 
     # get loss from trained network
     _, recon = trained_model(train_simulated_data[0])
-    train_loss = trained_model.calc_loss(recon, train_simulated_data[0].x)
+    train_loss = trained_model.calc_loss(
+        recon, train_simulated_data[0].x, cfg.model.kwargs.loss_type
+    )
 
     # check if test loss is lower than dummy loss
     overrides_test = overrides_train.copy()

@@ -9,10 +9,17 @@ from spatial.models.monet_ae import (
     MonetAutoencoder2D,
     TrivialAutoencoder,
 )
-from spatial.train import setup_checkpoint_callback, setup_logger
+from spatial.train import (
+    setup_checkpoint_callback,
+    setup_logger,
+    check_observables_dimension,
+)
 
 
 def test(cfg: DictConfig, data=None):
+
+    # ensuring data dimension is correct
+    check_observables_dimension(cfg, data)
 
     # FOR NOW I NEED THIS TO KEEP TABS ON TESTING LOSS
     # setup logger

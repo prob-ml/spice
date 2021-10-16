@@ -1,5 +1,6 @@
 import os
 import sys
+import warnings
 
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
@@ -70,22 +71,24 @@ def setup_early_stopping(cfg, callbacks):
     return callbacks
 
 
+def check_observables_dimension(cfg, data):
+    if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:
+        # alerts user that it did not match
+        warnings.warn(
+            "observables_dimension argument did not"
+            " match axis 1 dimension of input data",
+            UserWarning,
+        )
+        OmegaConf.update(cfg, "model.kwargs.observables_dimension", data[0].x.shape[1])
+
+
 def train(cfg: DictConfig, data=None):
-
-    # setup logger
-    logger = setup_logger(cfg)
-
-    # setup checkpoints
-    callbacks = setup_checkpoint_callback(cfg, logger)
-
-    callbacks = setup_early_stopping(cfg, callbacks)
-
-    # specify model
-    model = models[cfg.model.name](**cfg.model.kwargs)
 
     # setup training data
     if data is None:
-        data = MerfishDataset(cfg.paths.data, train=True)
+        data = MerfishDataset(
+            cfg.paths.data, train=True, log_transform=cfg.training.log_transform
+        )
     n_data = len(data)
     train_n = round(n_data * 11 / 12)
     train_data, val_data = random_split(data, [train_n, n_data - train_n])
@@ -94,6 +97,17 @@ def train(cfg: DictConfig, data=None):
         train_data, batch_size=cfg.training.batch_size, num_workers=2
     )
     val_loader = DataLoader(val_data, batch_size=cfg.training.batch_size, num_workers=2)
+
+    # ensuring data dimension is correct
+    check_observables_dimension(cfg, data)
+
+    # setup logger
+    logger = setup_logger(cfg)
+
+    # setup checkpoints
+    callbacks = setup_checkpoint_callback(cfg, logger)
+
+    callbacks = setup_early_stopping(cfg, callbacks)
 
     # setup trainer
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
@@ -104,6 +118,9 @@ def train(cfg: DictConfig, data=None):
         )
     )
     trainer = pl.Trainer(**trainer_dict)
+
+    # specify model
+    model = models[cfg.model.name](**cfg.model.kwargs)
 
     # save model info
     if cfg.training.save_model_summary:

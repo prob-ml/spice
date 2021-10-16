@@ -6,6 +6,7 @@ kwargs:
   hidden_dimensions: [200, 200] # try (20, 100, 200) and all 160
   latent_dimension: 200 # try (20, 100, 200) and all 160
   loss_type: "mae" # laplace (Mae) would be better
+  other_logged_losses: ["mae_response", "mse"]
   dim: 2
   kernel_size: 25
   mask_cells_prop: 0.0

@@ -30,6 +30,13 @@ def calc_pseudo(edge_index, pos):
 
 class BasicAEMixin(pl.LightningModule):
 
+    """
+    A method dump for models to be used under the Pytorch Lightning framework.
+    """
+
+    # The above description is important because these methods ONLY
+    # get used in the child class where class variables are defined.
+
     # non-response genes (columns) in MERFISH
     with open("spatial/models/non_response.txt", "r") as genes_file:
         features = genes_file.read().split(",")
@@ -44,15 +51,33 @@ class BasicAEMixin(pl.LightningModule):
     - training_step, validation_step,test_step,configure_optimizers for pytorchlightning
     """
 
-    def calc_loss(self, pred, val):
-        if self.loss_type == "mse_against_log1pdata":
+    def calc_loss(self, pred, val, losstype):
+        # standard losses
+        if losstype == "mse_against_log1pdata":
             return torch.mean((pred - torch.log(1 + val)) ** 2)
-        elif self.loss_type == "mse":
+        elif losstype == "mse":
             return torch.mean((pred - val) ** 2)
-        elif self.loss_type == "mae":
+        elif losstype == "mae":
             return torch.mean(torch.abs(pred - val))
+
+        # response losses
+        elif losstype == "mae_response":
+            return torch.mean(
+                torch.abs(
+                    pred[:, torch.tensor(self.responses)]
+                    - val[:, torch.tensor(self.responses)]
+                )
+            )
+        elif losstype == "mse_response":
+            return torch.mean(
+                (
+                    pred[:, torch.tensor(self.responses)]
+                    - val[:, torch.tensor(self.responses)]
+                )
+                ** 2
+            )
         else:
-            raise NotImplementedError(self.loss_type)
+            raise NotImplementedError
 
     def mask_cells(self, batch):
         n_cells = batch.x.shape[0]
@@ -74,8 +99,14 @@ class BasicAEMixin(pl.LightningModule):
         else:
             _, reconstruction = self(batch)
         # print(f"This training batch has {batch.x.shape[0]} cells.")
-        loss = self.calc_loss(reconstruction, batch.x)
-        self.log("train_loss", loss, prog_bar=True)
+        loss = self.calc_loss(reconstruction, batch.x, self.loss_type)
+        self.log("train_loss: " + self.loss_type, loss, prog_bar=True)
+        for additional_loss in self.other_logged_losses:
+            self.log(
+                "train_loss: " + additional_loss,
+                self.calc_loss(reconstruction, batch.x, additional_loss),
+                prog_bar=True,
+            )
         self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
         return loss
 
@@ -84,7 +115,7 @@ class BasicAEMixin(pl.LightningModule):
             _, reconstruction = self(self.mask_cells(batch))
         else:
             _, reconstruction = self(batch)
-        loss = self.calc_loss(reconstruction, batch.x)
+        loss = self.calc_loss(reconstruction, batch.x, self.loss_type)
         self.log("val_loss", loss, prog_bar=True)
         return loss
 
@@ -97,7 +128,7 @@ class BasicAEMixin(pl.LightningModule):
             _, reconstruction = self(self.mask_cells(batch))
         else:
             _, reconstruction = self(batch)
-        loss = self.calc_loss(reconstruction, batch.x)
+        loss = self.calc_loss(reconstruction, batch.x, self.loss_type)
         self.log("test_loss", loss, prog_bar=True)
 
         # save input and output images
@@ -139,14 +170,14 @@ class BasicNN(BasicAEMixin):
         else:
             mean_estimate = self(batch)
         # print(f"This training batch has {batch.x.shape[0]} cells.")
-        loss = self.calc_loss(mean_estimate, batch.x[:, self.responses])
+        loss = self.calc_loss(mean_estimate, batch.x[:, self.responses], self.loss_type)
         self.log("train_loss", loss, prog_bar=True)
         self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         mean_estimate = self(batch)
-        loss = self.calc_loss(mean_estimate, batch.x[:, self.responses])
+        loss = self.calc_loss(mean_estimate, batch.x[:, self.responses], self.loss_type)
         self.log("val_loss", loss, prog_bar=True)
         return loss
 
@@ -156,7 +187,7 @@ class BasicNN(BasicAEMixin):
 
     def test_step(self, batch, batch_idx):
         mean_estimate = self(batch)
-        loss = self.calc_loss(mean_estimate, batch.x[:, self.responses])
+        loss = self.calc_loss(mean_estimate, batch.x[:, self.responses], self.loss_type)
         self.log("test_loss", loss, prog_bar=True)
 
         # save input and output images
@@ -224,6 +255,7 @@ class TrivialAutoencoder(BasicAEMixin):
         hidden_dimensions,
         latent_dimension,
         loss_type,
+        other_logged_losses,
         mask_cells_prop,
         mask_genes_prop,
     ):
@@ -235,8 +267,12 @@ class TrivialAutoencoder(BasicAEMixin):
         super().__init__()
 
         self.loss_type = loss_type
+        self.other_logged_losses = other_logged_losses
         self.mask_cells_prop = mask_cells_prop
         self.mask_genes_prop = mask_genes_prop
+        # needed so that during testing a different set
+        # of responses other than MERFISH is useable.
+        self.responses = list(set(range(observables_dimension)) - set(self.features))
 
         self.encoder_network = base_networks.construct_dense_relu_network(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
@@ -264,6 +300,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         hidden_dimensions,
         latent_dimension,
         loss_type,
+        other_logged_losses,
         dim,
         kernel_size,
         mask_cells_prop,
@@ -276,8 +313,12 @@ class MonetAutoencoder2D(BasicAEMixin):
         super().__init__()
 
         self.loss_type = loss_type
+        self.other_logged_losses = other_logged_losses
         self.mask_cells_prop = mask_cells_prop
         self.mask_genes_prop = mask_genes_prop
+        # needed so that during testing a different set
+        # of responses other than MERFISH is useable.
+        self.responses = list(set(range(observables_dimension)) - set(self.features))
 
         self.encoder_network = base_networks.DenseReluGMMConvNetwork(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
