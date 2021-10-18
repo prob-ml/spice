@@ -9,3 +9,4 @@ kwargs:
   other_logged_losses: ["mse_response", "mse"]
   mask_cells_prop: 0.0
   mask_genes_prop: 0.0
+  responses: 0

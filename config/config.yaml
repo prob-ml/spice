@@ -1,5 +1,6 @@
 defaults:
   - optimizer: sgd
+  - datasets: merfish
   - model: MonetAutoencoder2D
   - training: default
   - predict: default

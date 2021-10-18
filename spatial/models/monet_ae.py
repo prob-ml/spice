@@ -32,24 +32,14 @@ class BasicAEMixin(pl.LightningModule):
 
     """
     A method dump for models to be used under the Pytorch Lightning framework.
-    """
-
-    # The above description is important because these methods ONLY
-    # get used in the child class where class variables are defined.
-
-    # non-response genes (columns) in MERFISH
-    with open("spatial/models/non_response.txt", "r") as genes_file:
-        features = genes_file.read().split(",")
-        genes_file.close()
-
-    # response genes (columns in MERFISH)
-    responses = list(set(range(160)) - set(features))
-    """
     Mixin implementing
 
     - loss calculations
     - training_step, validation_step,test_step,configure_optimizers for pytorchlightning
     """
+
+    # The above description is important because these methods ONLY
+    # get used in the child class where class variables are defined.
 
     def calc_loss(self, pred, val, losstype):
         # standard losses
@@ -258,6 +248,7 @@ class TrivialAutoencoder(BasicAEMixin):
         other_logged_losses,
         mask_cells_prop,
         mask_genes_prop,
+        responses,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -272,7 +263,7 @@ class TrivialAutoencoder(BasicAEMixin):
         self.mask_genes_prop = mask_genes_prop
         # needed so that during testing a different set
         # of responses other than MERFISH is useable.
-        self.responses = list(set(range(observables_dimension)) - set(self.features))
+        self.responses = responses
 
         self.encoder_network = base_networks.construct_dense_relu_network(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
@@ -305,6 +296,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         kernel_size,
         mask_cells_prop,
         mask_genes_prop,
+        responses,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -318,7 +310,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         self.mask_genes_prop = mask_genes_prop
         # needed so that during testing a different set
         # of responses other than MERFISH is useable.
-        self.responses = list(set(range(observables_dimension)) - set(self.features))
+        self.responses = responses
 
         self.encoder_network = base_networks.DenseReluGMMConvNetwork(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],

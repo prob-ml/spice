@@ -87,7 +87,10 @@ def train(cfg: DictConfig, data=None):
     # setup training data
     if data is None:
         data = MerfishDataset(
-            cfg.paths.data, train=True, log_transform=cfg.training.log_transform
+            cfg.paths.data,
+            train=True,
+            log_transform=cfg.training.log_transform,
+            non_response_genes_file=cfg.datasets.predictor_genes,
         )
     n_data = len(data)
     train_n = round(n_data * 11 / 12)
@@ -100,6 +103,10 @@ def train(cfg: DictConfig, data=None):
 
     # ensuring data dimension is correct
     check_observables_dimension(cfg, data)
+
+    # get response indeces so they can be passed into the model
+    if data.responses is not None:
+        OmegaConf.update(cfg, "model.kwargs.responses", data.responses)
 
     # setup logger
     logger = setup_logger(cfg)

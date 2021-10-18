@@ -1,0 +1,3 @@
+# @package _group_
+# name of txt file with predictor genes
+predictor_genes: "non_response.txt"

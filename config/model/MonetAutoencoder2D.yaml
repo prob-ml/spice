@@ -11,3 +11,4 @@ kwargs:
   kernel_size: 25
   mask_cells_prop: 0.0
   mask_genes_prop: 0.0
+  responses: 0

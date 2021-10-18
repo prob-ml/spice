@@ -11,8 +11,23 @@ from sklearn import neighbors
 
 
 class MerfishDataset(torch_geometric.data.InMemoryDataset):
-    def __init__(self, root, n_neighbors=3, train=True, log_transform=True):
+    def __init__(
+        self,
+        root,
+        n_neighbors=3,
+        train=True,
+        log_transform=True,
+        non_response_genes_file="non_response.txt",
+    ):
         super().__init__(root)
+
+        # non-response genes (columns) in MERFISH
+        with open("spatial/" + non_response_genes_file, "r") as genes_file:
+            self.features = [int(x) for x in genes_file.read().split(",")]
+            genes_file.close()
+
+        # response genes (columns in MERFISH)
+        self.responses = list(set(range(160)) - set(self.features))
 
         data_list = self.construct_graphs(n_neighbors, train, log_transform)
 
