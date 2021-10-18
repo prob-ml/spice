@@ -1,6 +1,5 @@
 import os
 import sys
-import warnings
 
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
@@ -71,17 +70,6 @@ def setup_early_stopping(cfg, callbacks):
     return callbacks
 
 
-def check_observables_dimension(cfg, data):
-    if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:
-        # alerts user that it did not match
-        warnings.warn(
-            "observables_dimension argument did not"
-            " match axis 1 dimension of input data",
-            UserWarning,
-        )
-        OmegaConf.update(cfg, "model.kwargs.observables_dimension", data[0].x.shape[1])
-
-
 def train(cfg: DictConfig, data=None):
 
     # setup training data
@@ -102,7 +90,8 @@ def train(cfg: DictConfig, data=None):
     val_loader = DataLoader(val_data, batch_size=cfg.training.batch_size, num_workers=2)
 
     # ensuring data dimension is correct
-    check_observables_dimension(cfg, data)
+    if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:
+        raise AssertionError("Data dimension not in line with observables dimension.")
 
     # get response indeces so they can be passed into the model
     if data.responses is not None:

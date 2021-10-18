@@ -7,7 +7,7 @@ batch_size: 1
 early_stopping: True
 log_transform: True
 trainer:
-  profiler: null
+  profiler: simple
   logger: True
   checkpoint_callback: True
   reload_dataloaders_every_epoch: False

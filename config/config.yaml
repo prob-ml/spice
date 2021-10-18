@@ -5,13 +5,11 @@ defaults:
   - training: default
   - predict: default
 
-mode: train
+mode: predict
 
-n_neighbors:
-  - 20
+n_neighbors: 20
 
-gpus:
-  - 1
+gpus: 1
 
 
 paths:

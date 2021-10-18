@@ -12,14 +12,27 @@ from spatial.models.monet_ae import (
 from spatial.train import (
     setup_checkpoint_callback,
     setup_logger,
-    check_observables_dimension,
 )
 
 
 def test(cfg: DictConfig, data=None):
 
+    # Set up testing data.
+    if data is None:
+        data = MerfishDataset(
+            cfg.paths.data,
+            train=False,
+            log_transform=cfg.training.log_transform,
+            non_response_genes_file=cfg.datasets.predictor_genes,
+        )
+
     # ensuring data dimension is correct
-    check_observables_dimension(cfg, data)
+    if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:
+        raise AssertionError("Data dimension not in line with observables dimension.")
+
+    # get response indeces so they can be passed into the model
+    if data.responses is not None:
+        OmegaConf.update(cfg, "model.kwargs.responses", data.responses)
 
     # FOR NOW I NEED THIS TO KEEP TABS ON TESTING LOSS
     # setup logger
@@ -27,10 +40,6 @@ def test(cfg: DictConfig, data=None):
 
     # setup checkpoints
     checkpoint_callback = setup_checkpoint_callback(cfg, logger)
-
-    # Set up testing data.
-    if data is None:
-        data = MerfishDataset(cfg.paths.data, train=False)
 
     # get string of checkpoint path (FOR NEW RUNS)
     checkpoint_path = (

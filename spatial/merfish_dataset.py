@@ -17,12 +17,12 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         n_neighbors=3,
         train=True,
         log_transform=True,
-        non_response_genes_file="non_response.txt",
+        non_response_genes_file="/home/roko/spatial/spatial/non_response.txt",
     ):
         super().__init__(root)
 
         # non-response genes (columns) in MERFISH
-        with open("spatial/" + non_response_genes_file, "r") as genes_file:
+        with open(non_response_genes_file, "r") as genes_file:
             self.features = [int(x) for x in genes_file.read().split(",")]
             genes_file.close()
 
@@ -135,16 +135,13 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         # make it into a torch geometric data object, add it to the list!
 
         # if we want to first log transform the data, we do it here
+        # make this one return statement only changing x
+        predictors_x = torch.tensor(subexpression.astype(np.float32))
         if log_transform:
-            return torch_geometric.data.Data(
-                x=torch.log1p(torch.tensor(subexpression.astype(np.float32))),
-                edge_index=edges,
-                pos=torch.tensor(locations_for_this_slice.astype(np.float32)),
-                y=torch.tensor(labelinfo),
-            )
+            predictors_x = torch.log1p(predictors_x)
 
         return torch_geometric.data.Data(
-            x=torch.tensor(subexpression.astype(np.float32)),
+            x=predictors_x,
             edge_index=edges,
             pos=torch.tensor(locations_for_this_slice.astype(np.float32)),
             y=torch.tensor(labelinfo),

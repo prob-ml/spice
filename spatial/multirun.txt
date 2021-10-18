@@ -1,1 +1,1 @@
-spatial -m n_neighbors=3,7,15 model.kwargs.hidden_dimensions=[200,200],[100,50,25,10] model.kwargs.latent_dimension=160,10,2 model.kwargs.mask_cells_prop=0.05,0.25,1,0
+spatial -m n_neighbors=3,7,15 model.kwargs.hidden_dimensions=[200,200],[100,50,25,10] model.kwargs.latent_dimension=160,10,2 optmizer.params.lr=1e-3,1e-4

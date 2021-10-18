@@ -133,8 +133,7 @@ def test_monetae2d():
         "model": "MonetAutoencoder2D",
         "model.name": "MonetAutoencoder2D",
         "model.label": "gitpush2",
-        # should be 2, just testing for incorrectly specified data dimension
-        "model.kwargs.observables_dimension": 160,
+        "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
         "training.n_epochs": 10,
