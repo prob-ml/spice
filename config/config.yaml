@@ -5,7 +5,7 @@ defaults:
   - training: default
   - predict: default
 
-mode: predict
+mode: train
 
 n_neighbors: 20
 

@@ -30,7 +30,8 @@ def setup_logger(cfg):
                 f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
                 f"__{cfg.model.kwargs.hidden_dimensions}__"
                 f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                f"__{cfg.model.kwargs.mask_cells_prop}"
+                # change this back later
+                f"__{cfg.optimizer.params.lr}"
             ),
         )
     return logger
@@ -53,7 +54,8 @@ def setup_checkpoint_callback(cfg, logger):
             filename=f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
             f"__{cfg.model.kwargs.hidden_dimensions}__"
             f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-            f"__{cfg.model.kwargs.mask_cells_prop}",
+            # change this back later
+            f"__{cfg.optimizer.params.lr}",
         )
         callbacks.append(checkpoint_callback)
 

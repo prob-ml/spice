@@ -40,6 +40,8 @@ class BasicAEMixin(pl.LightningModule):
 
     # The above description is important because these methods ONLY
     # get used in the child class where class variables are defined.
+    saved_original_input = 0
+    hopefully_masked_input = 0
 
     def calc_loss(self, pred, val, losstype):
         # standard losses
@@ -74,7 +76,7 @@ class BasicAEMixin(pl.LightningModule):
         masked_indeces = torch.rand((n_cells, 1)) < self.mask_cells_prop
         new_batch_obj = deepcopy(batch)
         masked_indeces = masked_indeces.type_as(new_batch_obj.x)
-        new_batch_obj.x[:, torch.tensor(self.responses)] *= masked_indeces
+        new_batch_obj.x[:, torch.tensor(self.responses)] *= 1 - masked_indeces
         return new_batch_obj
 
     def mask_genes(self, batch):
@@ -91,12 +93,6 @@ class BasicAEMixin(pl.LightningModule):
         # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(reconstruction, batch.x, self.loss_type)
         self.log("train_loss: " + self.loss_type, loss, prog_bar=True)
-        for additional_loss in self.other_logged_losses:
-            self.log(
-                "train_loss: " + additional_loss,
-                self.calc_loss(reconstruction, batch.x, additional_loss),
-                prog_bar=True,
-            )
         self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
         return loss
 
@@ -105,6 +101,12 @@ class BasicAEMixin(pl.LightningModule):
             _, reconstruction = self(self.mask_cells(batch))
         else:
             _, reconstruction = self(batch)
+        for additional_loss in self.other_logged_losses:
+            self.log(
+                "val_loss: " + additional_loss,
+                self.calc_loss(reconstruction, batch.x, additional_loss),
+                prog_bar=True,
+            )
         loss = self.calc_loss(reconstruction, batch.x, self.loss_type)
         self.log("val_loss", loss, prog_bar=True)
         return loss
