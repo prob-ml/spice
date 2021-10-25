@@ -1,1 +1,1 @@
-spatial -m gpus="[5]" n_neighbors=3,7,15 model.kwargs.hidden_dimensions=[200,200],[100,50,25,10] model.kwargs.latent_dimension=160,10,2 optimizer.params.lr=1e-3,1e-4
+spatial -m gpus="[5]" n_neighbors=0 model.kwargs.hidden_dimensions=[200,200],[100,50,25,10] model.kwargs.latent_dimension=160,10,2 optimizer.params.lr=1e-3,1e-4

@@ -47,14 +47,15 @@ def test(cfg: DictConfig, data=None):
         f"checkpoints/{cfg.model.name}/{cfg.model.name}__"
         f"{cfg.model.kwargs.observables_dimension}"
         f"__{cfg.model.kwargs.hidden_dimensions}__"
-        f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}.ckpt"
+        f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+        f"__{cfg.optimizer.params.lr}.ckpt"
     )
 
     # get string of checkpoint path (FOR OLD RUNS)
-    checkpoint_path = (
-        f"{cfg.paths.output}/lightning_logs/"
-        f"checkpoints/{cfg.model.name}/{cfg.model.label}.ckpt"
-    )
+    # checkpoint_path = (
+    #     f"{cfg.paths.output}/lightning_logs/"
+    #     f"checkpoints/{cfg.model.name}/{cfg.model.label}.ckpt"
+    # )
 
     # Load the best model.
     if cfg.model.name == "TrivialAutoencoder":
