@@ -1,7 +1,7 @@
 # @package _group_
 plotting: True
-n_epochs: 150
-logger_name: 'logs_10_24_2021'
+n_epochs: 600
+logger_name: 'TESTLOGS'
 save_model_summary: True
 batch_size: 1
 early_stopping: True

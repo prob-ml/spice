@@ -1,9 +1,10 @@
+from hydra.utils import instantiate
+
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
 from torch.nn import functional as F
 from torch_geometric.data import DataLoader
 
-from spatial.merfish_dataset import MerfishDataset
 from spatial.models.monet_ae import (
     MeanExpressionNN,
     MonetAutoencoder2D,
@@ -19,12 +20,7 @@ def test(cfg: DictConfig, data=None):
 
     # Set up testing data.
     if data is None:
-        data = MerfishDataset(
-            cfg.paths.data,
-            train=False,
-            log_transform=cfg.training.log_transform,
-            non_response_genes_file=cfg.datasets.predictor_genes,
-        )
+        data = instantiate(cfg.datasets.dataset, train=False)
 
     # ensuring data dimension is correct
     if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:
@@ -48,7 +44,7 @@ def test(cfg: DictConfig, data=None):
         f"{cfg.model.kwargs.observables_dimension}"
         f"__{cfg.model.kwargs.hidden_dimensions}__"
         f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-        f"__{cfg.optimizer.params.lr}.ckpt"
+        f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}.ckpt"
     )
 
     # get string of checkpoint path (FOR OLD RUNS)

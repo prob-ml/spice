@@ -133,6 +133,7 @@ GNN Data
 data
 lightning_logs
 .vscode
+examples/results/*.csv
 
 # hydra outputs
 # !/outputs

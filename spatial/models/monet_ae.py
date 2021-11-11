@@ -92,7 +92,9 @@ class BasicAEMixin(pl.LightningModule):
             _, reconstruction = self(batch)
         # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(reconstruction, batch.x, self.loss_type)
-        self.log("train_loss: " + self.loss_type, loss, prog_bar=True)
+        self.log(
+            "train_loss: " + self.loss_type, loss, prog_bar=True
+        )  # , on_epoch=True, on_step=False)
         self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
         return loss
 
@@ -101,14 +103,14 @@ class BasicAEMixin(pl.LightningModule):
             _, reconstruction = self(self.mask_cells(batch))
         else:
             _, reconstruction = self(batch)
+        loss = self.calc_loss(reconstruction, batch.x, self.loss_type)
+        self.log("val_loss", loss, prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
                 "val_loss: " + additional_loss,
                 self.calc_loss(reconstruction, batch.x, additional_loss),
                 prog_bar=True,
             )
-        loss = self.calc_loss(reconstruction, batch.x, self.loss_type)
-        self.log("val_loss", loss, prog_bar=True)
         return loss
 
     gene_expressions = torch.tensor([])
@@ -121,6 +123,12 @@ class BasicAEMixin(pl.LightningModule):
         else:
             _, reconstruction = self(batch)
         loss = self.calc_loss(reconstruction, batch.x, self.loss_type)
+        for additional_loss in self.other_logged_losses:
+            self.log(
+                "test_loss: " + additional_loss,
+                self.calc_loss(reconstruction, batch.x, additional_loss),
+                prog_bar=True,
+            )
         self.log("test_loss", loss, prog_bar=True)
 
         # save input and output images

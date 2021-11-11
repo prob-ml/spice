@@ -1,6 +1,9 @@
 import os
 import sys
 
+from hydra.utils import instantiate
+
+# import torch.profiler as profiler
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -9,9 +12,11 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torch.utils.data import random_split
 from torch_geometric.data import DataLoader
 
-from spatial.merfish_dataset import MerfishDataset
+from spatial.merfish_dataset import FilteredMerfishDataset, MerfishDataset
 from spatial.models import monet_ae
 
+_datasets = [FilteredMerfishDataset, MerfishDataset]
+datasets = {cls.__name__: cls for cls in _datasets}
 _models = [
     monet_ae.TrivialAutoencoder,
     monet_ae.MonetAutoencoder2D,
@@ -51,11 +56,12 @@ def setup_checkpoint_callback(cfg, logger):
             monitor="val_loss",
             mode="min",
             prefix="",
-            filename=f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
+            filename=f"{cfg.paths.output}/lightning_logs/"
+            f"checkpoints/{cfg.model.name}/{cfg.model.name}__"
+            f"{cfg.model.kwargs.observables_dimension}"
             f"__{cfg.model.kwargs.hidden_dimensions}__"
             f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-            # change this back later
-            f"__{cfg.optimizer.params.lr}",
+            f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}",
         )
         callbacks.append(checkpoint_callback)
 
@@ -72,16 +78,18 @@ def setup_early_stopping(cfg, callbacks):
     return callbacks
 
 
+# def setup_profiler(cfg):
+#     profiler = None
+#     if cfg.training.trainer.profiler:
+#         profiler = AdvancedProfiler(filename="profile.txt")
+#     return profiler
+
+
 def train(cfg: DictConfig, data=None):
 
     # setup training data
     if data is None:
-        data = MerfishDataset(
-            cfg.paths.data,
-            train=True,
-            log_transform=cfg.training.log_transform,
-            non_response_genes_file=cfg.datasets.predictor_genes,
-        )
+        data = instantiate(cfg.datasets.dataset)
     n_data = len(data)
     train_n = round(n_data * 11 / 12)
     train_data, val_data = random_split(data, [train_n, n_data - train_n])

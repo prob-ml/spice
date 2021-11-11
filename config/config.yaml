@@ -1,15 +1,16 @@
 defaults:
   - optimizer: sgd
-  - datasets: merfish
+  - datasets: FilteredMerfishDataset
   - model: MonetAutoencoder2D
   - training: default
   - predict: default
 
 mode: train
 
-n_neighbors: 20
+n_neighbors: 3
 
-gpus: 1
+gpus:
+  - 0
 
 
 paths:
@@ -22,3 +23,6 @@ hydra:
   job:
     env_set:
       CUDA_VISIBLE_DEVICES: '0,1,2,3,4,5,6,7'
+  output_subdir: null
+  run:
+    dir: .
