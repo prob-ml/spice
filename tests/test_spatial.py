@@ -120,6 +120,8 @@ def test_merfish_dataset():
 
 def test_monetae2d():
     from spatial import predict, train
+    import string
+    import random
 
     ###################
     # make simulation
@@ -141,6 +143,9 @@ def test_monetae2d():
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
         "training.n_epochs": 10,
+        "training.logger_name": "".join(
+            random.choices(string.ascii_uppercase + string.digits, k=12)
+        ),
     }
     overrides_train_list = [f"{k}={v}" for k, v in overrides_train.items()]
 
