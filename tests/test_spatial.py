@@ -66,7 +66,11 @@ def test_merfish_dataset():
 
     test_dir = pathlib.Path(__file__).parent.absolute()
     test_data_dir = test_dir.joinpath("data")
-    mfd = merfish_dataset.MerfishDataset(test_data_dir)
+    # relative path needed to pass test on Github
+    # maybe change pytest.ini so the relpath is shorter?
+    mfd = merfish_dataset.MerfishDataset(
+        test_data_dir, non_response_genes_file="../spatial/spatial/non_response.txt"
+    )
     mfd.get(0)
 
 
