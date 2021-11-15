@@ -56,8 +56,7 @@ def setup_checkpoint_callback(cfg, logger):
             monitor="val_loss",
             mode="min",
             prefix="",
-            filename=f"{cfg.paths.output}/lightning_logs/"
-            f"checkpoints/{cfg.model.name}/{cfg.model.name}__"
+            filename=f"{cfg.model.name}__"
             f"{cfg.model.kwargs.observables_dimension}"
             f"__{cfg.model.kwargs.hidden_dimensions}__"
             f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
