@@ -7,11 +7,11 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = "~3.8"
-torch = { url = "https://download.pytorch.org/whl/cu110/torch-1.7.1%2Bcu110-cp38-cp38-linux_x86_64.whl" }
-torch-scatter = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_scatter-2.0.5-cp38-cp38-linux_x86_64.whl" }
-torch-sparse = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_sparse-0.6.8-cp38-cp38-linux_x86_64.whl" }
-torch-cluster = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_cluster-1.5.8-cp38-cp38-linux_x86_64.whl" }
-torch-spline-conv = { url = "https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_spline_conv-1.2.0-cp38-cp38-linux_x86_64.whl" }
+torch = { url = "https://download.pytorch.org/whl/cu111/torch-1.8.1%2Bcu111-cp38-cp38-linux_x86_64.whl" }
+torch-scatter = { url = "https://data.pyg.org/whl/torch-1.8.0%2Bcu111/torch_scatter-2.0.8-cp38-cp38-linux_x86_64.whl" }
+torch-sparse = { url = "https://data.pyg.org/whl/torch-1.8.0%2Bcu111/torch_sparse-0.6.12-cp38-cp38-linux_x86_64.whl" }
+torch-cluster = { url = "https://data.pyg.org/whl/torch-1.8.0%2Bcu111/torch_cluster-1.5.9-cp38-cp38-linux_x86_64.whl" }
+torch-spline-conv = { url = "https://data.pyg.org/whl/torch-1.8.0%2Bcu111/torch_spline_conv-1.2.1-cp38-cp38-linux_x86_64.whl" }
 torch-geometric = "^1.6.3"
 scikit-learn = "^0.24.1"
 jupyter = "^1.0.0"

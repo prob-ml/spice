@@ -6,5 +6,7 @@ kwargs:
   hidden_dimensions: [50, 25]
   latent_dimension: 10
   loss_type: "mse"
+  other_logged_losses: ["mse_response", "mse"]
   mask_cells_prop: 0.0
   mask_genes_prop: 0.0
+  responses: 0

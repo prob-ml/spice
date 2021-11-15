@@ -11,10 +11,25 @@ from sklearn import neighbors
 
 
 class MerfishDataset(torch_geometric.data.InMemoryDataset):
-    def __init__(self, root, n_neighbors=3, train=True):
+    def __init__(
+        self,
+        root,
+        n_neighbors=3,
+        train=True,
+        log_transform=True,
+        non_response_genes_file="/home/roko/spatial/spatial/non_response.txt",
+    ):
         super().__init__(root)
 
-        data_list = self.construct_graphs(n_neighbors, train)
+        # non-response genes (columns) in MERFISH
+        with open(non_response_genes_file, "r") as genes_file:
+            self.features = [int(x) for x in genes_file.read().split(",")]
+            genes_file.close()
+
+        # response genes (columns in MERFISH)
+        self.responses = list(set(range(160)) - set(self.features))
+
+        data_list = self.construct_graphs(n_neighbors, train, log_transform)
 
         with h5py.File(self.merfish_hdf5, "r") as h5f:
             self.gene_names = h5f["gene_names"][:][~self.bad_genes].astype("U")
@@ -91,7 +106,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             gene_names = np.array(dataframe.keys()[9:], dtype="S80")
             h5f.create_dataset("gene_names", data=gene_names)
 
-    def construct_graph(self, data, anid, breg, n_neighbors):
+    def construct_graph(self, data, anid, breg, n_neighbors, log_transform):
         # get subset of cells in this slice
         good = (data.anids == anid) & (data.bregs == breg)
 
@@ -118,14 +133,21 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         labelinfo = np.c_[behavior_ids, celltype_ids]
 
         # make it into a torch geometric data object, add it to the list!
+
+        # if we want to first log transform the data, we do it here
+        # make this one return statement only changing x
+        predictors_x = torch.tensor(subexpression.astype(np.float32))
+        if log_transform:
+            predictors_x = torch.log1p(predictors_x)
+
         return torch_geometric.data.Data(
-            x=torch.tensor(subexpression.astype(np.float32)),
+            x=predictors_x,
             edge_index=edges,
             pos=torch.tensor(locations_for_this_slice.astype(np.float32)),
             y=torch.tensor(labelinfo),
         )
 
-    def construct_graphs(self, n_neighbors, train):
+    def construct_graphs(self, n_neighbors, train, log_transform=True):
         # load hdf5
         with h5py.File(self.merfish_hdf5, "r") as h5f:
             # pylint: disable=no-member
@@ -147,6 +169,52 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         # store all the slices in this list...
         data_list = []
         for anid, breg in unique_slices:
-            data_list.append(self.construct_graph(data, anid, breg, n_neighbors))
+            data_list.append(
+                self.construct_graph(data, anid, breg, n_neighbors, log_transform)
+            )
+
+        return data_list
+
+
+class FilteredMerfishDataset(MerfishDataset):
+    @property
+    def raw_file_names(self):
+        return ["merfish_messi.csv", "merfish_messi.hdf5"]
+
+    # THIS LINE WAS EDITED TO SHOW NEW FILE
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "merfish_messi.csv")
+
+    # THIS LINE WAS EDITED TO SHOW NEW FILE
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "merfish_messi.hdf5")
+
+    def construct_graphs(self, n_neighbors, train, log_transform=True):
+        # load hdf5
+        with h5py.File(self.merfish_hdf5, "r") as h5f:
+            # pylint: disable=no-member
+            data = types.SimpleNamespace(
+                anids=h5f["Animal_ID"][:],
+                bregs=h5f["Bregma"][:],
+                expression=h5f["expression"][:],
+                locations=np.c_[h5f["Centroid_X"][:], h5f["Centroid_Y"][:]],
+                behavior=h5f["Behavior"][:].astype("U"),
+                celltypes=h5f["Cell_class"][:].astype("U"),
+            )
+
+        # get the (animal_id,bregma) pairs that define a unique slice
+        unique_slices = np.unique(np.c_[data.anids, data.bregs], axis=0)
+
+        # are we looking at train or test sets?
+        unique_slices = unique_slices[4:] if train else unique_slices[:4]
+
+        # store all the slices in this list...
+        data_list = []
+        for anid, breg in unique_slices:
+            data_list.append(
+                self.construct_graph(data, anid, breg, n_neighbors, log_transform)
+            )
 
         return data_list

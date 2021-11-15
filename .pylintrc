@@ -53,3 +53,5 @@ disable=
     # looks. Each variable is well named and what test_spatial does
     # is super clear because of it.
     too-many-locals,
+
+ignore=data_processing.py, __init__.py

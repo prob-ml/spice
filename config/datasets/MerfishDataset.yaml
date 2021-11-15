@@ -1,0 +1,10 @@
+# @package _group_
+dataset:
+  _target_: spatial.merfish_dataset.MerfishDataset
+  root: ${paths.data}
+  n_neighbors: ${n_neighbors}
+  train: True
+  log_transform: True
+  non_response_genes_file: "/home/roko/spatial/spatial/non_response.txt"
+
+predictor_genes: ${paths.root}/spatial/non_response.txt

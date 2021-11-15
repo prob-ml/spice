@@ -1,16 +1,22 @@
 import os
 import sys
 
+from hydra.utils import instantiate
+
+# import torch.profiler as profiler
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torch.utils.data import random_split
 from torch_geometric.data import DataLoader
 
-from spatial.merfish_dataset import MerfishDataset
+from spatial.merfish_dataset import FilteredMerfishDataset, MerfishDataset
 from spatial.models import monet_ae
 
+_datasets = [FilteredMerfishDataset, MerfishDataset]
+datasets = {cls.__name__: cls for cls in _datasets}
 _models = [
     monet_ae.TrivialAutoencoder,
     monet_ae.MonetAutoencoder2D,
@@ -29,6 +35,8 @@ def setup_logger(cfg):
                 f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
                 f"__{cfg.model.kwargs.hidden_dimensions}__"
                 f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+                # change this back later
+                f"__{cfg.optimizer.params.lr}"
             ),
         )
     return logger
@@ -36,7 +44,7 @@ def setup_logger(cfg):
 
 # set up model saving (taken from bliss)
 def setup_checkpoint_callback(cfg, logger):
-    checkpoint_callback = False
+    callbacks = []
     output = cfg.paths.output
     if cfg.training.trainer.checkpoint_callback:
         checkpoint_dir = f"{output}/lightning_logs/checkpoints/{cfg.model.name}"
@@ -48,26 +56,39 @@ def setup_checkpoint_callback(cfg, logger):
             monitor="val_loss",
             mode="min",
             prefix="",
-            filename=cfg.model.label,
+            filename=f"{cfg.model.name}__"
+            f"{cfg.model.kwargs.observables_dimension}"
+            f"__{cfg.model.kwargs.hidden_dimensions}__"
+            f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+            f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}",
         )
+        callbacks.append(checkpoint_callback)
 
-    return checkpoint_callback
+    return callbacks
+
+
+def setup_early_stopping(cfg, callbacks):
+    early_stop_callback = False
+    if cfg.training.early_stopping:
+        early_stop_callback = EarlyStopping(
+            monitor="val_loss", min_delta=0.00, patience=10, verbose=False, mode="min"
+        )
+        callbacks.append(early_stop_callback)
+    return callbacks
+
+
+# def setup_profiler(cfg):
+#     profiler = None
+#     if cfg.training.trainer.profiler:
+#         profiler = AdvancedProfiler(filename="profile.txt")
+#     return profiler
 
 
 def train(cfg: DictConfig, data=None):
 
-    # setup logger
-    logger = setup_logger(cfg)
-
-    # setup checkpoints
-    checkpoint_callback = setup_checkpoint_callback(cfg, logger)
-
-    # specify model
-    model = models[cfg.model.name](**cfg.model.kwargs)
-
     # setup training data
     if data is None:
-        data = MerfishDataset(cfg.paths.data, train=True)
+        data = instantiate(cfg.datasets.dataset)
     n_data = len(data)
     train_n = round(n_data * 11 / 12)
     train_data, val_data = random_split(data, [train_n, n_data - train_n])
@@ -77,15 +98,34 @@ def train(cfg: DictConfig, data=None):
     )
     val_loader = DataLoader(val_data, batch_size=cfg.training.batch_size, num_workers=2)
 
+    # ensuring data dimension is correct
+    if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:
+        raise AssertionError("Data dimension not in line with observables dimension.")
+
+    # get response indeces so they can be passed into the model
+    if data.responses is not None:
+        OmegaConf.update(cfg, "model.kwargs.responses", data.responses)
+
+    # setup logger
+    logger = setup_logger(cfg)
+
+    # setup checkpoints
+    callbacks = setup_checkpoint_callback(cfg, logger)
+
+    callbacks = setup_early_stopping(cfg, callbacks)
+
     # setup trainer
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
     trainer_dict.update(
         dict(
             logger=logger,
-            callbacks=[checkpoint_callback],
+            callbacks=callbacks,
         )
     )
     trainer = pl.Trainer(**trainer_dict)
+
+    # specify model
+    model = models[cfg.model.name](**cfg.model.kwargs)
 
     # save model info
     if cfg.training.save_model_summary:

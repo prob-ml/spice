@@ -7,13 +7,14 @@ from hydra.experimental import compose, initialize
 from numpy import random as npr
 
 
-def test_merfish_dataset():
-    from spatial import merfish_dataset
+class SimulatedData(torch_geometric.data.InMemoryDataset):
+    def __init__(self, n_samples):
+        super().__init__()
 
-    test_dir = pathlib.Path(__file__).parent.absolute()
-    test_data_dir = test_dir.joinpath("data")
-    mfd = merfish_dataset.MerfishDataset(test_data_dir)
-    mfd.get(0)
+        data_list, self.data_dimension = simulate_data(n_samples)
+        self.features = [0]
+        self.responses = [1]
+        self.data, self.slices = self.collate(data_list)
 
 
 def simulate_data(n_samples):
@@ -60,13 +61,73 @@ def simulate_data(n_samples):
     return datalist, data_dimension
 
 
+def test_merfish_dataset():
+    from spatial import merfish_dataset
+
+    test_dir = pathlib.Path(__file__).parent.absolute()
+    test_data_dir = test_dir.joinpath("data")
+    # relative path needed to pass test on Github
+    # maybe change pytest.ini so the relpath is shorter?
+    mfd = merfish_dataset.MerfishDataset(
+        test_data_dir, non_response_genes_file="../spatial/spatial/non_response.txt"
+    )
+    mfd.get(0)
+
+
+# def simulate_data(n_samples):
+#     datalist = []
+
+#     # this problem should be pretty easy!
+#     data_dimension = 2
+
+#     # set random seed
+#     npr.seed(0)
+#     torch.manual_seed(0)
+
+#     # generate random graphs
+#     for _ in range(n_samples):
+#         # random (but varying!) number of nodes
+#         n_nodes = npr.randint(10, 20)
+
+#         # fantasize some edges
+#         edge_matrix = npr.rand(n_nodes, n_nodes) < 0.2
+#         edge_matrix[np.r_[0:n_nodes], np.r_[0:n_nodes]] = False
+#         edges = torch.tensor(np.array(np.where(edge_matrix)))
+
+#         # 2d positions
+#         pos = npr.randn(n_nodes, 2)
+
+#         # random data
+#         expr = np.zeros((n_nodes, data_dimension))
+#         for i in range(expr.shape[0]):
+#             for j in range(expr.shape[1]):
+#                 expr[i, j] = 2.2 * npr.randn() + i + j
+
+#         # random celltypes FIX THIS
+#         celltypes = npr.randint(0, 15, n_nodes)
+
+#         datalist.append(
+#             torch_geometric.data.Data(
+#                 x=torch.tensor(expr.astype(np.float32)),
+#                 edge_index=edges,
+#                 pos=torch.tensor(pos.astype(np.float32)),
+#                 y=torch.tensor(celltypes.astype(np.int32)),
+#             )
+#         )
+
+#     return datalist, data_dimension
+
+
 def test_monetae2d():
     from spatial import predict, train
 
     ###################
     # make simulation
-    train_simulated_data, data_dimension = simulate_data(12)
-    test_simulated_data, data_dimension = simulate_data(2)
+    data_dimension = SimulatedData(1).data_dimension
+    train_simulated_data = SimulatedData(12)
+    test_simulated_data = SimulatedData(2)
+
+    assert data_dimension == 2
 
     ###################
     # fitmodel with updated hydra config
@@ -95,7 +156,9 @@ def test_monetae2d():
 
     # get loss from trained network
     _, recon = trained_model(train_simulated_data[0])
-    train_loss = trained_model.calc_loss(recon, train_simulated_data[0].x)
+    train_loss = trained_model.calc_loss(
+        recon, train_simulated_data[0].x, cfg.model.kwargs.loss_type
+    )
 
     # check if test loss is lower than dummy loss
     overrides_test = overrides_train.copy()
@@ -129,8 +192,9 @@ def test_trivial():
 
     ###################
     # make simulation
-    train_simulated_data, data_dimension = simulate_data(12)
-    test_simulated_data, data_dimension = simulate_data(2)
+    data_dimension = SimulatedData(1).data_dimension
+    train_simulated_data = SimulatedData(12)
+    test_simulated_data = SimulatedData(2)
 
     ###################
     # fitmodel with updated hydra config
@@ -159,7 +223,9 @@ def test_trivial():
 
     # get loss from trained network
     _, recon = trained_model(train_simulated_data[0])
-    train_loss = trained_model.calc_loss(recon, train_simulated_data[0].x)
+    train_loss = trained_model.calc_loss(
+        recon, train_simulated_data[0].x, cfg.model.kwargs.loss_type
+    )
 
     # check if test loss is lower than dummy loss
     overrides_test = overrides_train.copy()
