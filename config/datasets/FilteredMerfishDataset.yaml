@@ -6,6 +6,8 @@ dataset:
   train: True
   log_transform: True
   non_response_genes_file: "/home/roko/spatial/spatial/non_response.txt"
+  sexes: ["Female"]
+  behaviors: ["Naive"]
 
 
 predictor_genes: ${paths.root}/spatial/non_response.txt

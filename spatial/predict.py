@@ -38,14 +38,29 @@ def test(cfg: DictConfig, data=None):
     checkpoint_callback = setup_checkpoint_callback(cfg, logger)
 
     # get string of checkpoint path (FOR NEW RUNS)
-    checkpoint_path = (
-        f"{cfg.paths.output}/lightning_logs/"
-        f"checkpoints/{cfg.model.name}/{cfg.model.name}__"
-        f"{cfg.model.kwargs.observables_dimension}"
-        f"__{cfg.model.kwargs.hidden_dimensions}__"
-        f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-        f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}.ckpt"
-    )
+    # pylint: disable=protected-access
+    if cfg.datasets.dataset._target_.split(".")[-1] == "FilteredMerfishDataset":
+
+        checkpoint_path = (
+            f"{cfg.paths.output}/lightning_logs/"
+            f"checkpoints/{cfg.model.name}/{cfg.model.name}__"
+            f"{cfg.model.kwargs.observables_dimension}"
+            f"__{cfg.model.kwargs.hidden_dimensions}__"
+            f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+            f"__{cfg.datasets.dataset.sexes}__{cfg.datasets.dataset.behaviors}"
+            f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}.ckpt"
+        )
+
+    else:
+
+        checkpoint_path = (
+            f"{cfg.paths.output}/lightning_logs/"
+            f"checkpoints/{cfg.model.name}/{cfg.model.name}__"
+            f"{cfg.model.kwargs.observables_dimension}"
+            f"__{cfg.model.kwargs.hidden_dimensions}__"
+            f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+            f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}.ckpt"
+        )
 
     # get string of checkpoint path (FOR OLD RUNS)
     # checkpoint_path = (

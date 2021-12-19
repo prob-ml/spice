@@ -177,9 +177,44 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
 
 class FilteredMerfishDataset(MerfishDataset):
-    @property
-    def raw_file_names(self):
-        return ["merfish_messi.csv", "merfish_messi.hdf5"]
+    def __init__(
+        self,
+        root,
+        n_neighbors=3,
+        train=True,
+        log_transform=True,
+        non_response_genes_file="/home/roko/spatial/spatial/non_response.txt",
+        sexes=None,
+        behaviors=None,
+    ):
+        self.root = root
+        self.sexes = sexes
+        self.behaviors = behaviors
+        original_csv_file = super().merfish_csv
+        new_df = pd.read_csv(original_csv_file)
+        print(f"Original Data {new_df.shape}")
+        if self.sexes is not None:
+            new_df = new_df[new_df["Animal_sex"].isin(self.sexes)]
+        if self.behaviors is not None:
+            new_df = new_df[new_df["Behavior"].isin(self.behaviors)]
+        if new_df.shape[0] == 0:
+            raise ValueError("Dataframe has no rows. Cannot build graph.")
+        new_df.to_csv(self.root + "/raw/merfish_messi.csv", index=False)
+        print(f"Filtered Data {new_df.shape}")
+        # print("Filtered csv file created!")
+        MerfishDataset.download(self)
+        super().__init__(
+            root,
+            n_neighbors=n_neighbors,
+            train=train,
+            log_transform=log_transform,
+            non_response_genes_file=non_response_genes_file,
+        )
+        # print("Filtered hdf5 file created!")
+
+    #     @property
+    #     def raw_file_names(self):
+    #         return ["merfish_messi.csv", "merfish_messi.hdf5"]
 
     # THIS LINE WAS EDITED TO SHOW NEW FILE
     @property
@@ -192,6 +227,7 @@ class FilteredMerfishDataset(MerfishDataset):
         return os.path.join(self.raw_dir, "merfish_messi.hdf5")
 
     def construct_graphs(self, n_neighbors, train, log_transform=True):
+        print(self.merfish_hdf5)
         # load hdf5
         with h5py.File(self.merfish_hdf5, "r") as h5f:
             # pylint: disable=no-member
@@ -204,11 +240,47 @@ class FilteredMerfishDataset(MerfishDataset):
                 celltypes=h5f["Cell_class"][:].astype("U"),
             )
 
+        anid_to_bregma_count = {
+            1: 12,
+            2: 12,
+            3: 6,
+            4: 5,
+            5: 6,
+            6: 6,
+            7: 12,
+            8: 6,
+            9: 6,
+            10: 6,
+            11: 6,
+            12: 4,
+            13: 4,
+            14: 4,
+            15: 4,
+            16: 4,
+            17: 4,
+            18: 4,
+            19: 4,
+            20: 4,
+            21: 4,
+            22: 4,
+            23: 4,
+            24: 4,
+            25: 4,
+            26: 4,
+            27: 2,
+            28: 4,
+            29: 4,
+            30: 4,
+        }
+
         # get the (animal_id,bregma) pairs that define a unique slice
         unique_slices = np.unique(np.c_[data.anids, data.bregs], axis=0)
 
         # are we looking at train or test sets?
-        unique_slices = unique_slices[4:] if train else unique_slices[:4]
+        min_animal = anid_to_bregma_count[np.min(data.anids)]
+        unique_slices = (
+            unique_slices[min_animal:] if train else unique_slices[:min_animal]
+        )
 
         # store all the slices in this list...
         data_list = []

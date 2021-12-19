@@ -49,19 +49,36 @@ def setup_checkpoint_callback(cfg, logger):
     if cfg.training.trainer.checkpoint_callback:
         checkpoint_dir = f"{output}/lightning_logs/checkpoints/{cfg.model.name}"
         checkpoint_dir = os.path.join(output, checkpoint_dir)
-        checkpoint_callback = ModelCheckpoint(
-            dirpath=checkpoint_dir,
-            save_top_k=True,
-            verbose=True,
-            monitor="val_loss",
-            mode="min",
-            prefix="",
-            filename=f"{cfg.model.name}__"
-            f"{cfg.model.kwargs.observables_dimension}"
-            f"__{cfg.model.kwargs.hidden_dimensions}__"
-            f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-            f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}",
-        )
+        # pylint: disable=protected-access
+        if cfg.datasets.dataset._target_.split(".")[-1] == "FilteredMerfishDataset":
+            checkpoint_callback = ModelCheckpoint(
+                dirpath=checkpoint_dir,
+                save_top_k=True,
+                verbose=True,
+                monitor="val_loss",
+                mode="min",
+                prefix="",
+                filename=f"{cfg.model.name}__"
+                f"{cfg.model.kwargs.observables_dimension}"
+                f"__{cfg.model.kwargs.hidden_dimensions}__"
+                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+                f"__{cfg.datasets.dataset.sexes}__{cfg.datasets.dataset.behaviors}"
+                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}",
+            )
+        else:
+            checkpoint_callback = ModelCheckpoint(
+                dirpath=checkpoint_dir,
+                save_top_k=True,
+                verbose=True,
+                monitor="val_loss",
+                mode="min",
+                prefix="",
+                filename=f"{cfg.model.name}__"
+                f"{cfg.model.kwargs.observables_dimension}"
+                f"__{cfg.model.kwargs.hidden_dimensions}__"
+                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}",
+            )
         callbacks.append(checkpoint_callback)
 
     return callbacks
