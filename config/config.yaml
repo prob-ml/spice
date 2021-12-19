@@ -14,7 +14,7 @@ gpus:
 
 
 paths:
-  root: ${env:SPATIAL_HOME}
+  root: ${oc.env:SPATIAL_HOME}
   data: ${paths.root}/data
   models: ${paths.root}/models
   output: ${paths.root}/output
