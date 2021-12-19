@@ -239,7 +239,7 @@ class FilteredMerfishDataset(MerfishDataset):
                 behavior=h5f["Behavior"][:].astype("U"),
                 celltypes=h5f["Cell_class"][:].astype("U"),
             )
-
+            
         anid_to_bregma_count = {
             1: 12,
             2: 12,
@@ -281,6 +281,7 @@ class FilteredMerfishDataset(MerfishDataset):
         unique_slices = (
             unique_slices[min_animal:] if train else unique_slices[:min_animal]
         )
+
 
         # store all the slices in this list...
         data_list = []
