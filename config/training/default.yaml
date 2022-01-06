@@ -2,7 +2,7 @@
 plotting: True
 n_epochs: 600
 logger_name: 'comparison_to_MESSI'
-save_model_summary: True
+save_model_summary: False
 batch_size: 1
 early_stopping: True
 log_transform: True
