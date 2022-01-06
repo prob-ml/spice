@@ -1,8 +1,8 @@
 # @package _group_
 plotting: True
 n_epochs: 600
-logger_name: 'mae_as_train_loss'
-save_model_summary: True
+logger_name: 'comparison_to_MESSI'
+save_model_summary: False
 batch_size: 1
 early_stopping: True
 log_transform: True

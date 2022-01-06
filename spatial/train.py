@@ -1,5 +1,4 @@
 import os
-import sys
 
 from hydra.utils import instantiate
 
@@ -49,19 +48,34 @@ def setup_checkpoint_callback(cfg, logger):
     if cfg.training.trainer.checkpoint_callback:
         checkpoint_dir = f"{output}/lightning_logs/checkpoints/{cfg.model.name}"
         checkpoint_dir = os.path.join(output, checkpoint_dir)
-        checkpoint_callback = ModelCheckpoint(
-            dirpath=checkpoint_dir,
-            save_top_k=True,
-            verbose=True,
-            monitor="val_loss",
-            mode="min",
-            prefix="",
-            filename=f"{cfg.model.name}__"
-            f"{cfg.model.kwargs.observables_dimension}"
-            f"__{cfg.model.kwargs.hidden_dimensions}__"
-            f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-            f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}",
-        )
+        # pylint: disable=protected-access
+        if cfg.datasets.dataset._target_.split(".")[-1] == "FilteredMerfishDataset":
+            checkpoint_callback = ModelCheckpoint(
+                dirpath=checkpoint_dir,
+                save_top_k=True,
+                verbose=True,
+                monitor="val_loss",
+                mode="min",
+                filename=f"{cfg.model.name}__"
+                f"{cfg.model.kwargs.observables_dimension}"
+                f"__{cfg.model.kwargs.hidden_dimensions}__"
+                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+                f"__{cfg.datasets.dataset.sexes}__{cfg.datasets.dataset.behaviors}"
+                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}",
+            )
+        else:
+            checkpoint_callback = ModelCheckpoint(
+                dirpath=checkpoint_dir,
+                save_top_k=True,
+                verbose=True,
+                monitor="val_loss",
+                mode="min",
+                filename=f"{cfg.model.name}__"
+                f"{cfg.model.kwargs.observables_dimension}"
+                f"__{cfg.model.kwargs.hidden_dimensions}__"
+                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}",
+            )
         callbacks.append(checkpoint_callback)
 
     return callbacks
@@ -128,41 +142,41 @@ def train(cfg: DictConfig, data=None):
     model = models[cfg.model.name](**cfg.model.kwargs)
 
     # save model info
-    if cfg.training.save_model_summary:
+    # if cfg.training.save_model_summary:
 
-        output = cfg.paths.output
+    #     output = cfg.paths.output
 
-        # architecture
-        try:
-            sys.stdout = open(
-                os.path.join(output, f"architecture/{cfg.model.name}.txt"), "w"
-            )
-            print(model)
-            sys.stdout.close()
-        except FileNotFoundError:
-            os.makedirs(os.path.join(output, "architecture/"))
-            sys.stdout = open(
-                os.path.join(output, f"architecture/{cfg.model.name}.txt"), "w"
-            )
-            print(model)
-            sys.stdout.close()
+    #     # architecture
+    #     try:
+    #         sys.stdout = open(
+    #             os.path.join(output, f"architecture/{cfg.model.name}.txt"), "w"
+    #         )
+    #         print(model)
+    #         sys.stdout.close()
+    #     except FileNotFoundError:
+    #         os.makedirs(os.path.join(output, "architecture/"))
+    #         sys.stdout = open(
+    #             os.path.join(output, f"architecture/{cfg.model.name}.txt"), "w"
+    #         )
+    #         print(model)
+    #         sys.stdout.close()
 
-        # parameters (and model memory size)
-        try:
-            sys.stdout = open(
-                os.path.join(output, f"parameters/{cfg.model.name}.txt"), "w"
-            )
-            print(model.summarize(mode=trainer.weights_summary))
-            sys.stdout.close()
-        except FileNotFoundError:
-            os.makedirs(os.path.join(output, "parameters/"))
-            sys.stdout = open(
-                os.path.join(output, f"parameters/{cfg.model.name}.txt"), "w"
-            )
-            print(model.summarize(mode=trainer.weights_summary))
-            sys.stdout.close()
+    #     # parameters (and model memory size)
+    #     try:
+    #         sys.stdout = open(
+    #             os.path.join(output, f"parameters/{cfg.model.name}.txt"), "w"
+    #         )
+    #         print(model.summarize(mode=trainer.weights_summary))
+    #         sys.stdout.close()
+    #     except FileNotFoundError:
+    #         os.makedirs(os.path.join(output, "parameters/"))
+    #         sys.stdout = open(
+    #             os.path.join(output, f"parameters/{cfg.model.name}.txt"), "w"
+    #         )
+    #         print(model.summarize(mode=trainer.weights_summary))
+    #         sys.stdout.close()
 
-        # GPU Memory logging (NOT YET IMPLETMENED)
+    # GPU Memory logging (NOT YET IMPLETMENED)
 
     # train!
     trainer.fit(model, train_loader, val_loader)
