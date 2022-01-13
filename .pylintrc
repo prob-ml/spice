@@ -54,4 +54,9 @@ disable=
     # is super clear because of it.
     too-many-locals,
 
+    # unsubscriptable-object gets called with lists but not arrays. Given
+    # the overhead it would take to rewrite all the code, it's easier
+    # just to disable this warning
+    unsubscriptable-object,
+
 ignore=data_processing.py, __init__.py

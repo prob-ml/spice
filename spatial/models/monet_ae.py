@@ -76,7 +76,7 @@ class BasicAEMixin(pl.LightningModule):
         masked_indeces = torch.rand((n_cells, 1)) < self.mask_cells_prop
         new_batch_obj = deepcopy(batch)
         masked_indeces = masked_indeces.type_as(new_batch_obj.x)
-        new_batch_obj.x[:, torch.tensor(self.responses)] *= 1 - masked_indeces
+        new_batch_obj.x[:, torch.tensor(self.responses)] *= 1.0 - masked_indeces
         return new_batch_obj
 
     def mask_genes(self, batch):
