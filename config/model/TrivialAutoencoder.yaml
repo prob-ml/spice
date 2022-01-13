@@ -2,7 +2,7 @@
 name: TrivialAutoencoder
 label: TrivialAutoencoder
 kwargs:
-  observables_dimension: 160
+  observables_dimension: 155
   hidden_dimensions: [50, 25]
   latent_dimension: 10
   loss_type: "mse"

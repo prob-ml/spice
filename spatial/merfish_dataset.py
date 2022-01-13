@@ -17,17 +17,18 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         n_neighbors=3,
         train=True,
         log_transform=True,
-        non_response_genes_file="/home/roko/spatial/spatial/non_response.txt",
+        non_response_genes_file="/home/roko/spatial/spatial/"
+        "non_response_blank_removed.txt",
     ):
         super().__init__(root)
 
         # non-response genes (columns) in MERFISH
-        with open(non_response_genes_file, "r") as genes_file:
+        with open(non_response_genes_file, "r", encoding="utf8") as genes_file:
             self.features = [int(x) for x in genes_file.read().split(",")]
             genes_file.close()
 
         # response genes (columns in MERFISH)
-        self.responses = list(set(range(160)) - set(self.features))
+        self.responses = list(set(range(155)) - set(self.features))
 
         data_list = self.construct_graphs(n_neighbors, train, log_transform)
 
@@ -69,7 +70,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
     celltype_lookup = {x: i for (i, x) in enumerate(cell_types)}
 
     bad_genes = np.zeros(161, dtype=bool)
-    bad_genes[144] = True
+    bad_genes[[21, 22, 23, 24, 25, 144]] = True
 
     @property
     def raw_file_names(self):
@@ -93,6 +94,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         dataframe = pd.read_csv(self.merfish_csv)
 
         with h5py.File(self.merfish_hdf5, "w") as h5f:
+            # pylint: disable=no-member
             for colnm, dtype in zip(dataframe.keys()[:9], dataframe.dtypes[:9]):
                 if dtype.kind == "O":
                     data = np.require(dataframe[colnm], dtype="S36")
@@ -279,7 +281,9 @@ class FilteredMerfishDataset(MerfishDataset):
         # are we looking at train or test sets?
         min_animal = anid_to_bregma_count[np.min(data.anids)]
         unique_slices = (
-            unique_slices[min_animal:] if train else unique_slices[:min_animal]
+            unique_slices[(min_animal + 1) :]
+            if train
+            else unique_slices[: (min_animal + 1)]
         )
 
         # store all the slices in this list...
