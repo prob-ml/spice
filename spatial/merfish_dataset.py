@@ -283,7 +283,7 @@ class FilteredMerfishDataset(MerfishDataset):
         unique_slices = np.unique(np.c_[data.anids, data.bregs], axis=0)
 
         # are we looking at train or test sets?
-        
+
         # if we want a specific animals
         if self.test_animal is not None:
             # we need to find which of the slices
