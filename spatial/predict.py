@@ -94,7 +94,7 @@ def test(cfg: DictConfig, data=None):
     trainer_dict.update(dict(logger=logger, callbacks=checkpoint_callback))
     trainer = pl.Trainer(**trainer_dict)
 
-    trainer.test(model, test_loader, verbose=cfg.predict.verbose)
+    test_results = trainer.test(model, test_loader, verbose=cfg.predict.verbose)
 
     if cfg.model.name == "MeanExpressionNN":
         return trainer, model.inputs, model.gene_expressions, model.celltypes
@@ -102,4 +102,11 @@ def test(cfg: DictConfig, data=None):
     l1_losses = F.l1_loss(model.inputs, model.gene_expressions)
 
     # first is needed for testing, the rest is for jupyter notebook exploration fun!
-    return trainer, l1_losses, model.inputs, model.gene_expressions, model.celltypes
+    return (
+        trainer,
+        l1_losses,
+        model.inputs,
+        model.gene_expressions,
+        model.celltypes,
+        test_results,
+    )

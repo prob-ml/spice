@@ -5,9 +5,10 @@ dataset:
   n_neighbors: ${n_neighbors}
   train: True
   log_transform: True
-  non_response_genes_file: "/home/roko/spatial/spatial/non_response.txt"
+  non_response_genes_file: "/home/roko/spatial/spatial/non_response_blank_removed.txt"
   sexes: ["Female"]
   behaviors: ["Naive"]
+  test_animal: 1
 
 
 
