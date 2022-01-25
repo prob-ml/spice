@@ -10,7 +10,7 @@ mode: train
 n_neighbors: 3
 
 gpus:
-  - 0
+  - 1
 
 
 paths:

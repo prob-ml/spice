@@ -70,7 +70,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
     celltype_lookup = {x: i for (i, x) in enumerate(cell_types)}
 
     bad_genes = np.zeros(161, dtype=bool)
-    bad_genes[[21, 22, 23, 24, 25, 144]] = True
+    bad_genes[[12, 13, 14, 15, 16, 144]] = True
 
     @property
     def raw_file_names(self):
@@ -147,6 +147,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             edge_index=edges,
             pos=torch.tensor(locations_for_this_slice.astype(np.float32)),
             y=torch.tensor(labelinfo),
+            bregma=breg,
         )
 
     def construct_graphs(self, n_neighbors, train, log_transform=True):
@@ -185,13 +186,16 @@ class FilteredMerfishDataset(MerfishDataset):
         n_neighbors=3,
         train=True,
         log_transform=True,
-        non_response_genes_file="/home/roko/spatial/spatial/non_response.txt",
+        non_response_genes_file="/home/roko/spatial/spatial/"
+        "non_response_blank_removed.txt",
         sexes=None,
         behaviors=None,
+        test_animal=None,
     ):
         self.root = root
         self.sexes = sexes
         self.behaviors = behaviors
+        self.test_animal = test_animal
         original_csv_file = super().merfish_csv
         new_df = pd.read_csv(original_csv_file)
         print(f"Original Data {new_df.shape}")
@@ -279,12 +283,32 @@ class FilteredMerfishDataset(MerfishDataset):
         unique_slices = np.unique(np.c_[data.anids, data.bregs], axis=0)
 
         # are we looking at train or test sets?
-        min_animal = anid_to_bregma_count[np.min(data.anids)]
-        unique_slices = (
-            unique_slices[(min_animal + 1) :]
-            if train
-            else unique_slices[: (min_animal + 1)]
-        )
+
+        # if we want a specific animals
+        if self.test_animal is not None:
+            # we need to find which of the slices
+            sorted_anids = np.sort(data.anids)
+            slices_before_test_anid = 0
+            for anid in sorted_anids:
+                if anid != self.test_animal:
+                    slices_before_test_anid += anid_to_bregma_count[anid]
+
+            mask_train = np.ones(unique_slices.shape[0], dtype=bool)
+            mask_train[
+                slices_before_test_anid : (
+                    slices_before_test_anid + anid_to_bregma_count[self.test_animal]
+                )
+            ] = 0
+            unique_slices = (
+                unique_slices[1 - mask_train]
+                if not train
+                else unique_slices[mask_train]
+            )
+        else:
+            min_animal = anid_to_bregma_count[np.min(data.anids)]
+            unique_slices = (
+                unique_slices[min_animal:] if train else unique_slices[:min_animal]
+            )
 
         # store all the slices in this list...
         data_list = []
