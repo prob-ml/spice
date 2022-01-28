@@ -1,6 +1,15 @@
 {
-    "['Female']_['Parenting']_16": 0.40356704592704773,
-    "['Female']_['Parenting']_17": 0.40327703952789307,
-    "['Female']_['Parenting']_18": 0.3982744514942169,
-    "['Female']_['Parenting']_19": 0.3999016582965851
+    "['Female']_['Parenting']_16": 0.42578747868537903,
+    "['Female']_['Parenting']_17": 0.3945853114128113,
+    "['Female']_['Parenting']_18": 0.41545820236206055,
+    "['Female']_['Parenting']_19": 0.4522976279258728,
+    "['Female']_['Virgin Parenting']_20": 0.42953670024871826,
+    "['Female']_['Virgin Parenting']_21": 0.43872183561325073,
+    "['Female']_['Virgin Parenting']_22": 0.4165050983428955,
+    "['Female']_['Virgin Parenting']_23": 0.3957023322582245,
+    "['Female']_['Virgin Parenting']_24": 0.4059910178184509,
+    "['Female']_['Naive']_1": 0.3569185733795166,
+    "['Female']_['Naive']_2": 0.35787373781204224,
+    "['Female']_['Naive']_3": 0.3585347831249237,
+    "['Female']_['Naive']_4": 0.35235148668289185
 }
