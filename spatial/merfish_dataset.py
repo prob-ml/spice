@@ -287,11 +287,13 @@ class FilteredMerfishDataset(MerfishDataset):
         # if we want a specific animals
         if self.test_animal is not None:
             # we need to find which of the slices
-            sorted_anids = np.sort(data.anids)
+            sorted_anids = np.sort(np.unique(data.anids))
             slices_before_test_anid = 0
             for anid in sorted_anids:
                 if anid != self.test_animal:
                     slices_before_test_anid += anid_to_bregma_count[anid]
+                else:
+                    break
 
             mask_train = np.ones(unique_slices.shape[0], dtype=bool)
             mask_train[
@@ -300,7 +302,7 @@ class FilteredMerfishDataset(MerfishDataset):
                 )
             ] = 0
             unique_slices = (
-                unique_slices[1 - mask_train]
+                unique_slices[(1 - mask_train).astype("bool")]
                 if not train
                 else unique_slices[mask_train]
             )
