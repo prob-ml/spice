@@ -27,17 +27,33 @@ models = {cls.__name__: cls for cls in _models}
 def setup_logger(cfg):
     logger = False
     if cfg.training.trainer.logger:
-        logger = TensorBoardLogger(
-            save_dir=cfg.paths.output,
-            name=cfg.training.logger_name,
-            version=(
-                f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
-                f"__{cfg.model.kwargs.hidden_dimensions}__"
-                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                # change this back later
-                f"__{cfg.optimizer.params.lr}"
-            ),
-        )
+
+        if cfg.model == "MonetAutoencoder2D":
+            logger = TensorBoardLogger(
+                save_dir=cfg.paths.output,
+                name=cfg.training.logger_name,
+                version=(
+                    f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
+                    f"__{cfg.model.kwargs.hidden_dimensions}__"
+                    f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+                    # change this back later
+                    f"__{cfg.optimizer.params.lr}__{cfg.model.kwargs.kernel_size}"
+                ),
+            )
+
+        else:
+            logger = TensorBoardLogger(
+                save_dir=cfg.paths.output,
+                name=cfg.training.logger_name,
+                version=(
+                    f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
+                    f"__{cfg.model.kwargs.hidden_dimensions}__"
+                    f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+                    # change this back later
+                    f"__{cfg.optimizer.params.lr}"
+                ),
+            )
+
     return logger
 
 
@@ -49,7 +65,10 @@ def setup_checkpoint_callback(cfg, logger):
         checkpoint_dir = f"{output}/lightning_logs/checkpoints/{cfg.model.name}"
         checkpoint_dir = os.path.join(output, checkpoint_dir)
         # pylint: disable=protected-access
-        if cfg.datasets.dataset._target_.split(".")[-1] == "FilteredMerfishDataset":
+        if (
+            cfg.datasets.dataset._target_.split(".")[-1] == "FilteredMerfishDataset"
+            and cfg.model == "MonetAutoencoder2D"
+        ):
             checkpoint_callback = ModelCheckpoint(
                 dirpath=checkpoint_dir,
                 save_top_k=True,
@@ -61,7 +80,8 @@ def setup_checkpoint_callback(cfg, logger):
                 f"__{cfg.model.kwargs.hidden_dimensions}__"
                 f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
                 f"__{cfg.datasets.dataset.sexes}__{cfg.datasets.dataset.behaviors}"
-                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}",
+                f"__{cfg.optimizer.params.lr}__{cfg.model.kwargs.kernel_size}__"
+                f"{cfg.training.logger_name}",
             )
         else:
             checkpoint_callback = ModelCheckpoint(

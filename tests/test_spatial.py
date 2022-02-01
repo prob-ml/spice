@@ -134,6 +134,7 @@ def test_monetae2d():
 
     overrides_train = {
         "gpus": 0,
+        "datasets": "MerfishDataset",
         "model": "MonetAutoencoder2D",
         "model.name": "MonetAutoencoder2D",
         "model.label": "gitpush2",
@@ -201,6 +202,7 @@ def test_trivial():
 
     overrides_train = {
         "gpus": 0,
+        "datasets": "MerfishDataset",
         "model": "TrivialAutoencoder",
         "model.name": "TrivialAutoencoder",
         "model.label": "notebook",
