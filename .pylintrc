@@ -7,6 +7,8 @@ generated-members=numpy.*,torch.*,h5py.*
 
 max-line-length=88
 
+min-similarity-lines=12
+
 disable=
     # We get too-many-ancestors warnings whenever we inherit LightningModule:
     # it's not really a problem and there isn't really anything we could do

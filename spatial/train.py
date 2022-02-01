@@ -35,7 +35,7 @@ def setup_logger(cfg):
                 f"__{cfg.model.kwargs.hidden_dimensions}__"
                 f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
                 # change this back later
-                f"__{cfg.optimizer.params.lr}"
+                f"__{cfg.optimizer.params.lr}__{cfg.model.kwargs.kernel_size}"
             ),
         )
     return logger
@@ -61,7 +61,8 @@ def setup_checkpoint_callback(cfg, logger):
                 f"__{cfg.model.kwargs.hidden_dimensions}__"
                 f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
                 f"__{cfg.datasets.dataset.sexes}__{cfg.datasets.dataset.behaviors}"
-                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}",
+                f"__{cfg.optimizer.params.lr}__{cfg.model.kwargs.kernel_size}__"
+                f"{cfg.training.logger_name}",
             )
         else:
             checkpoint_callback = ModelCheckpoint(

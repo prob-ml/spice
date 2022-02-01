@@ -48,7 +48,8 @@ def test(cfg: DictConfig, data=None):
             f"__{cfg.model.kwargs.hidden_dimensions}__"
             f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
             f"__{cfg.datasets.dataset.sexes}__{cfg.datasets.dataset.behaviors}"
-            f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}.ckpt"
+            f"__{cfg.optimizer.params.lr}__{cfg.model.kwargs.kernel_size}"
+            f"__{cfg.training.logger_name}.ckpt"
         )
 
     else:
