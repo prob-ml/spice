@@ -114,15 +114,32 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
         # figure out neighborhood structure
         locations_for_this_slice = data.locations[good]
-        nbrs = neighbors.NearestNeighbors(
-            n_neighbors=n_neighbors + 1, algorithm="ball_tree"
-        )
-        nbrs.fit(locations_for_this_slice)
-        _, kneighbors = nbrs.kneighbors(locations_for_this_slice)
-        edges = np.concatenate(
-            [np.c_[kneighbors[:, 0], kneighbors[:, i + 1]] for i in range(n_neighbors)],
-            axis=0,
-        )
+
+        if n_neighbors == 0:
+            edges = np.concatenate(
+                [
+                    np.c_[np.array([i]), np.array([i])]
+                    for i in range(locations_for_this_slice.shape[0])
+                ],
+                axis=0,
+            )
+            print(edges)
+
+        else:
+
+            nbrs = neighbors.NearestNeighbors(
+                n_neighbors=n_neighbors + 1, algorithm="ball_tree"
+            )
+            nbrs.fit(locations_for_this_slice)
+            _, kneighbors = nbrs.kneighbors(locations_for_this_slice)
+            edges = np.concatenate(
+                [
+                    np.c_[kneighbors[:, 0], kneighbors[:, i + 1]]
+                    for i in range(n_neighbors)
+                ],
+                axis=0,
+            )
+
         edges = torch.tensor(edges, dtype=torch.long).T
 
         # remove gene 144.  which is bad.  for some reason.

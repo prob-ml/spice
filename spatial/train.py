@@ -28,7 +28,7 @@ def setup_logger(cfg):
     logger = False
     if cfg.training.trainer.logger:
 
-        if cfg.model == "MonetAutoencoder2D":
+        if cfg.model.name == "MonetAutoencoder2D":
             logger = TensorBoardLogger(
                 save_dir=cfg.paths.output,
                 name=cfg.training.logger_name,
@@ -67,7 +67,7 @@ def setup_checkpoint_callback(cfg, logger):
         # pylint: disable=protected-access
         if (
             cfg.datasets.dataset._target_.split(".")[-1] == "FilteredMerfishDataset"
-            and cfg.model == "MonetAutoencoder2D"
+            and cfg.model.name == "MonetAutoencoder2D"
         ):
             checkpoint_callback = ModelCheckpoint(
                 dirpath=checkpoint_dir,
