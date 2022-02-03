@@ -41,7 +41,7 @@ def test(cfg: DictConfig, data=None):
     # pylint: disable=protected-access
     if cfg.datasets.dataset._target_.split(".")[-1] == "FilteredMerfishDataset":
 
-        if cfg.model == "MonetAutoencoder2D":
+        if cfg.model.name == "MonetAutoencoder2D":
             checkpoint_path = (
                 f"{cfg.paths.output}/lightning_logs/"
                 f"checkpoints/{cfg.model.name}/{cfg.model.name}__"
@@ -66,7 +66,7 @@ def test(cfg: DictConfig, data=None):
 
     else:
 
-        if cfg.model == "MonetAutoencoder2D":
+        if cfg.model.name == "MonetAutoencoder2D":
             checkpoint_path = (
                 f"{cfg.paths.output}/lightning_logs/"
                 f"checkpoints/{cfg.model.name}/{cfg.model.name}__"
