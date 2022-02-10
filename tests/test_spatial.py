@@ -3,7 +3,7 @@ import pathlib
 import numpy as np
 import torch
 import torch_geometric
-from hydra.experimental import compose, initialize
+from hydra import compose, initialize
 from numpy import random as npr
 
 
@@ -133,7 +133,7 @@ def test_monetae2d():
     # fitmodel with updated hydra config
 
     overrides_train = {
-        "gpus": 0,
+        "gpus": 1,
         "datasets": "MerfishDataset",
         "model": "MonetAutoencoder2D",
         "model.name": "MonetAutoencoder2D",
@@ -142,6 +142,7 @@ def test_monetae2d():
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
         "training.n_epochs": 10,
+        "training.trainer.log_every_n_steps": 2,
     }
     overrides_train_list = [f"{k}={v}" for k, v in overrides_train.items()]
 
@@ -201,7 +202,7 @@ def test_trivial():
     # fitmodel with updated hydra config
 
     overrides_train = {
-        "gpus": 0,
+        "gpus": 1,
         "datasets": "MerfishDataset",
         "model": "TrivialAutoencoder",
         "model.name": "TrivialAutoencoder",
@@ -210,6 +211,7 @@ def test_trivial():
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
         "training.n_epochs": 10,
+        "training.trainer.log_every_n_steps": 2,
     }
     overrides_train_list = [f"{k}={v}" for k, v in overrides_train.items()]
 

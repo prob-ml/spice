@@ -1,5 +1,5 @@
 import hydra
-from hydra.experimental import compose, initialize
+from hydra import compose, initialize
 
 
 @hydra.main(config_path="../config", config_name="config")
