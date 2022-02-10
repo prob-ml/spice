@@ -61,7 +61,7 @@ def setup_logger(cfg):
 def setup_checkpoint_callback(cfg, logger):
     callbacks = []
     output = cfg.paths.output
-    if cfg.training.trainer.checkpoint_callback:
+    if cfg.training.trainer.enable_checkpointing:
         checkpoint_dir = f"{output}/lightning_logs/checkpoints/{cfg.model.name}"
         checkpoint_dir = os.path.join(output, checkpoint_dir)
         # pylint: disable=protected-access

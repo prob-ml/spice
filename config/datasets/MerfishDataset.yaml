@@ -1,4 +1,3 @@
-# @package _group_
 dataset:
   _target_: spatial.merfish_dataset.MerfishDataset
   root: ${paths.data}

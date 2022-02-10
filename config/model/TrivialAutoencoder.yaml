@@ -1,4 +1,3 @@
-# @package _group_
 name: TrivialAutoencoder
 label: TrivialAutoencoder
 kwargs:

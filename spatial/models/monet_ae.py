@@ -92,9 +92,7 @@ class BasicAEMixin(pl.LightningModule):
             _, reconstruction = self(batch)
         # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(reconstruction, batch.x, self.loss_type)
-        self.log(
-            "train_loss: " + self.loss_type, loss, prog_bar=True
-        )  # , on_epoch=True, on_step=False)
+        self.log("train_loss: " + self.loss_type, loss, prog_bar=True)
         self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
         return loss
 

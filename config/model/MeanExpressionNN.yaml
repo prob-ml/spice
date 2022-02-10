@@ -1,4 +1,3 @@
-# @package _group_
 name: MeanExpressionNN
 label: MEAN_ESTIMATION_MAELOSS
 kwargs:
