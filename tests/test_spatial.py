@@ -1,6 +1,7 @@
 import pathlib
 
 import numpy as np
+import pandas as pd
 import torch
 import torch_geometric
 from hydra import compose, initialize
@@ -69,53 +70,126 @@ def test_merfish_dataset():
     # relative path needed to pass test on Github
     # maybe change pytest.ini so the relpath is shorter?
     mfd = merfish_dataset.MerfishDataset(
-        test_data_dir, non_response_genes_file="../spatial/spatial/non_response.txt"
+        test_data_dir,
+        non_response_genes_file="../spatial/spatial/non_response_blank_removed.txt",
     )
     mfd.get(0)
 
+    # make sure that the response genes are correct
 
-# def simulate_data(n_samples):
-#     datalist = []
+    assert mfd[0].x.shape[1] == 155
 
-#     # this problem should be pretty easy!
-#     data_dimension = 2
+    merfish_df = pd.read_csv(mfd.merfish_csv)
+    merfish_df = merfish_df.drop(
+        ["Blank_1", "Blank_2", "Blank_3", "Blank_4", "Blank_5", "Fos"], axis=1
+    )
+    print(mfd.responses)
+    print(merfish_df.columns[9:][mfd.responses])
+    assert all(
+        merfish_df.columns[9:][mfd.responses]
+        == [
+            "Ace2",
+            "Aldh1l1",
+            "Amigo2",
+            "Ano3",
+            "Aqp4",
+            "Ar",
+            "Arhgap36",
+            "Baiap2",
+            "Ccnd2",
+            "Cd24a",
+            "Cdkn1a",
+            "Cenpe",
+            "Chat",
+            "Coch",
+            "Col25a1",
+            "Cplx3",
+            "Cpne5",
+            "Creb3l1",
+            "Cspg5",
+            "Cyp19a1",
+            "Cyp26a1",
+            "Dgkk",
+            "Ebf3",
+            "Egr2",
+            "Ermn",
+            "Esr1",
+            "Etv1",
+            "Fbxw13",
+            "Fezf1",
+            "Gbx2",
+            "Gda",
+            "Gem",
+            "Gjc3",
+            "Greb1",
+            "Irs4",
+            "Isl1",
+            "Klf4",
+            "Krt90",
+            "Lmod1",
+            "Man1a",
+            "Mki67",
+            "Mlc1",
+            "Myh11",
+            "Ndnf",
+            "Ndrg1",
+            "Necab1",
+            "Nos1",
+            "Npas1",
+            "Nup62cl",
+            "Omp",
+            "Onecut2",
+            "Opalin",
+            "Pak3",
+            "Pcdh11x",
+            "Pgr",
+            "Plin3",
+            "Pou3f2",
+            "Rgs2",
+            "Rgs5",
+            "Rnd3",
+            "Scgn",
+            "Serpinb1b",
+            "Sgk1",
+            "Slc15a3",
+            "Slc17a6",
+            "Slc17a8",
+            "Slco1a4",
+            "Sox4",
+            "Sox6",
+            "Sox8",
+            "Sp9",
+            "Synpr",
+            "Syt2",
+            "Syt4",
+            "Sytl4",
+            "Tiparp",
+            "Tmem108",
+            "Traf4",
+            "Ttn",
+            "Ttyh2",
+            "Mbp",
+            "Nnat",
+            "Sln",
+            "Th",
+        ]
+    )
 
-#     # set random seed
-#     npr.seed(0)
-#     torch.manual_seed(0)
 
-#     # generate random graphs
-#     for _ in range(n_samples):
-#         # random (but varying!) number of nodes
-#         n_nodes = npr.randint(10, 20)
+def test_filtered_merfish_dataset():
+    from spatial import merfish_dataset
 
-#         # fantasize some edges
-#         edge_matrix = npr.rand(n_nodes, n_nodes) < 0.2
-#         edge_matrix[np.r_[0:n_nodes], np.r_[0:n_nodes]] = False
-#         edges = torch.tensor(np.array(np.where(edge_matrix)))
-
-#         # 2d positions
-#         pos = npr.randn(n_nodes, 2)
-
-#         # random data
-#         expr = np.zeros((n_nodes, data_dimension))
-#         for i in range(expr.shape[0]):
-#             for j in range(expr.shape[1]):
-#                 expr[i, j] = 2.2 * npr.randn() + i + j
-
-#         # random celltypes FIX THIS
-#         celltypes = npr.randint(0, 15, n_nodes)
-
-#         datalist.append(
-#             torch_geometric.data.Data(
-#                 x=torch.tensor(expr.astype(np.float32)),
-#                 edge_index=edges,
-#                 pos=torch.tensor(pos.astype(np.float32)),
-#                 y=torch.tensor(celltypes.astype(np.int32)),
-#             )
-#         )
-
-#     return datalist, data_dimension
+    test_dir = pathlib.Path(__file__).parent.absolute()
+    test_data_dir = test_dir.joinpath("data")
+    # relative path needed to pass test on Github
+    # maybe change pytest.ini so the relpath is shorter?
+    mfd = merfish_dataset.FilteredMerfishDataset(
+        test_data_dir,
+        non_response_genes_file="../spatial/spatial/non_response_blank_removed.txt",
+        sexes=["Female"],
+        behaviors=["Naive"],
+    )
+    mfd.get(0)
 
 
 def test_monetae2d():

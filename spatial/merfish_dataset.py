@@ -1,5 +1,7 @@
 import os
 import types
+import json
+import itertools as it
 
 import h5py
 import numpy as np
@@ -215,15 +217,15 @@ class FilteredMerfishDataset(MerfishDataset):
         self.test_animal = test_animal
         original_csv_file = super().merfish_csv
         new_df = pd.read_csv(original_csv_file)
-        print(f"Original Data {new_df.shape}")
+        # print(f"Original Data {new_df.shape}")
         if self.sexes is not None:
             new_df = new_df[new_df["Animal_sex"].isin(self.sexes)]
         if self.behaviors is not None:
             new_df = new_df[new_df["Behavior"].isin(self.behaviors)]
         if new_df.shape[0] == 0:
             raise ValueError("Dataframe has no rows. Cannot build graph.")
-        new_df.to_csv(self.root + "/raw/merfish_messi.csv", index=False)
-        print(f"Filtered Data {new_df.shape}")
+        new_df.to_csv(str(self.root) + "/raw/merfish_messi.csv", index=False)
+        # print(f"Filtered Data {new_df.shape}")
         # print("Filtered csv file created!")
         MerfishDataset.download(self)
         super().__init__(
@@ -303,6 +305,23 @@ class FilteredMerfishDataset(MerfishDataset):
 
         # if we want a specific animals
         if self.test_animal is not None:
+
+            with open("animal_id.json", encoding="utf8") as json_file:
+                animals = json.load(json_file)
+
+            for sex, behavior in it.product(self.sexes, self.behaviors):
+                try:
+                    if self.test_animal in animals[behavior][sex]:
+                        break
+                except KeyError:
+                    pass
+
+            else:
+                raise ValueError(
+                    f"Animal ID {self.test_animal} does not belong"
+                    f"to the set of {self.behaviors}, {self.sexes} animals"
+                )
+
             # we need to find which of the slices
             sorted_anids = np.sort(np.unique(data.anids))
             slices_before_test_anid = 0
