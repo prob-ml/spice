@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import requests
 import torch
+import torch.nn.functional as F
 import torch_geometric
 from sklearn import neighbors
 
@@ -20,6 +21,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         n_neighbors=3,
         train=True,
         log_transform=True,
+        neighbor_celltypes=False,
         non_response_genes_file="/home/roko/spatial/spatial/"
         "non_response_blank_removed.txt",
     ):
@@ -33,7 +35,9 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         # response genes (columns in MERFISH)
         self.responses = list(set(range(155)) - set(self.features))
 
-        data_list = self.construct_graphs(n_neighbors, train, log_transform)
+        data_list = self.construct_graphs(
+            n_neighbors, train, log_transform, neighbor_celltypes
+        )
 
         with h5py.File(self.merfish_hdf5, "r") as h5f:
             self.gene_names = h5f["gene_names"][:][~self.bad_genes].astype("U")
@@ -111,7 +115,31 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             gene_names = np.array(dataframe.keys()[9:], dtype="S80")
             h5f.create_dataset("gene_names", data=gene_names)
 
-    def construct_graph(self, data, anid, breg, n_neighbors, log_transform):
+    def construct_graph(
+        self, data, anid, breg, n_neighbors, log_transform, neighbor_celltypes
+    ):
+        def get_neighbors(edges, x_shape):
+            return [edges[:, edges[0] == i][1] for i in range(x_shape)]
+
+        def get_celltype_simplex(cell_behavior_tensor, neighbors_tensor):
+            num_classes = cell_behavior_tensor.max() + 1
+            return torch.cat(
+                [
+                    (
+                        torch.mean(
+                            1.0
+                            * F.one_hot(
+                                cell_behavior_tensor.index_select(0, neighbors),
+                                num_classes=num_classes,
+                            ),
+                            dim=0,
+                        )
+                    ).unsqueeze(0)
+                    for neighbors in neighbors_tensor
+                ],
+                dim=0,
+            )
+
         # get subset of cells in this slice
         good = (data.anids == anid) & (data.bregs == breg)
 
@@ -159,6 +187,12 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         # if we want to first log transform the data, we do it here
         # make this one return statement only changing x
         predictors_x = torch.tensor(subexpression.astype(np.float32))
+        if neighbor_celltypes:
+            test_simplex = get_celltype_simplex(
+                torch.tensor(labelinfo[:, 1]),
+                get_neighbors(edges, predictors_x.shape[0]),
+            )
+            predictors_x = torch.cat((predictors_x, test_simplex), dim=1)
         if log_transform:
             predictors_x = torch.log1p(predictors_x)
 
@@ -170,7 +204,9 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             bregma=breg,
         )
 
-    def construct_graphs(self, n_neighbors, train, log_transform=True):
+    def construct_graphs(
+        self, n_neighbors, train, log_transform=True, neighbor_celltypes=False
+    ):
         # load hdf5
         with h5py.File(self.merfish_hdf5, "r") as h5f:
             # pylint: disable=no-member
@@ -193,7 +229,9 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         data_list = []
         for anid, breg in unique_slices:
             data_list.append(
-                self.construct_graph(data, anid, breg, n_neighbors, log_transform)
+                self.construct_graph(
+                    data, anid, breg, n_neighbors, log_transform, neighbor_celltypes
+                )
             )
 
         return data_list
@@ -206,6 +244,7 @@ class FilteredMerfishDataset(MerfishDataset):
         n_neighbors=3,
         train=True,
         log_transform=True,
+        neighbor_celltypes=False,
         non_response_genes_file="/home/roko/spatial/spatial/"
         "non_response_blank_removed.txt",
         sexes=None,
@@ -234,6 +273,7 @@ class FilteredMerfishDataset(MerfishDataset):
             n_neighbors=n_neighbors,
             train=train,
             log_transform=log_transform,
+            neighbor_celltypes=neighbor_celltypes,
             non_response_genes_file=non_response_genes_file,
         )
         # print("Filtered hdf5 file created!")
@@ -252,7 +292,9 @@ class FilteredMerfishDataset(MerfishDataset):
     def merfish_hdf5(self):
         return os.path.join(self.raw_dir, "merfish_messi.hdf5")
 
-    def construct_graphs(self, n_neighbors, train, log_transform=True):
+    def construct_graphs(
+        self, n_neighbors, train, log_transform=True, neighbor_celltypes=False
+    ):
         print(self.merfish_hdf5)
         # load hdf5
         with h5py.File(self.merfish_hdf5, "r") as h5f:
@@ -355,7 +397,9 @@ class FilteredMerfishDataset(MerfishDataset):
         data_list = []
         for anid, breg in unique_slices:
             data_list.append(
-                self.construct_graph(data, anid, breg, n_neighbors, log_transform)
+                self.construct_graph(
+                    data, anid, breg, n_neighbors, log_transform, neighbor_celltypes
+                )
             )
 
         return data_list
