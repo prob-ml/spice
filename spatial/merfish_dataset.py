@@ -2,6 +2,7 @@ import os
 import types
 import json
 import itertools as it
+import pathlib
 
 import h5py
 import numpy as np
@@ -306,7 +307,9 @@ class FilteredMerfishDataset(MerfishDataset):
         # if we want a specific animals
         if self.test_animal is not None:
 
-            with open("animal_id.json", encoding="utf8") as json_file:
+            animal_path = pathlib.Path(__file__).parent.absolute()
+            animal_path = animal_path.joinpath("animal_id.json")
+            with open(animal_path, encoding="utf8") as json_file:
                 animals = json.load(json_file)
 
             for sex, behavior in it.product(self.sexes, self.behaviors):
