@@ -12,6 +12,7 @@ import torch
 import torch.nn.functional as F
 import torch_geometric
 from sklearn import neighbors
+from scipy.spatial import cKDTree
 
 
 class MerfishDataset(torch_geometric.data.InMemoryDataset):
@@ -22,6 +23,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         train=True,
         log_transform=True,
         neighbor_celltypes=False,
+        radius=None,
         non_response_genes_file="/home/roko/spatial/spatial/"
         "non_response_blank_removed.txt",
     ):
@@ -36,7 +38,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         self.responses = list(set(range(155)) - set(self.features))
 
         data_list = self.construct_graphs(
-            n_neighbors, train, log_transform, neighbor_celltypes
+            n_neighbors, train, log_transform, neighbor_celltypes, radius
         )
 
         with h5py.File(self.merfish_hdf5, "r") as h5f:
@@ -116,7 +118,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             h5f.create_dataset("gene_names", data=gene_names)
 
     def construct_graph(
-        self, data, anid, breg, n_neighbors, log_transform, neighbor_celltypes
+        self, data, anid, breg, n_neighbors, log_transform, neighbor_celltypes, radius
     ):
         def get_neighbors(edges, x_shape):
             return [edges[:, edges[0] == i][1] for i in range(x_shape)]
@@ -146,6 +148,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         # figure out neighborhood structure
         locations_for_this_slice = data.locations[good]
 
+        # only include self edges if n_neighbors is 0
         if n_neighbors == 0:
             edges = np.concatenate(
                 [
@@ -158,18 +161,36 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
         else:
 
-            nbrs = neighbors.NearestNeighbors(
-                n_neighbors=n_neighbors + 1, algorithm="ball_tree"
-            )
-            nbrs.fit(locations_for_this_slice)
-            _, kneighbors = nbrs.kneighbors(locations_for_this_slice)
-            edges = np.concatenate(
-                [
-                    np.c_[kneighbors[:, 0], kneighbors[:, i + 1]]
-                    for i in range(n_neighbors)
-                ],
-                axis=0,
-            )
+            if radius is None:
+                nbrs = neighbors.NearestNeighbors(
+                    n_neighbors=n_neighbors + 1, algorithm="ball_tree"
+                )
+                nbrs.fit(locations_for_this_slice)
+                _, kneighbors = nbrs.kneighbors(locations_for_this_slice)
+                edges = np.concatenate(
+                    [
+                        np.c_[kneighbors[:, 0], kneighbors[:, i + 1]]
+                        for i in range(n_neighbors)
+                    ],
+                    axis=0,
+                )
+
+            else:
+
+                tree = cKDTree(locations_for_this_slice)
+                kneighbors = tree.query_ball_point(
+                    locations_for_this_slice, r=32, return_sorted=False
+                )
+                edges = np.concatenate(
+                    [
+                        np.c_[
+                            np.repeat(i, len(kneighbors[i]) - 1),
+                            [x for x in kneighbors[i] if x != i],
+                        ]
+                        for i in range(len(kneighbors))
+                    ],
+                    axis=0,
+                )
 
         edges = torch.tensor(edges, dtype=torch.long).T
 
@@ -205,7 +226,12 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         )
 
     def construct_graphs(
-        self, n_neighbors, train, log_transform=True, neighbor_celltypes=False
+        self,
+        n_neighbors,
+        train,
+        log_transform=True,
+        neighbor_celltypes=False,
+        radius=None,
     ):
         # load hdf5
         with h5py.File(self.merfish_hdf5, "r") as h5f:
@@ -230,7 +256,13 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         for anid, breg in unique_slices:
             data_list.append(
                 self.construct_graph(
-                    data, anid, breg, n_neighbors, log_transform, neighbor_celltypes
+                    data,
+                    anid,
+                    breg,
+                    n_neighbors,
+                    log_transform,
+                    neighbor_celltypes,
+                    radius,
                 )
             )
 
@@ -245,6 +277,7 @@ class FilteredMerfishDataset(MerfishDataset):
         train=True,
         log_transform=True,
         neighbor_celltypes=False,
+        radius=None,
         non_response_genes_file="/home/roko/spatial/spatial/"
         "non_response_blank_removed.txt",
         sexes=None,
@@ -293,7 +326,12 @@ class FilteredMerfishDataset(MerfishDataset):
         return os.path.join(self.raw_dir, "merfish_messi.hdf5")
 
     def construct_graphs(
-        self, n_neighbors, train, log_transform=True, neighbor_celltypes=False
+        self,
+        n_neighbors,
+        train,
+        log_transform=True,
+        neighbor_celltypes=False,
+        radius=None,
     ):
         print(self.merfish_hdf5)
         # load hdf5
@@ -398,7 +436,13 @@ class FilteredMerfishDataset(MerfishDataset):
         for anid, breg in unique_slices:
             data_list.append(
                 self.construct_graph(
-                    data, anid, breg, n_neighbors, log_transform, neighbor_celltypes
+                    data,
+                    anid,
+                    breg,
+                    n_neighbors,
+                    log_transform,
+                    neighbor_celltypes,
+                    radius,
                 )
             )
 

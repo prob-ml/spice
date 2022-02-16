@@ -175,6 +175,14 @@ def test_merfish_dataset():
         ]
     )
 
+    # check that radius instantiations work
+    mfd = merfish_dataset.MerfishDataset(
+        test_data_dir,
+        non_response_genes_file="../spatial/spatial/non_response_blank_removed.txt",
+        radius=32,
+    )
+    mfd.get(0)
+
 
 def test_filtered_merfish_dataset():
     from spatial import merfish_dataset
@@ -188,6 +196,16 @@ def test_filtered_merfish_dataset():
         non_response_genes_file="../spatial/spatial/non_response_blank_removed.txt",
         sexes=["Female"],
         behaviors=["Naive"],
+    )
+    mfd.get(0)
+
+    # check that radius instantiations work
+    mfd = merfish_dataset.FilteredMerfishDataset(
+        test_data_dir,
+        non_response_genes_file="../spatial/spatial/non_response_blank_removed.txt",
+        sexes=["Female"],
+        behaviors=["Naive"],
+        radius=32,
     )
     mfd.get(0)
 
