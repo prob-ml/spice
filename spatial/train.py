@@ -24,7 +24,7 @@ _models = [
 models = {cls.__name__: cls for cls in _models}
 
 # specify logger (taken from bliss)
-def setup_logger(cfg):
+def setup_logger(cfg, filepath):
     logger = False
     if cfg.training.trainer.logger:
 
@@ -32,33 +32,21 @@ def setup_logger(cfg):
             logger = TensorBoardLogger(
                 save_dir=cfg.paths.output,
                 name=cfg.training.logger_name,
-                version=(
-                    f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
-                    f"__{cfg.model.kwargs.hidden_dimensions}__"
-                    f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                    # change this back later
-                    f"__{cfg.optimizer.params.lr}__{cfg.model.kwargs.kernel_size}"
-                ),
+                version=(filepath),
             )
 
         else:
             logger = TensorBoardLogger(
                 save_dir=cfg.paths.output,
                 name=cfg.training.logger_name,
-                version=(
-                    f"{cfg.model.name}__{cfg.model.kwargs.observables_dimension}"
-                    f"__{cfg.model.kwargs.hidden_dimensions}__"
-                    f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                    # change this back later
-                    f"__{cfg.optimizer.params.lr}"
-                ),
+                version=(filepath),
             )
 
     return logger
 
 
 # set up model saving (taken from bliss)
-def setup_checkpoint_callback(cfg, logger):
+def setup_checkpoint_callback(cfg, logger, filepath):
     callbacks = []
     output = cfg.paths.output
     if cfg.training.trainer.enable_checkpointing:
@@ -75,13 +63,7 @@ def setup_checkpoint_callback(cfg, logger):
                 verbose=True,
                 monitor="val_loss",
                 mode="min",
-                filename=f"{cfg.model.name}__"
-                f"{cfg.model.kwargs.observables_dimension}"
-                f"__{cfg.model.kwargs.hidden_dimensions}__"
-                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                f"__{cfg.datasets.dataset.sexes}__{cfg.datasets.dataset.behaviors}"
-                f"__{cfg.optimizer.params.lr}__{cfg.model.kwargs.kernel_size}__"
-                f"{cfg.training.logger_name}",
+                filename=filepath,
             )
         else:
             checkpoint_callback = ModelCheckpoint(
@@ -90,11 +72,7 @@ def setup_checkpoint_callback(cfg, logger):
                 verbose=True,
                 monitor="val_loss",
                 mode="min",
-                filename=f"{cfg.model.name}__"
-                f"{cfg.model.kwargs.observables_dimension}"
-                f"__{cfg.model.kwargs.hidden_dimensions}__"
-                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}",
+                filename=filepath,
             )
         callbacks.append(checkpoint_callback)
 
@@ -109,6 +87,61 @@ def setup_early_stopping(cfg, callbacks):
         )
         callbacks.append(early_stop_callback)
     return callbacks
+
+
+def get_file_path(cfg, include_dir_path=False):
+
+    if cfg.datasets == "FilteredMerfishDataset":
+
+        if cfg.model.name == "MonetAutoencoder2D":
+            filepath = (
+                f"{cfg.model.name}__"
+                f"{cfg.model.kwargs.observables_dimension}"
+                f"__{cfg.model.kwargs.hidden_dimensions}__"
+                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+                f"__{cfg.datasets.dataset.sexes}__{cfg.datasets.dataset.behaviors}"
+                f"__{cfg.optimizer.params.lr}__{cfg.model.kwargs.kernel_size}"
+                f"__{cfg.training.logger_name}"
+            )
+
+        else:
+            filepath = (
+                f"{cfg.model.name}__"
+                f"{cfg.model.kwargs.observables_dimension}"
+                f"__{cfg.model.kwargs.hidden_dimensions}__"
+                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+                f"__{cfg.datasets.dataset.sexes}__{cfg.datasets.dataset.behaviors}"
+                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}"
+            )
+
+    else:
+
+        if cfg.model.name == "MonetAutoencoder2D":
+            filepath = (
+                f"{cfg.model.name}__"
+                f"{cfg.model.kwargs.observables_dimension}"
+                f"__{cfg.model.kwargs.hidden_dimensions}__"
+                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}"
+            )
+
+        else:
+            filepath = (
+                f"{cfg.model.name}/{cfg.model.name}__"
+                f"{cfg.model.kwargs.observables_dimension}"
+                f"__{cfg.model.kwargs.hidden_dimensions}__"
+                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
+                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}"
+            )
+
+    if include_dir_path:
+
+        return (
+            f"{cfg.paths.output}/lightning_logs/"
+            f"checkpoints/{cfg.model.name}/" + filepath + ".ckpt"
+        )
+
+    return filepath
 
 
 # def setup_profiler(cfg):
@@ -140,11 +173,14 @@ def train(cfg: DictConfig, data=None):
     if data.responses is not None:
         OmegaConf.update(cfg, "model.kwargs.responses", data.responses)
 
+    # generate filepath where runs and logs will be saved
+    filepath = get_file_path(cfg)
+
     # setup logger
-    logger = setup_logger(cfg)
+    logger = setup_logger(cfg, filepath=filepath)
 
     # setup checkpoints
-    callbacks = setup_checkpoint_callback(cfg, logger)
+    callbacks = setup_checkpoint_callback(cfg, logger, filepath=filepath)
 
     callbacks = setup_early_stopping(cfg, callbacks)
 

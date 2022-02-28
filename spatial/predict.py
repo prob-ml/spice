@@ -13,10 +13,13 @@ from spatial.models.monet_ae import (
 from spatial.train import (
     setup_checkpoint_callback,
     setup_logger,
+    get_file_path,
 )
 
 # pylint: disable=too-many-branches
 def test(cfg: DictConfig, data=None):
+
+    filepath = get_file_path(cfg)
 
     # Set up testing data.
     if data is None:
@@ -32,65 +35,12 @@ def test(cfg: DictConfig, data=None):
 
     # FOR NOW I NEED THIS TO KEEP TABS ON TESTING LOSS
     # setup logger
-    logger = setup_logger(cfg)
+    logger = setup_logger(cfg, filepath=filepath)
 
     # setup checkpoints
-    checkpoint_callback = setup_checkpoint_callback(cfg, logger)
+    checkpoint_callback = setup_checkpoint_callback(cfg, logger, filepath=filepath)
 
-    # get string of checkpoint path (FOR NEW RUNS)
-    # pylint: disable=protected-access
-    if cfg.datasets.dataset._target_.split(".")[-1] == "FilteredMerfishDataset":
-
-        if cfg.model.name == "MonetAutoencoder2D":
-            checkpoint_path = (
-                f"{cfg.paths.output}/lightning_logs/"
-                f"checkpoints/{cfg.model.name}/{cfg.model.name}__"
-                f"{cfg.model.kwargs.observables_dimension}"
-                f"__{cfg.model.kwargs.hidden_dimensions}__"
-                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                f"__{cfg.datasets.dataset.sexes}__{cfg.datasets.dataset.behaviors}"
-                f"__{cfg.optimizer.params.lr}__{cfg.model.kwargs.kernel_size}"
-                f"__{cfg.training.logger_name}.ckpt"
-            )
-
-        else:
-            checkpoint_path = (
-                f"{cfg.paths.output}/lightning_logs/"
-                f"checkpoints/{cfg.model.name}/{cfg.model.name}__"
-                f"{cfg.model.kwargs.observables_dimension}"
-                f"__{cfg.model.kwargs.hidden_dimensions}__"
-                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                f"__{cfg.datasets.dataset.sexes}__{cfg.datasets.dataset.behaviors}"
-                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}.ckpt"
-            )
-
-    else:
-
-        if cfg.model.name == "MonetAutoencoder2D":
-            checkpoint_path = (
-                f"{cfg.paths.output}/lightning_logs/"
-                f"checkpoints/{cfg.model.name}/{cfg.model.name}__"
-                f"{cfg.model.kwargs.observables_dimension}"
-                f"__{cfg.model.kwargs.hidden_dimensions}__"
-                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}.ckpt"
-            )
-
-        else:
-            checkpoint_path = (
-                f"{cfg.paths.output}/lightning_logs/"
-                f"checkpoints/{cfg.model.name}/{cfg.model.name}__"
-                f"{cfg.model.kwargs.observables_dimension}"
-                f"__{cfg.model.kwargs.hidden_dimensions}__"
-                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}.ckpt"
-            )
-
-    # get string of checkpoint path (FOR OLD RUNS)
-    # checkpoint_path = (
-    #     f"{cfg.paths.output}/lightning_logs/"
-    #     f"checkpoints/{cfg.model.name}/{cfg.model.label}.ckpt"
-    # )
+    checkpoint_path = get_file_path(cfg, include_dir_path=True)
 
     # Load the best model.
     if cfg.model.name == "TrivialAutoencoder":
