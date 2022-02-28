@@ -1,6 +1,6 @@
 plotting: True
 n_epochs: 600
-logger_name: grid_search_filtered
+logger_name: neighbors_updated
 save_model_summary: False
 batch_size: 1
 early_stopping: True

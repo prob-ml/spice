@@ -169,8 +169,8 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
                 _, kneighbors = nbrs.kneighbors(locations_for_this_slice)
                 edges = np.concatenate(
                     [
-                        np.c_[kneighbors[:, 0], kneighbors[:, i + 1]]
-                        for i in range(n_neighbors)
+                        np.c_[kneighbors[:, 0], kneighbors[:, i]]
+                        for i in range(n_neighbors + 1)
                     ],
                     axis=0,
                 )
@@ -236,6 +236,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         # load hdf5
         with h5py.File(self.merfish_hdf5, "r") as h5f:
             # pylint: disable=no-member
+
             data = types.SimpleNamespace(
                 anids=h5f["Animal_ID"][:],
                 bregs=h5f["Bregma"][:],
@@ -245,26 +246,68 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
                 celltypes=h5f["Cell_class"][:].astype("U"),
             )
 
-        # get the (animal_id,bregma) pairs that define a unique slice
-        unique_slices = np.unique(np.c_[data.anids, data.bregs], axis=0)
+            num_graphs = int(np.ceil(n_neighbors / 3))
 
-        # are we looking at train or test sets?
-        unique_slices = unique_slices[:150] if train else unique_slices[150:]
+            print(num_graphs)
+
+            data_graphs = []
+
+            # for each new graph
+            for i in range(1, num_graphs + 1):
+
+                # subset 1/num_graphs of the data based on quantiles
+                graph_filter = np.where(
+                    (
+                        data.locations[:, 0]
+                        <= np.quantile(data.locations[:, 0], i / num_graphs)
+                    )
+                    & (
+                        data.locations[:, 0]
+                        >= np.quantile(data.locations[:, 0], (i - 1) / num_graphs)
+                    )
+                )[0]
+
+                data = types.SimpleNamespace(
+                    anids=h5f["Animal_ID"][graph_filter],
+                    bregs=h5f["Bregma"][graph_filter],
+                    expression=h5f["expression"][graph_filter, :],
+                    locations=np.c_[
+                        h5f["Centroid_X"][graph_filter], h5f["Centroid_Y"][graph_filter]
+                    ],
+                    behavior=h5f["Behavior"][graph_filter].astype("U"),
+                    celltypes=h5f["Cell_class"][graph_filter].astype("U"),
+                )
+
+                data_graphs.append(data)
+
+        # see if you can update data locations AFTER data was created
+        # create a deepcopy and then split the locations
 
         # store all the slices in this list...
         data_list = []
-        for anid, breg in unique_slices:
-            data_list.append(
-                self.construct_graph(
-                    data,
-                    anid,
-                    breg,
-                    n_neighbors,
-                    log_transform,
-                    neighbor_celltypes,
-                    radius,
+        print(len(data_graphs))
+        for data in data_graphs:
+
+            # get the (animal_id,bregma) pairs that define a unique slice
+            unique_slices = np.unique(np.c_[data.anids, data.bregs], axis=0)
+
+            # are we looking at train or test sets?
+            unique_slices = unique_slices[:150] if train else unique_slices[150:]
+
+            print(len(unique_slices))
+
+            for anid, breg in unique_slices:
+                data_list.append(
+                    self.construct_graph(
+                        data,
+                        anid,
+                        breg,
+                        n_neighbors,
+                        log_transform,
+                        neighbor_celltypes,
+                        radius,
+                    )
                 )
-            )
 
         return data_list
 

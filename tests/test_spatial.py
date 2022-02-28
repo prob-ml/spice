@@ -229,7 +229,6 @@ def test_monetae2d():
         "datasets": "MerfishDataset",
         "model": "MonetAutoencoder2D",
         "model.name": "MonetAutoencoder2D",
-        "model.label": "gitpush2",
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
@@ -240,6 +239,7 @@ def test_monetae2d():
 
     with initialize(config_path="../config"):
         cfg = compose(config_name="config", overrides=overrides_train_list)
+        print(cfg)
         trained_model = train.train(cfg, data=train_simulated_data)
 
     ###################
@@ -298,7 +298,6 @@ def test_trivial():
         "datasets": "MerfishDataset",
         "model": "TrivialAutoencoder",
         "model.name": "TrivialAutoencoder",
-        "model.label": "notebook",
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,

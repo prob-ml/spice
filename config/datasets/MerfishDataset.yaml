@@ -5,7 +5,7 @@ dataset:
   train: True
   log_transform: True
   neighbor_celltypes: False
-  radius: None
+  radius: ${radius}
   non_response_genes_file: "/home/roko/spatial/spatial/non_response.txt"
 
 predictor_genes: ${paths.root}/spatial/non_response.txt
