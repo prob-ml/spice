@@ -179,7 +179,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
                 tree = cKDTree(locations_for_this_slice)
                 kneighbors = tree.query_ball_point(
-                    locations_for_this_slice, r=32, return_sorted=False
+                    locations_for_this_slice, r=radius, return_sorted=False
                 )
                 edges = np.concatenate(
                     [
@@ -246,9 +246,9 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
                 celltypes=h5f["Cell_class"][:].astype("U"),
             )
 
-            num_graphs = int(np.ceil(n_neighbors / 3))
+            num_graphs = int(np.ceil(max(0, (n_neighbors - 3) // 2) + 1))
 
-            print(num_graphs)
+            # print(num_graphs)
 
             data_graphs = []
 
@@ -285,7 +285,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
         # store all the slices in this list...
         data_list = []
-        print(len(data_graphs))
+        # print(len(data_graphs))
         for data in data_graphs:
 
             # get the (animal_id,bregma) pairs that define a unique slice
@@ -294,7 +294,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             # are we looking at train or test sets?
             unique_slices = unique_slices[:150] if train else unique_slices[150:]
 
-            print(len(unique_slices))
+            # print(len(unique_slices))
 
             for anid, breg in unique_slices:
                 data_list.append(
@@ -351,6 +351,7 @@ class FilteredMerfishDataset(MerfishDataset):
             log_transform=log_transform,
             neighbor_celltypes=neighbor_celltypes,
             non_response_genes_file=non_response_genes_file,
+            radius=radius,
         )
         # print("Filtered hdf5 file created!")
 

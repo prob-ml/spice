@@ -13,13 +13,10 @@ from spatial.models.monet_ae import (
 from spatial.train import (
     setup_checkpoint_callback,
     setup_logger,
-    get_file_path,
 )
 
 # pylint: disable=too-many-branches
 def test(cfg: DictConfig, data=None):
-
-    filepath = get_file_path(cfg)
 
     # Set up testing data.
     if data is None:
@@ -35,12 +32,18 @@ def test(cfg: DictConfig, data=None):
 
     # FOR NOW I NEED THIS TO KEEP TABS ON TESTING LOSS
     # setup logger
-    logger = setup_logger(cfg, filepath=filepath)
+    logger = setup_logger(cfg, filepath=cfg.training.filepath)
 
     # setup checkpoints
-    checkpoint_callback = setup_checkpoint_callback(cfg, logger, filepath=filepath)
+    checkpoint_callback = setup_checkpoint_callback(
+        cfg, logger, filepath=cfg.training.filepath
+    )
 
-    checkpoint_path = get_file_path(cfg, include_dir_path=True)
+    checkpoint_path = (
+        f"output/lightning_logs/checkpoints/{cfg.model.name}/"
+        + cfg.training.filepath
+        + ".ckpt"
+    )
 
     # Load the best model.
     if cfg.model.name == "TrivialAutoencoder":

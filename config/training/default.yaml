@@ -5,6 +5,7 @@ save_model_summary: False
 batch_size: 1
 early_stopping: True
 log_transform: True
+seed: False
 trainer:
   profiler: simple
   logger: True
@@ -18,4 +19,5 @@ trainer:
   limit_val_batches: 1.0
   check_val_every_n_epoch: 10
 #  strategy: dp
-  log_every_n_steps: 50
+  log_every_n_steps: 10
+filepath: ${model.name}__${model.kwargs.observables_dimension}__${model.kwargs.hidden_dimensions}__${model.kwargs.latent_dimension}__${radius}__${optimizer.params.lr}__${training.logger_name}__${training.seed}

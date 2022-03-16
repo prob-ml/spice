@@ -2,30 +2,43 @@
 from copy import deepcopy
 import pytorch_lightning as pl
 import torch
+from torch_geometric.utils import degree
 
 from spatial.models import base_networks
 
 # from torch._C import device
 
 
-def calc_pseudo(edge_index, pos):
+def calc_pseudo(edge_index, pos, mode="polar"):
     """
     Calculate pseudo
 
     Input:
       - edge_index, an (N_edges x 2) long tensor indicating edges of a graph
       - pos, an (N_vertices x 2) float tensor indicating coordinates of nodes
+      - mode, "polar" or "degree" mode for pseudo-coordinate generation
 
     Output:
       - pseudo, an (N_edges x 2) float tensor indicating edge-values
         (to be used in graph-convnet)
     """
-    coord1 = pos[edge_index[0]]
-    coord2 = pos[edge_index[1]]
-    edge_dir = coord2 - coord1
-    rho = torch.sqrt(edge_dir[:, 0] ** 2 + edge_dir[:, 1] ** 2).unsqueeze(-1)
-    theta = torch.atan2(edge_dir[:, 1], edge_dir[:, 0]).unsqueeze(-1)
-    return torch.cat((rho, theta), dim=1)
+
+    if mode == "polar":
+        coord1 = pos[edge_index[0]]
+        coord2 = pos[edge_index[1]]
+        edge_dir = coord2 - coord1
+        rho = torch.sqrt(edge_dir[:, 0] ** 2 + edge_dir[:, 1] ** 2).unsqueeze(-1)
+        # theta = torch.atan2(edge_dir[:, 1], edge_dir[:, 0]).unsqueeze(-1)
+        return rho  # torch.cat((rho), dim=1)
+
+    elif mode == "degree":
+        degrees = degree(edge_index[0])
+        coord1 = (1 / torch.sqrt(degrees[edge_index[0]])).unsqueeze(-1)
+        coord2 = (1 / torch.sqrt(degrees[edge_index[1]])).unsqueeze(-1)
+        return torch.cat((coord1, coord2), dim=1)
+
+    else:
+        raise ValueError("Mode improperly or not specified.")
 
 
 class BasicAEMixin(pl.LightningModule):
