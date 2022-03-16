@@ -1,4 +1,5 @@
 import os
+import torch
 
 from hydra.utils import instantiate
 
@@ -89,76 +90,20 @@ def setup_early_stopping(cfg, callbacks):
     return callbacks
 
 
-def get_file_path(cfg, include_dir_path=False):
-
-    if cfg.datasets == "FilteredMerfishDataset":
-
-        if cfg.model.name == "MonetAutoencoder2D":
-            filepath = (
-                f"{cfg.model.name}__"
-                f"{cfg.model.kwargs.observables_dimension}"
-                f"__{cfg.model.kwargs.hidden_dimensions}__"
-                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                f"__{cfg.datasets.dataset.sexes}__{cfg.datasets.dataset.behaviors}"
-                f"__{cfg.optimizer.params.lr}__{cfg.model.kwargs.kernel_size}"
-                f"__{cfg.training.logger_name}"
-            )
-
-        else:
-            filepath = (
-                f"{cfg.model.name}__"
-                f"{cfg.model.kwargs.observables_dimension}"
-                f"__{cfg.model.kwargs.hidden_dimensions}__"
-                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                f"__{cfg.datasets.dataset.sexes}__{cfg.datasets.dataset.behaviors}"
-                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}"
-            )
-
-    else:
-
-        if cfg.model.name == "MonetAutoencoder2D":
-            filepath = (
-                f"{cfg.model.name}__"
-                f"{cfg.model.kwargs.observables_dimension}"
-                f"__{cfg.model.kwargs.hidden_dimensions}__"
-                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}"
-            )
-
-        else:
-            filepath = (
-                f"{cfg.model.name}/{cfg.model.name}__"
-                f"{cfg.model.kwargs.observables_dimension}"
-                f"__{cfg.model.kwargs.hidden_dimensions}__"
-                f"{cfg.model.kwargs.latent_dimension}__{cfg.n_neighbors}"
-                f"__{cfg.optimizer.params.lr}__{cfg.training.logger_name}"
-            )
-
-    if include_dir_path:
-
-        return (
-            f"{cfg.paths.output}/lightning_logs/"
-            f"checkpoints/{cfg.model.name}/" + filepath + ".ckpt"
-        )
-
-    return filepath
-
-
-# def setup_profiler(cfg):
-#     profiler = None
-#     if cfg.training.trainer.profiler:
-#         profiler = AdvancedProfiler(filename="profile.txt")
-#     return profiler
-
-
 def train(cfg: DictConfig, data=None):
+
+    # if this is a non-zero int, the run will have a seed
+    if cfg.training.seed:
+        pl.seed_everything(cfg.training.seed)
 
     # setup training data
     if data is None:
         data = instantiate(cfg.datasets.dataset)
     n_data = len(data)
     train_n = round(n_data * 11 / 12)
-    train_data, val_data = random_split(data, [train_n, n_data - train_n])
+    train_data, val_data = random_split(
+        data, [train_n, n_data - train_n], torch.Generator().manual_seed(42)
+    )
 
     train_loader = DataLoader(
         train_data, batch_size=cfg.training.batch_size, num_workers=2
@@ -173,14 +118,11 @@ def train(cfg: DictConfig, data=None):
     if data.responses is not None:
         OmegaConf.update(cfg, "model.kwargs.responses", data.responses)
 
-    # generate filepath where runs and logs will be saved
-    filepath = get_file_path(cfg)
-
     # setup logger
-    logger = setup_logger(cfg, filepath=filepath)
+    logger = setup_logger(cfg, filepath=cfg.training.filepath)
 
     # setup checkpoints
-    callbacks = setup_checkpoint_callback(cfg, logger, filepath=filepath)
+    callbacks = setup_checkpoint_callback(cfg, logger, filepath=cfg.training.filepath)
 
     callbacks = setup_early_stopping(cfg, callbacks)
 
