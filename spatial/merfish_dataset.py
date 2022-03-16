@@ -161,7 +161,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
         else:
 
-            if radius == "None":
+            if radius is None:
                 nbrs = neighbors.NearestNeighbors(
                     n_neighbors=n_neighbors + 1, algorithm="ball_tree"
                 )

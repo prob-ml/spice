@@ -20,10 +20,4 @@ trainer:
   check_val_every_n_epoch: 10
 #  strategy: dp
   log_every_n_steps: 10
-filepath: ${model.name}__
-          ${model.kwargs.observables_dimension}
-          ${model.kwargs.hidden_dimensions}
-          ${model.kwargs.latent_dimension}__${radius}
-          __${datasets.dataset.sexes}__${datasets.dataset.behaviors}
-          __${optimizer.params.lr}__${model.kwargs.kernel_size}
-          __${training.logger_name}__${training.seed}
+filepath: ${model.name}__${model.kwargs.observables_dimension}__${model.kwargs.hidden_dimensions}__${model.kwargs.latent_dimension}__${radius}__${optimizer.params.lr}__${training.logger_name}__${training.seed}
