@@ -16,6 +16,7 @@ class SimulatedData(torch_geometric.data.InMemoryDataset):
         self.features = [0]
         self.responses = [1]
         self.data, self.slices = self.collate(data_list)
+        self.celltype_lookup = None
 
 
 def simulate_data(n_samples):
