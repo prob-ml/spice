@@ -226,7 +226,7 @@ def test_monetae2d():
     # fitmodel with updated hydra config
 
     overrides_train = {
-        "gpus": 1,
+        "gpus": 0,
         "datasets": "MerfishDataset",
         "model": "MonetAutoencoder2D",
         "model.name": "MonetAutoencoder2D",
@@ -295,7 +295,7 @@ def test_trivial():
     # fitmodel with updated hydra config
 
     overrides_train = {
-        "gpus": 1,
+        "gpus": 0,
         "datasets": "MerfishDataset",
         "model": "TrivialAutoencoder",
         "model.name": "TrivialAutoencoder",
