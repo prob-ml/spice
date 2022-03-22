@@ -101,18 +101,20 @@ class BasicAEMixin(pl.LightningModule):
         masked_indeces = torch.rand((n_cells, 1)) < self.mask_cells_prop
         new_batch_obj = deepcopy(batch)
         masked_indeces = masked_indeces.type_as(new_batch_obj.x)
-        new_batch_obj.x[:, torch.tensor(self.responses)] *= 1.0 - masked_indeces
+        new_batch_obj.x *= 1.0 - masked_indeces
         return new_batch_obj
 
     def mask_genes(self, batch):
-        n_genes = batch.x.shape[1]
-        masked_indeces = torch.rand((1, n_genes)) < self.mask_genes_prop
-        new_batch_obj = batch.x * masked_indeces
+        n_cells = batch.x.shape[0]
+        masked_indeces = torch.rand((n_cells, 1)) < self.mask_genes_prop
+        new_batch_obj = deepcopy(batch)
+        masked_indeces = masked_indeces.type_as(new_batch_obj.x)
+        new_batch_obj.x[:, torch.tensor(self.responses)] *= 1.0 - masked_indeces
         return new_batch_obj
 
     def training_step(self, batch, batch_idx):
-        if self.mask_cells_prop > 0:
-            _, reconstruction = self(self.mask_cells(batch))
+        if self.mask_genes_prop > 0:
+            _, reconstruction = self(self.mask_genes(batch))
         else:
             _, reconstruction = self(batch)
         # print(f"This training batch has {batch.x.shape[0]} cells.")
@@ -120,8 +122,8 @@ class BasicAEMixin(pl.LightningModule):
             reconstruction,
             batch.x,
             self.loss_type,
-            celltype_data=batch.y[:, 1],
-            celltype="Excitatory",
+            # celltype_data=batch.y[:, 1],
+            # celltype="Excitatory",
         )
         self.log("train_loss: " + self.loss_type, loss, prog_bar=True)
         for additional_loss in self.other_logged_losses:
@@ -134,16 +136,16 @@ class BasicAEMixin(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        if self.mask_cells_prop > 0:
-            _, reconstruction = self(self.mask_cells(batch))
+        if self.mask_genes_prop > 0:
+            _, reconstruction = self(self.mask_genes(batch))
         else:
             _, reconstruction = self(batch)
         loss = self.calc_loss(
             reconstruction,
             batch.x,
             self.loss_type,
-            celltype_data=batch.y[:, 1],
-            celltype="Excitatory",
+            # celltype_data=batch.y[:, 1],
+            # celltype="Excitatory",
         )
         self.log("val_loss", loss, prog_bar=True)
         for additional_loss in self.other_logged_losses:
@@ -159,16 +161,16 @@ class BasicAEMixin(pl.LightningModule):
     celltypes = torch.tensor([])
 
     def test_step(self, batch, batch_idx):
-        if self.mask_cells_prop > 0:
-            _, reconstruction = self(self.mask_cells(batch))
+        if self.mask_genes_prop > 0:
+            _, reconstruction = self(self.mask_genes(batch))
         else:
             _, reconstruction = self(batch)
         loss = self.calc_loss(
             reconstruction,
             batch.x,
             self.loss_type,
-            celltype_data=batch.y[:, 1],
-            celltype="Excitatory",
+            # celltype_data=batch.y[:, 1],
+            # celltype="Excitatory",
         )
         for additional_loss in self.other_logged_losses:
             self.log(
