@@ -48,7 +48,7 @@ def simulate_data(n_samples):
         expr = np.zeros((n_nodes, data_dimension))
         for i in range(expr.shape[0]):
             for j in range(expr.shape[1]):
-                expr[i, j] = 2.2 * npr.randn() + i + j
+                expr[i, j] = abs(2.2 * npr.randn()) + i + j
 
         # random celltypes and behaviors
         behaviors = npr.randint(0, 5, n_nodes)
