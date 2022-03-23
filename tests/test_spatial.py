@@ -25,8 +25,8 @@ def simulate_data(n_samples):
     data_dimension = 2
 
     # set random seed
-    npr.seed(10)
-    torch.manual_seed(10)
+    npr.seed(4)
+    torch.manual_seed(4)
 
     # generate random graphs
     for _ in range(n_samples):
@@ -233,7 +233,7 @@ def test_monetae2d():
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
-        "training.n_epochs": 50,
+        "training.n_epochs": 40,
         "training.trainer.log_every_n_steps": 2,
     }
     overrides_train_list = [f"{k}={v}" for k, v in overrides_train.items()]
@@ -302,7 +302,7 @@ def test_trivial():
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
-        "training.n_epochs": 50,
+        "training.n_epochs": 40,
         "training.trainer.log_every_n_steps": 2,
     }
     overrides_train_list = [f"{k}={v}" for k, v in overrides_train.items()]
