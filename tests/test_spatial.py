@@ -233,7 +233,7 @@ def test_monetae2d():
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
-        "training.n_epochs": 20,
+        "training.n_epochs": 50,
         "training.trainer.log_every_n_steps": 2,
     }
     overrides_train_list = [f"{k}={v}" for k, v in overrides_train.items()]
@@ -302,7 +302,7 @@ def test_trivial():
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
-        "training.n_epochs": 20,
+        "training.n_epochs": 50,
         "training.trainer.log_every_n_steps": 2,
     }
     overrides_train_list = [f"{k}={v}" for k, v in overrides_train.items()]
