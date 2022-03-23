@@ -52,7 +52,7 @@ jobs:
 
     - name: Run Tests
       run: |
-        poetry run pytest --cov=./spatial --cov-report=xml --durations=0
+        poetry run pytest -v -s --cov=./spatial --cov-report=xml --durations=0
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
