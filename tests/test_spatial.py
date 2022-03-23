@@ -25,8 +25,11 @@ def simulate_data(n_samples):
     data_dimension = 2
 
     # set random seed
-    npr.seed(4)
-    torch.manual_seed(4)
+    from numpy.random import MT19937
+    from numpy.random import RandomState, SeedSequence
+
+    _ = RandomState(MT19937(SeedSequence(123456789)))
+    torch.manual_seed(0)
 
     # generate random graphs
     for _ in range(n_samples):
