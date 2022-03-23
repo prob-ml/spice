@@ -56,7 +56,7 @@ class BasicAEMixin(pl.LightningModule):
     saved_original_input = 0
     hopefully_masked_input = 0
 
-    def calc_loss(self, pred, val, losstype):
+    def calc_loss(self, pred, val, losstype, celltype_data=None, celltype=None):
         # standard losses
         if losstype == "mse_against_log1pdata":
             return torch.mean((pred - torch.log(1 + val)) ** 2)
@@ -81,6 +81,18 @@ class BasicAEMixin(pl.LightningModule):
                 )
                 ** 2
             )
+        elif losstype == "mae_response_celltype":
+            return torch.mean(
+                torch.abs(
+                    pred[:, torch.tensor(self.responses)]
+                    - val[:, torch.tensor(self.responses)]
+                )[
+                    (celltype_data == self.celltype_lookup[celltype]).nonzero(
+                        as_tuple=True
+                    )[0]
+                ]
+            )
+
         else:
             raise NotImplementedError
 
@@ -89,22 +101,30 @@ class BasicAEMixin(pl.LightningModule):
         masked_indeces = torch.rand((n_cells, 1)) < self.mask_cells_prop
         new_batch_obj = deepcopy(batch)
         masked_indeces = masked_indeces.type_as(new_batch_obj.x)
-        new_batch_obj.x[:, torch.tensor(self.responses)] *= 1.0 - masked_indeces
+        new_batch_obj.x *= 1.0 - masked_indeces
         return new_batch_obj
 
     def mask_genes(self, batch):
-        n_genes = batch.x.shape[1]
-        masked_indeces = torch.rand((1, n_genes)) < self.mask_genes_prop
-        new_batch_obj = batch.x * masked_indeces
+        n_cells = batch.x.shape[0]
+        masked_indeces = torch.rand((n_cells, 1)) < self.mask_genes_prop
+        new_batch_obj = deepcopy(batch)
+        masked_indeces = masked_indeces.type_as(new_batch_obj.x)
+        new_batch_obj.x[:, torch.tensor(self.responses)] *= 1.0 - masked_indeces
         return new_batch_obj
 
     def training_step(self, batch, batch_idx):
-        if self.mask_cells_prop > 0:
-            _, reconstruction = self(self.mask_cells(batch))
+        if self.mask_genes_prop > 0:
+            _, reconstruction = self(self.mask_genes(batch))
         else:
             _, reconstruction = self(batch)
         # print(f"This training batch has {batch.x.shape[0]} cells.")
-        loss = self.calc_loss(reconstruction, batch.x, self.loss_type)
+        loss = self.calc_loss(
+            reconstruction,
+            batch.x,
+            self.loss_type,
+            # celltype_data=batch.y[:, 1],
+            # celltype="Excitatory",
+        )
         self.log("train_loss: " + self.loss_type, loss, prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
@@ -116,11 +136,17 @@ class BasicAEMixin(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        if self.mask_cells_prop > 0:
-            _, reconstruction = self(self.mask_cells(batch))
+        if self.mask_genes_prop > 0:
+            _, reconstruction = self(self.mask_genes(batch))
         else:
             _, reconstruction = self(batch)
-        loss = self.calc_loss(reconstruction, batch.x, self.loss_type)
+        loss = self.calc_loss(
+            reconstruction,
+            batch.x,
+            self.loss_type,
+            # celltype_data=batch.y[:, 1],
+            # celltype="Excitatory",
+        )
         self.log("val_loss", loss, prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
@@ -135,11 +161,17 @@ class BasicAEMixin(pl.LightningModule):
     celltypes = torch.tensor([])
 
     def test_step(self, batch, batch_idx):
-        if self.mask_cells_prop > 0:
-            _, reconstruction = self(self.mask_cells(batch))
+        if self.mask_genes_prop > 0:
+            _, reconstruction = self(self.mask_genes(batch))
         else:
             _, reconstruction = self(batch)
-        loss = self.calc_loss(reconstruction, batch.x, self.loss_type)
+        loss = self.calc_loss(
+            reconstruction,
+            batch.x,
+            self.loss_type,
+            # celltype_data=batch.y[:, 1],
+            # celltype="Excitatory",
+        )
         for additional_loss in self.other_logged_losses:
             self.log(
                 "test_loss: " + additional_loss,
@@ -276,6 +308,7 @@ class TrivialAutoencoder(BasicAEMixin):
         mask_cells_prop,
         mask_genes_prop,
         responses,
+        celltype_lookup,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -291,6 +324,7 @@ class TrivialAutoencoder(BasicAEMixin):
         # needed so that during testing a different set
         # of responses other than MERFISH is useable.
         self.responses = responses
+        self.celltype_lookup = celltype_lookup
 
         self.encoder_network = base_networks.construct_dense_relu_network(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
@@ -324,6 +358,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         mask_cells_prop,
         mask_genes_prop,
         responses,
+        celltype_lookup,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -338,6 +373,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         # needed so that during testing a different set
         # of responses other than MERFISH is useable.
         self.responses = responses
+        self.celltype_lookup = celltype_lookup
 
         self.encoder_network = base_networks.DenseReluGMMConvNetwork(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],

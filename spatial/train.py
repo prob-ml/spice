@@ -118,6 +118,10 @@ def train(cfg: DictConfig, data=None):
     if data.responses is not None:
         OmegaConf.update(cfg, "model.kwargs.responses", data.responses)
 
+    # get celltype lookup so we can filter by celltype in loss function
+    # if data.celltype_lookup is not None:
+    #     OmegaConf.update(cfg, "model.kwargs.celltype_lookup", data.celltype_lookup)
+
     # setup logger
     logger = setup_logger(cfg, filepath=cfg.training.filepath)
 
