@@ -25,8 +25,8 @@ def simulate_data(n_samples):
     data_dimension = 2
 
     # set random seed
-    npr.seed(4)
-    torch.manual_seed(4)
+    npr.seed(10)
+    torch.manual_seed(10)
 
     # generate random graphs
     for _ in range(n_samples):
