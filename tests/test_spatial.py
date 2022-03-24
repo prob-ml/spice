@@ -25,8 +25,8 @@ def simulate_data(n_samples):
     data_dimension = 2
 
     # set random seed
-    npr.seed(14)
-    torch.manual_seed(14)
+    npr.seed(0)
+    torch.manual_seed(0)
 
     # generate random graphs
     for _ in range(n_samples):
@@ -45,7 +45,7 @@ def simulate_data(n_samples):
         expr = np.zeros((n_nodes, data_dimension))
         for i in range(expr.shape[0]):
             for j in range(expr.shape[1]):
-                expr[i, j] = np.abs(2.2 * npr.randn()) + i + j
+                expr[i, j] = 1.2 * npr.randn() + 5 * (i + j)
 
         # random celltypes and behaviors
         behaviors = npr.randint(0, 5, n_nodes)
@@ -211,7 +211,7 @@ def test_filtered_merfish_dataset():
     mfd.get(0)
 
 
-def test_monetae2d():
+def test_monetae2d(num_epochs=10):
     from spatial import predict, train
 
     ###################
@@ -233,8 +233,8 @@ def test_monetae2d():
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
-        "model.kwargs.dropout": 0.05,
-        "training.n_epochs": 10,
+        "model.kwargs.dropout": 0.5,
+        "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
     }
     overrides_train_list = [f"{k}={v}" for k, v in overrides_train.items()]
@@ -283,7 +283,7 @@ def test_monetae2d():
     return train_loss, test_loss
 
 
-def test_trivial():
+def test_trivial(num_epochs=10):
     from spatial import predict, train
 
     ###################
@@ -303,8 +303,8 @@ def test_trivial():
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
-        "model.kwargs.dropout": 0.05,
-        "training.n_epochs": 10,
+        "model.kwargs.dropout": 0.5,
+        "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
     }
     overrides_train_list = [f"{k}={v}" for k, v in overrides_train.items()]
@@ -353,11 +353,11 @@ def test_trivial():
 
 
 def test_accuracy():
-    monet_train_loss, monet_test_loss = test_monetae2d()
-    trivial_train_loss, trivial_test_loss = test_trivial()
+    monet_train_loss, monet_test_loss = test_monetae2d(75)
+    trivial_train_loss, trivial_test_loss = test_trivial(75)
     # removing train loss for now, since it
     # seems that trivial is just overfitting more
-    # assert monet_train_loss < 0.98 * trivial_train_loss
+    # assert monet_train_loss < trivial_train_loss
     print(monet_train_loss, trivial_train_loss)
     print(monet_test_loss, trivial_test_loss)
     # assert monet_test_loss < trivial_test_loss
