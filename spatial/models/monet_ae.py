@@ -309,6 +309,9 @@ class TrivialAutoencoder(BasicAEMixin):
         mask_genes_prop,
         responses,
         celltype_lookup,
+        batchnorm,
+        final_relu,
+        dropout,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -325,15 +328,21 @@ class TrivialAutoencoder(BasicAEMixin):
         # of responses other than MERFISH is useable.
         self.responses = responses
         self.celltype_lookup = celltype_lookup
+        self.batchnorm = batchnorm
+        self.final_relu = final_relu
+        self.dropout = dropout
 
         self.encoder_network = base_networks.construct_dense_relu_network(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
+            use_batchnorm=self.batchnorm,
+            dropout=self.dropout,
         )
-
         self.decoder_network = base_networks.construct_dense_relu_network(
             [latent_dimension]
             + list(reversed(hidden_dimensions))
             + [observables_dimension],
+            use_batchnorm=self.batchnorm,
+            dropout=self.dropout,
         )
 
     def forward(self, batch):
@@ -359,6 +368,9 @@ class MonetAutoencoder2D(BasicAEMixin):
         mask_genes_prop,
         responses,
         celltype_lookup,
+        batchnorm,
+        final_relu,
+        dropout,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -374,9 +386,14 @@ class MonetAutoencoder2D(BasicAEMixin):
         # of responses other than MERFISH is useable.
         self.responses = responses
         self.celltype_lookup = celltype_lookup
+        self.batchnorm = batchnorm
+        self.final_relu = final_relu
+        self.dropout = dropout
 
         self.encoder_network = base_networks.DenseReluGMMConvNetwork(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
+            use_batchnorm=self.batchnorm,
+            dropout=self.dropout,
             dim=dim,
             kernel_size=kernel_size,
         )
@@ -384,6 +401,8 @@ class MonetAutoencoder2D(BasicAEMixin):
             [latent_dimension]
             + list(reversed(hidden_dimensions))
             + [observables_dimension],
+            use_batchnorm=self.batchnorm,
+            dropout=self.dropout,
             dim=dim,
             kernel_size=kernel_size,
         )

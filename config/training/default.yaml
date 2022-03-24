@@ -3,6 +3,7 @@ n_epochs: 600
 logger_name: neighbors_updated
 save_model_summary: False
 batch_size: 1
+dropout: True
 early_stopping: True
 log_transform: True
 seed: False

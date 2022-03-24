@@ -3,9 +3,13 @@ import torch_geometric
 from torch.nn import functional as fcl
 
 
-def construct_dense_relu_network(sizes, use_batchnorm=True, final_relu=False):
+def construct_dense_relu_network(
+    sizes, use_batchnorm=True, final_relu=False, dropout=0
+):
     lst = []
     for i in range(len(sizes) - 1):
+        if dropout:
+            lst.append(torch.nn.Dropout(dropout))
         lst.append(torch.nn.Linear(sizes[i], sizes[i + 1]))
         if use_batchnorm:
             lst.append(torch.nn.BatchNorm1d(sizes[i + 1]))
@@ -17,10 +21,13 @@ def construct_dense_relu_network(sizes, use_batchnorm=True, final_relu=False):
 
 
 class DenseReluGMMConvNetwork(torch.nn.Module):
-    def __init__(self, sizes, use_batchnorm=True, final_relu=False, **gmmargs):
+    def __init__(
+        self, sizes, use_batchnorm=True, final_relu=False, dropout=0, **gmmargs
+    ):
         super().__init__()
         self.use_batchnorm = use_batchnorm
         self.final_relu = final_relu
+        self.dropout = dropout
 
         # construct a bunch of gmms
         lst = []
@@ -43,6 +50,9 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
 
     def forward(self, vals, edges, pseudo):
         for i, (dense, gmmlayer) in enumerate(zip(self.linears, self.gmms)):
+            if self.dropout:
+                dropout_layer = torch.nn.Dropout(self.dropout)
+                vals = dropout_layer(vals)
             vals = gmmlayer(vals, edges, pseudo) + dense(vals)
 
             # do batchnorm
