@@ -2,7 +2,7 @@ defaults:
   - _self_
   - optimizer: sgd
   - datasets: FilteredMerfishDataset
-  - model: MonetAutoencoder2D
+  - model: TrivialAutoencoder
   - training: default
   - predict: default
 

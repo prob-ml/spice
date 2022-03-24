@@ -12,3 +12,6 @@ kwargs:
   mask_genes_prop: 1.0
   responses: 0 # this gets updated in train
   celltype_lookup: 0 # this gets updated in train
+  batchnorm: True
+  final_relu: False
+  dropout: 0.05
