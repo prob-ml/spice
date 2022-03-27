@@ -36,6 +36,8 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
         # response genes (columns in MERFISH)
         self.responses = list(set(range(155)) - set(self.features))
+        # REMOVE LATER (responses are specific genes)
+        self.responses = [93]
 
         data_list = self.construct_graphs(
             n_neighbors, train, log_transform, neighbor_celltypes, radius
@@ -323,14 +325,20 @@ class FilteredMerfishDataset(MerfishDataset):
         radius=None,
         non_response_genes_file="/home/roko/spatial/spatial/"
         "non_response_blank_removed.txt",
+        animals=None,
+        bregmas=None,
         sexes=None,
         behaviors=None,
         test_animal=None,
+        full_animal_holdout=False,
     ):
         self.root = root
+        self.animals = animals
+        self.bregmas = bregmas
         self.sexes = sexes
         self.behaviors = behaviors
         self.test_animal = test_animal
+        self.full_animal_holdout = full_animal_holdout
         original_csv_file = super().merfish_csv
         new_df = pd.read_csv(original_csv_file)
         # print(f"Original Data {new_df.shape}")
@@ -338,10 +346,14 @@ class FilteredMerfishDataset(MerfishDataset):
             new_df = new_df[new_df["Animal_sex"].isin(self.sexes)]
         if self.behaviors is not None:
             new_df = new_df[new_df["Behavior"].isin(self.behaviors)]
+        if self.animals is not None:
+            new_df = new_df[new_df["Animal_ID"].isin(self.animals)]
+        if self.bregmas is not None:
+            new_df = new_df[new_df["Bregma"].isin(self.bregmas)]
         if new_df.shape[0] == 0:
             raise ValueError("Dataframe has no rows. Cannot build graph.")
         new_df.to_csv(str(self.root) + "/raw/merfish_messi.csv", index=False)
-        # print(f"Filtered Data {new_df.shape}")
+        print(f"Filtered Data {new_df.shape}")
         # print("Filtered csv file created!")
         MerfishDataset.download(self)
         super().__init__(
@@ -469,10 +481,25 @@ class FilteredMerfishDataset(MerfishDataset):
                 if not train
                 else unique_slices[mask_train]
             )
-        else:
+
+        elif self.full_animal_holdout and (
+            len(self.animals) > 1 or np.unique(unique_slices[:, 0]) > 1
+        ):
+            print(f"BEFORE: {unique_slices}")
             min_animal = anid_to_bregma_count[np.min(data.anids)]
             unique_slices = (
                 unique_slices[min_animal:] if train else unique_slices[:min_animal]
+            )
+            print(f"AFTER: {unique_slices}")
+
+        else:
+            num_slices = len(unique_slices)
+            print(num_slices)
+            min_holdout = max(1, round((1 / 7) * num_slices))
+            unique_slices = (
+                unique_slices[: (num_slices - min_holdout)]
+                if train
+                else unique_slices[(num_slices - min_holdout) :]
             )
 
         # store all the slices in this list...
