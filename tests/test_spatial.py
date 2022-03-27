@@ -77,7 +77,7 @@ def test_merfish_dataset():
     )
     mfd.get(0)
 
-    # make sure that the response genes are correct
+    # make sure that the data dimensions is correct
     assert mfd[0].x.shape[1] == 155
 
     merfish_df = pd.read_csv(mfd.merfish_csv)
