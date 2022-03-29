@@ -312,6 +312,7 @@ class TrivialAutoencoder(BasicAEMixin):
         batchnorm,
         final_relu,
         dropout,
+        input_dropout_only,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -331,11 +332,13 @@ class TrivialAutoencoder(BasicAEMixin):
         self.batchnorm = batchnorm
         self.final_relu = final_relu
         self.dropout = dropout
+        self.input_dropout_only = input_dropout_only
 
         self.encoder_network = base_networks.construct_dense_relu_network(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
             use_batchnorm=self.batchnorm,
             dropout=self.dropout,
+            input_dropout_only=self.input_dropout_only,
         )
         self.decoder_network = base_networks.construct_dense_relu_network(
             [latent_dimension]
@@ -343,6 +346,7 @@ class TrivialAutoencoder(BasicAEMixin):
             + [observables_dimension],
             use_batchnorm=self.batchnorm,
             dropout=self.dropout,
+            input_dropout_only=self.input_dropout_only,
         )
 
     def forward(self, batch):
@@ -371,6 +375,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         batchnorm,
         final_relu,
         dropout,
+        input_dropout_only,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -389,11 +394,13 @@ class MonetAutoencoder2D(BasicAEMixin):
         self.batchnorm = batchnorm
         self.final_relu = final_relu
         self.dropout = dropout
+        self.input_dropout_only = input_dropout_only
 
         self.encoder_network = base_networks.DenseReluGMMConvNetwork(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
             use_batchnorm=self.batchnorm,
             dropout=self.dropout,
+            input_dropout_only=self.input_dropout_only,
             dim=dim,
             kernel_size=kernel_size,
         )
@@ -403,6 +410,7 @@ class MonetAutoencoder2D(BasicAEMixin):
             + [observables_dimension],
             use_batchnorm=self.batchnorm,
             dropout=self.dropout,
+            input_dropout_only=self.input_dropout_only,
             dim=dim,
             kernel_size=kernel_size,
         )
