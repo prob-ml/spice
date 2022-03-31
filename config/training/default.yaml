@@ -1,6 +1,6 @@
 plotting: True
 n_epochs: 600
-logger_name: specific_response
+logger_name: maskcells0.05
 save_model_summary: False
 batch_size: 1
 dropout: True

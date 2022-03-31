@@ -115,7 +115,7 @@ def train(cfg: DictConfig, data=None):
         raise AssertionError("Data dimension not in line with observables dimension.")
 
     # get response indeces so they can be passed into the model
-    if data.responses is not None:
+    if cfg.model.kwargs.responses is None:
         OmegaConf.update(cfg, "model.kwargs.responses", data.responses)
 
     # get celltype lookup so we can filter by celltype in loss function
