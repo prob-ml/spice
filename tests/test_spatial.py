@@ -212,6 +212,67 @@ def test_filtered_merfish_dataset():
     mfd.get(0)
 
 
+def test_masking():
+    from spatial.models.monet_ae import BasicAEMixin
+
+    sample_model = BasicAEMixin()
+    sample_model.x = torch.rand(100, 100)  # get random gene expression matrix
+    sample_model.responses = range(5)  # treat first 5 genes as response genes
+
+    sample_model.mask_genes_prop = 1
+    sample_model.mask_cells_prop = 1
+
+    print(sample_model.mask_at_random(sample_model, responses=True).x)
+
+    assert sum(
+        torch.sum(sample_model.mask_at_random(sample_model, responses=True).x, axis=0)
+        == 0
+    ) == len(sample_model.responses)
+    assert torch.sum(sample_model.mask_at_random(sample_model, responses=False).x) == 0
+    assert sum(
+        torch.sum(sample_model.mask_genes(sample_model, responses=True).x, axis=0) == 0
+    ) == len(sample_model.responses)
+    assert torch.sum(sample_model.mask_genes(sample_model, responses=False).x) == 0
+    assert torch.sum(sample_model.mask_cells(sample_model).x) == 0
+    assert torch.sum(sample_model.mask_cells(sample_model).x) == 0
+
+    sample_model.mask_genes_prop = 0
+    sample_model.mask_cells_prop = 0
+
+    assert torch.sum(
+        sample_model.mask_at_random(sample_model, responses=True).x
+    ) == torch.sum(sample_model.x)
+    assert torch.sum(
+        sample_model.mask_at_random(sample_model, responses=False).x
+    ) == torch.sum(sample_model.x)
+    assert torch.sum(
+        sample_model.mask_genes(sample_model, responses=True).x
+    ) == torch.sum(sample_model.x)
+    assert torch.sum(
+        sample_model.mask_genes(sample_model, responses=False).x
+    ) == torch.sum(sample_model.x)
+    assert torch.sum(sample_model.mask_cells(sample_model).x) == torch.sum(
+        sample_model.x
+    )
+    assert torch.sum(sample_model.mask_cells(sample_model).x) == torch.sum(
+        sample_model.x
+    )
+
+    sample_model.mask_genes_prop = 0.75
+    sample_model.mask_cells_prop = 0.75
+
+    # ensure that there aren't row sums of an entire gene being masked when
+    # we want masking at random
+    assert sum(
+        torch.sum(sample_model.mask_at_random(sample_model, responses=True).x, axis=0)
+        == 0
+    ) != len(sample_model.responses)
+    assert sum(
+        torch.sum(sample_model.mask_at_random(sample_model, responses=True).x, axis=0)
+        == 0
+    ) != len(sample_model.responses)
+
+
 def test_monetae2d(num_epochs=10):
     from spatial import predict, train
 
@@ -235,6 +296,7 @@ def test_monetae2d(num_epochs=10):
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
         "model.kwargs.dropout": 0.5,
+        "model.kwargs.input_dropout_only": True,
         "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
     }
@@ -305,6 +367,7 @@ def test_trivial(num_epochs=10):
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
         "model.kwargs.dropout": 0.5,
+        "model.kwargs.input_dropout_only": True,
         "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
     }
