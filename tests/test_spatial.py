@@ -221,56 +221,69 @@ def test_masking():
 
     sample_model.mask_genes_prop = 1
     sample_model.mask_cells_prop = 1
-
-    print(sample_model.mask_at_random(sample_model, responses=True).x)
+    sample_model.mask_random_prop = 1
 
     assert sum(
-        torch.sum(sample_model.mask_at_random(sample_model, responses=True).x, axis=0)
+        torch.sum(
+            sample_model.mask_at_random(sample_model, responses=True)[0].x, axis=0
+        )
         == 0
     ) == len(sample_model.responses)
-    assert torch.sum(sample_model.mask_at_random(sample_model, responses=False).x) == 0
+    assert (
+        torch.sum(sample_model.mask_at_random(sample_model, responses=False)[0].x) == 0
+    )
     assert sum(
-        torch.sum(sample_model.mask_genes(sample_model, responses=True).x, axis=0) == 0
+        torch.sum(sample_model.mask_genes(sample_model, responses=True)[0].x, axis=0)
+        == 0
     ) == len(sample_model.responses)
-    assert torch.sum(sample_model.mask_genes(sample_model, responses=False).x) == 0
-    assert torch.sum(sample_model.mask_cells(sample_model).x) == 0
-    assert torch.sum(sample_model.mask_cells(sample_model).x) == 0
+    assert torch.sum(sample_model.mask_genes(sample_model, responses=False)[0].x) == 0
+    assert torch.sum(sample_model.mask_cells(sample_model)[0].x) == 0
+    assert torch.sum(sample_model.mask_cells(sample_model)[0].x) == 0
 
     sample_model.mask_genes_prop = 0
     sample_model.mask_cells_prop = 0
+    sample_model.mask_random_prop = 0
 
     assert torch.sum(
-        sample_model.mask_at_random(sample_model, responses=True).x
+        sample_model.mask_at_random(sample_model, responses=True)[0].x
     ) == torch.sum(sample_model.x)
     assert torch.sum(
-        sample_model.mask_at_random(sample_model, responses=False).x
+        sample_model.mask_at_random(sample_model, responses=False)[0].x
     ) == torch.sum(sample_model.x)
     assert torch.sum(
-        sample_model.mask_genes(sample_model, responses=True).x
+        sample_model.mask_genes(sample_model, responses=True)[0].x
     ) == torch.sum(sample_model.x)
     assert torch.sum(
-        sample_model.mask_genes(sample_model, responses=False).x
+        sample_model.mask_genes(sample_model, responses=False)[0].x
     ) == torch.sum(sample_model.x)
-    assert torch.sum(sample_model.mask_cells(sample_model).x) == torch.sum(
+    assert torch.sum(sample_model.mask_cells(sample_model)[0].x) == torch.sum(
         sample_model.x
     )
-    assert torch.sum(sample_model.mask_cells(sample_model).x) == torch.sum(
+    assert torch.sum(sample_model.mask_cells(sample_model)[0].x) == torch.sum(
         sample_model.x
     )
 
     sample_model.mask_genes_prop = 0.75
     sample_model.mask_cells_prop = 0.75
+    sample_model.mask_random_prop = 0.75
 
     # ensure that there aren't row sums of an entire gene being masked when
     # we want masking at random
     assert sum(
-        torch.sum(sample_model.mask_at_random(sample_model, responses=True).x, axis=0)
+        torch.sum(
+            sample_model.mask_at_random(sample_model, responses=True)[0].x, axis=0
+        )
         == 0
     ) != len(sample_model.responses)
-    assert sum(
-        torch.sum(sample_model.mask_at_random(sample_model, responses=True).x, axis=0)
+    assert (
+        sum(
+            torch.sum(
+                sample_model.mask_at_random(sample_model, responses=False)[0].x, axis=0
+            )
+            == 0
+        )
         == 0
-    ) != len(sample_model.responses)
+    )
 
 
 def test_monetae2d(num_epochs=10):
@@ -295,6 +308,7 @@ def test_monetae2d(num_epochs=10):
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
+        "model.kwargs.mask_cells_prop": 0.1,
         "model.kwargs.dropout": 0.5,
         "model.kwargs.input_dropout_only": True,
         "training.n_epochs": num_epochs,
@@ -366,6 +380,7 @@ def test_trivial(num_epochs=10):
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
+        "model.kwargs.mask_cells_prop": 0.1,
         "model.kwargs.dropout": 0.5,
         "model.kwargs.input_dropout_only": True,
         "training.n_epochs": num_epochs,

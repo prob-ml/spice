@@ -40,7 +40,7 @@ def test(cfg: DictConfig, data=None):
     )
 
     checkpoint_path = (
-        f"output/lightning_logs/checkpoints/{cfg.model.name}/"
+        f"{cfg.paths.root}output/lightning_logs/checkpoints/{cfg.model.name}/"
         + cfg.training.filepath
         + ".ckpt"
     )
