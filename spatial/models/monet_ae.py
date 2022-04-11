@@ -102,50 +102,48 @@ class BasicAEMixin(pl.LightningModule):
         new_batch_obj = deepcopy(batch)
         masked_indeces = masked_indeces.type_as(new_batch_obj.x)
         new_batch_obj.x *= 1.0 - masked_indeces
-        return new_batch_obj
+        return new_batch_obj, masked_indeces
 
     def mask_genes(self, batch, responses=True):
-
+        n_genes = batch.x.shape[1]
+        masked_indeces = torch.rand((1, n_genes)) < self.mask_genes_prop
         if responses:
-            n_genes = len(self.responses)
-            masked_indeces = torch.rand((1, n_genes)) < self.mask_genes_prop
-            new_batch_obj = deepcopy(batch)
-            masked_indeces = masked_indeces.type_as(new_batch_obj.x)
-            new_batch_obj.x[:, torch.tensor(self.responses)] *= 1.0 - masked_indeces
+            masked_indeces = torch.zeros((1, n_genes), dtype=bool)
+            masked_indeces[:, self.responses] = (
+                torch.rand(1, len(self.responses)) < self.mask_genes_prop
+            )
+        new_batch_obj = deepcopy(batch)
+        masked_indeces = masked_indeces.type_as(new_batch_obj.x)
+        new_batch_obj.x *= 1.0 - masked_indeces
 
-        else:
-            n_genes = batch.x.shape[1]
-            masked_indeces = torch.rand((1, n_genes)) < self.mask_genes_prop
-            new_batch_obj = deepcopy(batch)
-            masked_indeces = masked_indeces.type_as(new_batch_obj.x)
-            new_batch_obj.x *= 1.0 - masked_indeces
-
-        return new_batch_obj
+        return new_batch_obj, masked_indeces
 
     def mask_at_random(self, batch, responses=True):
 
+        n_cells, n_genes = batch.x.shape[0], batch.x.shape[1]
+        masked_indeces = torch.rand((n_cells, n_genes)) < self.mask_random_prop
         if responses:
-            n_cells, n_genes = batch.x.shape[0], len(self.responses)
-            masked_indeces = torch.rand((n_cells, n_genes)) < self.mask_genes_prop
-            new_batch_obj = deepcopy(batch)
-            masked_indeces = masked_indeces.type_as(new_batch_obj.x)
-            new_batch_obj.x[:, torch.tensor(self.responses)] *= 1.0 - masked_indeces
+            masked_indeces = torch.zeros((n_cells, n_genes), dtype=bool)
+            masked_indeces[:, self.responses] = (
+                torch.rand(n_cells, len(self.responses)) < self.mask_random_prop
+            )
+        new_batch_obj = deepcopy(batch)
+        masked_indeces = masked_indeces.type_as(new_batch_obj.x)
+        new_batch_obj.x *= 1.0 - masked_indeces
 
-        else:
-            n_cells, n_genes = batch.x.shape[0], batch.x.shape[1]
-            masked_indeces = torch.rand((n_cells, n_genes)) < self.mask_genes_prop
-            new_batch_obj = deepcopy(batch)
-            masked_indeces = masked_indeces.type_as(new_batch_obj.x)
-            new_batch_obj.x *= 1.0 - masked_indeces
-
-        return new_batch_obj
+        return new_batch_obj, masked_indeces
 
     def training_step(self, batch, batch_idx):
-        _, reconstruction = self(self.mask_cells(self.mask_genes(batch)))
+
+        new_batch_obj, random_mask = self.mask_at_random(batch)
+        new_batch_obj, gene_mask = self.mask_genes(new_batch_obj)
+        new_batch_obj, cell_mask = self.mask_cells(new_batch_obj)
+        _, reconstruction = self(new_batch_obj)
+        masking_tensor = (1 - random_mask) * (1 - gene_mask) * (1 - cell_mask)
         # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(
-            reconstruction,
-            batch.x,
+            reconstruction * masking_tensor,
+            batch.x * masking_tensor,
             self.loss_type,
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
@@ -161,10 +159,15 @@ class BasicAEMixin(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        _, reconstruction = self(self.mask_cells(self.mask_genes(batch)))
+        new_batch_obj, random_mask = self.mask_at_random(batch)
+        new_batch_obj, gene_mask = self.mask_genes(new_batch_obj)
+        new_batch_obj, cell_mask = self.mask_cells(new_batch_obj)
+        _, reconstruction = self(new_batch_obj)
+        masking_tensor = (1 - random_mask) * (1 - gene_mask) * (1 - cell_mask)
+        # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(
-            reconstruction,
-            batch.x,
+            reconstruction * masking_tensor,
+            batch.x * masking_tensor,
             self.loss_type,
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
@@ -183,10 +186,15 @@ class BasicAEMixin(pl.LightningModule):
     celltypes = torch.tensor([])
 
     def test_step(self, batch, batch_idx):
-        _, reconstruction = self(self.mask_cells(self.mask_genes(batch)))
+        new_batch_obj, random_mask = self.mask_at_random(batch)
+        new_batch_obj, gene_mask = self.mask_genes(new_batch_obj)
+        new_batch_obj, cell_mask = self.mask_cells(new_batch_obj)
+        _, reconstruction = self(new_batch_obj)
+        masking_tensor = (1 - random_mask) * (1 - gene_mask) * (1 - cell_mask)
+        # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(
-            reconstruction,
-            batch.x,
+            reconstruction * masking_tensor,
+            batch.x * masking_tensor,
             self.loss_type,
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
@@ -324,6 +332,7 @@ class TrivialAutoencoder(BasicAEMixin):
         latent_dimension,
         loss_type,
         other_logged_losses,
+        mask_random_prop,
         mask_cells_prop,
         mask_genes_prop,
         responses,
@@ -342,6 +351,7 @@ class TrivialAutoencoder(BasicAEMixin):
 
         self.loss_type = loss_type
         self.other_logged_losses = other_logged_losses
+        self.mask_random_prop = mask_random_prop
         self.mask_cells_prop = mask_cells_prop
         self.mask_genes_prop = mask_genes_prop
         # needed so that during testing a different set
@@ -387,6 +397,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         other_logged_losses,
         dim,
         kernel_size,
+        mask_random_prop,
         mask_cells_prop,
         mask_genes_prop,
         responses,
@@ -404,6 +415,7 @@ class MonetAutoencoder2D(BasicAEMixin):
 
         self.loss_type = loss_type
         self.other_logged_losses = other_logged_losses
+        self.mask_random_prop = mask_random_prop
         self.mask_cells_prop = mask_cells_prop
         self.mask_genes_prop = mask_genes_prop
         # needed so that during testing a different set
