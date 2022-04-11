@@ -15,4 +15,3 @@ kwargs:
   batchnorm: True
   final_relu: False
   dropout: 0
-  input_dropout_only: True
