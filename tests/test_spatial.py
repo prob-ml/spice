@@ -310,7 +310,6 @@ def test_monetae2d(num_epochs=10):
         "model.kwargs.latent_dimension": 2,
         "model.kwargs.mask_cells_prop": 0.1,
         "model.kwargs.dropout": 0.5,
-        "model.kwargs.input_dropout_only": True,
         "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
     }
@@ -382,7 +381,6 @@ def test_trivial(num_epochs=10):
         "model.kwargs.latent_dimension": 2,
         "model.kwargs.mask_cells_prop": 0.1,
         "model.kwargs.dropout": 0.5,
-        "model.kwargs.input_dropout_only": True,
         "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
     }

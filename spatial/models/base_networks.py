@@ -4,13 +4,11 @@ from torch.nn import functional as fcl
 
 
 def construct_dense_relu_network(
-    sizes, use_batchnorm=True, final_relu=False, dropout=0, input_dropout_only=True
+    sizes, use_batchnorm=True, final_relu=False, dropout=0
 ):
     lst = []
-    if input_dropout_only:
-        lst.append(torch.nn.Dropout(dropout))
     for i in range(len(sizes) - 1):
-        if dropout and not input_dropout_only:
+        if dropout:
             lst.append(torch.nn.Dropout(dropout))
         lst.append(torch.nn.Linear(sizes[i], sizes[i + 1]))
         if use_batchnorm:
@@ -58,11 +56,8 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
             )
 
     def forward(self, vals, edges, pseudo):
-        if self.input_dropout_only:
-            dropout_layer = torch.nn.Dropout(self.dropout)
-            vals = dropout_layer(vals)
         for i, (dense, gmmlayer) in enumerate(zip(self.linears, self.gmms)):
-            if self.dropout and not self.input_dropout_only:
+            if self.dropout:
                 dropout_layer = torch.nn.Dropout(self.dropout)
                 vals = dropout_layer(vals)
             vals = gmmlayer(vals, edges, pseudo) + dense(vals)
