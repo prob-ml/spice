@@ -35,7 +35,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             genes_file.close()
 
         # response genes (columns in MERFISH)
-        self.responses = list(set(range(155)) - set(self.features))
+        self.response_genes = list(set(range(155)) - set(self.features))
 
         data_list = self.construct_graphs(
             n_neighbors, train, log_transform, neighbor_celltypes, radius

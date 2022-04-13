@@ -69,23 +69,23 @@ class BasicAEMixin(pl.LightningModule):
         elif losstype == "mae_response":
             return torch.mean(
                 torch.abs(
-                    pred[:, torch.tensor(self.responses)]
-                    - val[:, torch.tensor(self.responses)]
+                    pred[:, torch.tensor(self.response_genes)]
+                    - val[:, torch.tensor(self.response_genes)]
                 )
             )
         elif losstype == "mse_response":
             return torch.mean(
                 (
-                    pred[:, torch.tensor(self.responses)]
-                    - val[:, torch.tensor(self.responses)]
+                    pred[:, torch.tensor(self.response_genes)]
+                    - val[:, torch.tensor(self.response_genes)]
                 )
                 ** 2
             )
         elif losstype == "mae_response_celltype":
             return torch.mean(
                 torch.abs(
-                    pred[:, torch.tensor(self.responses)]
-                    - val[:, torch.tensor(self.responses)]
+                    pred[:, torch.tensor(self.response_genes)]
+                    - val[:, torch.tensor(self.response_genes)]
                 )[
                     (celltype_data == self.celltype_lookup[celltype]).nonzero(
                         as_tuple=True
@@ -104,13 +104,13 @@ class BasicAEMixin(pl.LightningModule):
         new_batch_obj.x *= 1.0 - masked_indeces
         return new_batch_obj, masked_indeces
 
-    def mask_genes(self, batch, responses=True):
+    def mask_genes(self, batch):
         n_genes = batch.x.shape[1]
         masked_indeces = torch.rand((1, n_genes)) < self.mask_genes_prop
-        if responses:
+        if self.responses:
             masked_indeces = torch.zeros((1, n_genes), dtype=bool)
-            masked_indeces[:, self.responses] = (
-                torch.rand(1, len(self.responses)) < self.mask_genes_prop
+            masked_indeces[:, self.response_genes] = (
+                torch.rand(1, len(self.response_genes)) < self.mask_genes_prop
             )
         new_batch_obj = deepcopy(batch)
         masked_indeces = masked_indeces.type_as(new_batch_obj.x)
@@ -118,14 +118,14 @@ class BasicAEMixin(pl.LightningModule):
 
         return new_batch_obj, masked_indeces
 
-    def mask_at_random(self, batch, responses=True):
+    def mask_at_random(self, batch):
 
         n_cells, n_genes = batch.x.shape[0], batch.x.shape[1]
         masked_indeces = torch.rand((n_cells, n_genes)) < self.mask_random_prop
-        if responses:
+        if self.responses:
             masked_indeces = torch.zeros((n_cells, n_genes), dtype=bool)
-            masked_indeces[:, self.responses] = (
-                torch.rand(n_cells, len(self.responses)) < self.mask_random_prop
+            masked_indeces[:, self.response_genes] = (
+                torch.rand(n_cells, len(self.response_genes)) < self.mask_random_prop
             )
         new_batch_obj = deepcopy(batch)
         masked_indeces = masked_indeces.type_as(new_batch_obj.x)
@@ -139,7 +139,7 @@ class BasicAEMixin(pl.LightningModule):
         new_batch_obj, gene_mask = self.mask_genes(new_batch_obj)
         new_batch_obj, cell_mask = self.mask_cells(new_batch_obj)
         _, reconstruction = self(new_batch_obj)
-        masking_tensor = (1 - random_mask) * (1 - gene_mask) * (1 - cell_mask)
+        masking_tensor = random_mask * gene_mask * cell_mask
         # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(
             reconstruction * masking_tensor,
@@ -163,7 +163,7 @@ class BasicAEMixin(pl.LightningModule):
         new_batch_obj, gene_mask = self.mask_genes(new_batch_obj)
         new_batch_obj, cell_mask = self.mask_cells(new_batch_obj)
         _, reconstruction = self(new_batch_obj)
-        masking_tensor = (1 - random_mask) * (1 - gene_mask) * (1 - cell_mask)
+        masking_tensor = random_mask * gene_mask * cell_mask
         # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(
             reconstruction * masking_tensor,
@@ -190,7 +190,7 @@ class BasicAEMixin(pl.LightningModule):
         new_batch_obj, gene_mask = self.mask_genes(new_batch_obj)
         new_batch_obj, cell_mask = self.mask_cells(new_batch_obj)
         _, reconstruction = self(new_batch_obj)
-        masking_tensor = (1 - random_mask) * (1 - gene_mask) * (1 - cell_mask)
+        masking_tensor = random_mask * gene_mask * cell_mask
         # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(
             reconstruction * masking_tensor,
@@ -246,14 +246,18 @@ class BasicNN(BasicAEMixin):
         else:
             mean_estimate = self(batch)
         # print(f"This training batch has {batch.x.shape[0]} cells.")
-        loss = self.calc_loss(mean_estimate, batch.x[:, self.responses], self.loss_type)
+        loss = self.calc_loss(
+            mean_estimate, batch.x[:, self.response_genes], self.loss_type
+        )
         self.log("train_loss", loss, prog_bar=True)
         self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         mean_estimate = self(batch)
-        loss = self.calc_loss(mean_estimate, batch.x[:, self.responses], self.loss_type)
+        loss = self.calc_loss(
+            mean_estimate, batch.x[:, self.response_genes], self.loss_type
+        )
         self.log("val_loss", loss, prog_bar=True)
         return loss
 
@@ -263,7 +267,9 @@ class BasicNN(BasicAEMixin):
 
     def test_step(self, batch, batch_idx):
         mean_estimate = self(batch)
-        loss = self.calc_loss(mean_estimate, batch.x[:, self.responses], self.loss_type)
+        loss = self.calc_loss(
+            mean_estimate, batch.x[:, self.response_genes], self.loss_type
+        )
         self.log("test_loss", loss, prog_bar=True)
 
         # save input and output images
@@ -335,11 +341,12 @@ class TrivialAutoencoder(BasicAEMixin):
         mask_random_prop,
         mask_cells_prop,
         mask_genes_prop,
-        responses,
+        response_genes,
         celltype_lookup,
         batchnorm,
         final_relu,
         dropout,
+        responses,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -355,11 +362,12 @@ class TrivialAutoencoder(BasicAEMixin):
         self.mask_genes_prop = mask_genes_prop
         # needed so that during testing a different set
         # of responses other than MERFISH is useable.
-        self.responses = responses
+        self.response_genes = response_genes
         self.celltype_lookup = celltype_lookup
         self.batchnorm = batchnorm
         self.final_relu = final_relu
         self.dropout = dropout
+        self.responses = responses
 
         self.encoder_network = base_networks.construct_dense_relu_network(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
@@ -396,11 +404,12 @@ class MonetAutoencoder2D(BasicAEMixin):
         mask_random_prop,
         mask_cells_prop,
         mask_genes_prop,
-        responses,
+        response_genes,
         celltype_lookup,
         batchnorm,
         final_relu,
         dropout,
+        responses,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -415,11 +424,12 @@ class MonetAutoencoder2D(BasicAEMixin):
         self.mask_genes_prop = mask_genes_prop
         # needed so that during testing a different set
         # of responses other than MERFISH is useable.
-        self.responses = responses
+        self.response_genes = response_genes
         self.celltype_lookup = celltype_lookup
         self.batchnorm = batchnorm
         self.final_relu = final_relu
         self.dropout = dropout
+        self.responses = responses
 
         self.encoder_network = base_networks.DenseReluGMMConvNetwork(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
@@ -427,6 +437,7 @@ class MonetAutoencoder2D(BasicAEMixin):
             dropout=self.dropout,
             dim=dim,
             kernel_size=kernel_size,
+            include_skip_connections=False,
         )
         self.decoder_network = base_networks.DenseReluGMMConvNetwork(
             [latent_dimension]
@@ -436,6 +447,7 @@ class MonetAutoencoder2D(BasicAEMixin):
             dropout=self.dropout,
             dim=dim,
             kernel_size=kernel_size,
+            include_skip_connections=False,
         )
 
     def forward(self, batch):

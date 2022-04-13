@@ -27,8 +27,8 @@ def test(cfg: DictConfig, data=None):
         raise AssertionError("Data dimension not in line with observables dimension.")
 
     # get response indeces so they can be passed into the model
-    if data.responses is not None:
-        OmegaConf.update(cfg, "model.kwargs.responses", data.responses)
+    if cfg.model.kwargs.response_genes is None:
+        OmegaConf.update(cfg, "model.kwargs.response_genes", data.response_genes)
 
     # FOR NOW I NEED THIS TO KEEP TABS ON TESTING LOSS
     # setup logger

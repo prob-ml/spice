@@ -8,8 +8,9 @@ kwargs:
   mask_random_prop: 0.0
   mask_cells_prop: 0.0
   mask_genes_prop: 1.0
-  responses: # by default this is none so we can use the responses from the data
+  response_genes: # by default this is none so we can use the responses from the data
   celltype_lookup: 0
   batchnorm: True
   final_relu: False
   dropout: 0
+  responses: False
