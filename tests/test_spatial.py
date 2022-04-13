@@ -14,7 +14,8 @@ class SimulatedData(torch_geometric.data.InMemoryDataset):
 
         data_list, self.data_dimension = simulate_data(n_samples)
         self.features = [0]
-        self.responses = [1]
+        self.response_genes = [1]
+        self.responses = True
         self.data, self.slices = self.collate(data_list)
 
 
@@ -84,8 +85,8 @@ def test_merfish_dataset():
     merfish_df = merfish_df.drop(
         ["Blank_1", "Blank_2", "Blank_3", "Blank_4", "Blank_5", "Fos"], axis=1
     )
-    print(mfd.responses)
-    print(merfish_df.columns[9:][mfd.responses])
+    print(mfd.response_genes)
+    print(merfish_df.columns[9:][mfd.response_genes])
     # Removing this test as we may want to test a single gene at a time.
     # assert all(
     #     merfish_df.columns[9:][mfd.responses]
@@ -217,48 +218,60 @@ def test_masking():
 
     sample_model = BasicAEMixin()
     sample_model.x = torch.rand(100, 100)  # get random gene expression matrix
-    sample_model.responses = range(5)  # treat first 5 genes as response genes
+    sample_model.response_genes = range(5)  # treat first 5 genes as response genes
 
     sample_model.mask_genes_prop = 1
     sample_model.mask_cells_prop = 1
     sample_model.mask_random_prop = 1
 
+    sample_model.responses = True
     assert sum(
-        torch.sum(
-            sample_model.mask_at_random(sample_model, responses=True)[0].x, axis=0
-        )
-        == 0
-    ) == len(sample_model.responses)
-    assert (
-        torch.sum(sample_model.mask_at_random(sample_model, responses=False)[0].x) == 0
-    )
+        torch.sum(sample_model.mask_at_random(sample_model)[0].x, axis=0) == 0
+    ) == len(sample_model.response_genes)
+
+    sample_model.responses = False
+    assert torch.sum(sample_model.mask_at_random(sample_model)[0].x) == 0
+
+    sample_model.responses = True
     assert sum(
-        torch.sum(sample_model.mask_genes(sample_model, responses=True)[0].x, axis=0)
-        == 0
-    ) == len(sample_model.responses)
-    assert torch.sum(sample_model.mask_genes(sample_model, responses=False)[0].x) == 0
+        torch.sum(sample_model.mask_genes(sample_model)[0].x, axis=0) == 0
+    ) == len(sample_model.response_genes)
+
+    sample_model.responses = False
+    assert torch.sum(sample_model.mask_genes(sample_model)[0].x) == 0
+
     assert torch.sum(sample_model.mask_cells(sample_model)[0].x) == 0
+
     assert torch.sum(sample_model.mask_cells(sample_model)[0].x) == 0
 
     sample_model.mask_genes_prop = 0
     sample_model.mask_cells_prop = 0
     sample_model.mask_random_prop = 0
 
-    assert torch.sum(
-        sample_model.mask_at_random(sample_model, responses=True)[0].x
-    ) == torch.sum(sample_model.x)
-    assert torch.sum(
-        sample_model.mask_at_random(sample_model, responses=False)[0].x
-    ) == torch.sum(sample_model.x)
-    assert torch.sum(
-        sample_model.mask_genes(sample_model, responses=True)[0].x
-    ) == torch.sum(sample_model.x)
-    assert torch.sum(
-        sample_model.mask_genes(sample_model, responses=False)[0].x
-    ) == torch.sum(sample_model.x)
+    sample_model.responses = True
+    assert torch.sum(sample_model.mask_at_random(sample_model)[0].x) == torch.sum(
+        sample_model.x
+    )
+
+    sample_model.responses = False
+    assert torch.sum(sample_model.mask_at_random(sample_model)[0].x) == torch.sum(
+        sample_model.x
+    )
+
+    sample_model.responses = True
+    assert torch.sum(sample_model.mask_genes(sample_model)[0].x) == torch.sum(
+        sample_model.x
+    )
+
+    sample_model.responses = False
+    assert torch.sum(sample_model.mask_genes(sample_model)[0].x) == torch.sum(
+        sample_model.x
+    )
+
     assert torch.sum(sample_model.mask_cells(sample_model)[0].x) == torch.sum(
         sample_model.x
     )
+
     assert torch.sum(sample_model.mask_cells(sample_model)[0].x) == torch.sum(
         sample_model.x
     )
@@ -269,20 +282,14 @@ def test_masking():
 
     # ensure that there aren't row sums of an entire gene being masked when
     # we want masking at random
+    sample_model.responses = True
     assert sum(
-        torch.sum(
-            sample_model.mask_at_random(sample_model, responses=True)[0].x, axis=0
-        )
-        == 0
-    ) != len(sample_model.responses)
+        torch.sum(sample_model.mask_at_random(sample_model)[0].x, axis=0) == 0
+    ) != len(sample_model.response_genes)
+
+    sample_model.responses = False
     assert (
-        sum(
-            torch.sum(
-                sample_model.mask_at_random(sample_model, responses=False)[0].x, axis=0
-            )
-            == 0
-        )
-        == 0
+        sum(torch.sum(sample_model.mask_at_random(sample_model)[0].x, axis=0) == 0) == 0
     )
 
 
@@ -308,8 +315,8 @@ def test_monetae2d(num_epochs=10):
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
-        "model.kwargs.mask_cells_prop": 0.1,
-        "model.kwargs.dropout": 0.5,
+        "model.kwargs.mask_cells_prop": 0.25,
+        "model.kwargs.dropout": 0.05,
         "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
     }
@@ -379,8 +386,8 @@ def test_trivial(num_epochs=10):
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
-        "model.kwargs.mask_cells_prop": 0.1,
-        "model.kwargs.dropout": 0.5,
+        "model.kwargs.mask_cells_prop": 0.25,
+        "model.kwargs.dropout": 0.05,
         "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
     }
