@@ -20,7 +20,6 @@ datasets = {cls.__name__: cls for cls in _datasets}
 _models = [
     monet_ae.TrivialAutoencoder,
     monet_ae.MonetAutoencoder2D,
-    monet_ae.MeanExpressionNN,
 ]
 models = {cls.__name__: cls for cls in _models}
 
@@ -53,28 +52,14 @@ def setup_checkpoint_callback(cfg, logger, filepath):
     if cfg.training.trainer.enable_checkpointing:
         checkpoint_dir = f"{output}/lightning_logs/checkpoints/{cfg.model.name}"
         checkpoint_dir = os.path.join(output, checkpoint_dir)
-        # pylint: disable=protected-access
-        if (
-            cfg.datasets.dataset._target_.split(".")[-1] == "FilteredMerfishDataset"
-            and cfg.model.name == "MonetAutoencoder2D"
-        ):
-            checkpoint_callback = ModelCheckpoint(
-                dirpath=checkpoint_dir,
-                save_top_k=True,
-                verbose=True,
-                monitor="val_loss",
-                mode="min",
-                filename=filepath,
-            )
-        else:
-            checkpoint_callback = ModelCheckpoint(
-                dirpath=checkpoint_dir,
-                save_top_k=True,
-                verbose=True,
-                monitor="val_loss",
-                mode="min",
-                filename=filepath,
-            )
+        checkpoint_callback = ModelCheckpoint(
+            dirpath=checkpoint_dir,
+            save_top_k=True,
+            verbose=True,
+            monitor="val_loss",
+            mode="min",
+            filename=filepath,
+        )
         callbacks.append(checkpoint_callback)
 
     return callbacks

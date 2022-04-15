@@ -315,8 +315,8 @@ def test_monetae2d(num_epochs=10):
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
-        "model.kwargs.mask_cells_prop": 0.25,
-        "model.kwargs.dropout": 0.05,
+        "model.kwargs.mask_cells_prop": 0.5,
+        "model.kwargs.dropout": 0,
         "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
     }
@@ -363,6 +363,8 @@ def test_monetae2d(num_epochs=10):
     # test case
     assert test_loss < 0.6 * loss_if_we_are_dumb
 
+    print(train_loss, test_loss)
+
     return train_loss, test_loss
 
 
@@ -386,8 +388,8 @@ def test_trivial(num_epochs=10):
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
-        "model.kwargs.mask_cells_prop": 0.25,
-        "model.kwargs.dropout": 0.05,
+        "model.kwargs.mask_cells_prop": 0.5,
+        "model.kwargs.dropout": 0,
         "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
     }

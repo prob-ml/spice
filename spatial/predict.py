@@ -6,7 +6,6 @@ from torch.nn import functional as F
 from torch_geometric.data import DataLoader
 
 from spatial.models.monet_ae import (
-    MeanExpressionNN,
     MonetAutoencoder2D,
     TrivialAutoencoder,
 )
@@ -56,13 +55,6 @@ def test(cfg: DictConfig, data=None):
             checkpoint_path=checkpoint_path,
             **cfg.model.kwargs,
         )
-    if cfg.model.name == "MeanExpressionNN":
-        model = MeanExpressionNN.load_from_checkpoint(
-            checkpoint_path=checkpoint_path,
-            **cfg.model.kwargs,
-        )
-        for batch in data:
-            batch.x = batch.x[:, model.features]
 
     test_loader = DataLoader(data, batch_size=cfg.predict.batch_size, num_workers=2)
 
@@ -72,9 +64,6 @@ def test(cfg: DictConfig, data=None):
     trainer = pl.Trainer(**trainer_dict)
 
     test_results = trainer.test(model, test_loader, verbose=cfg.predict.verbose)
-
-    if cfg.model.name == "MeanExpressionNN":
-        return trainer, model.inputs, model.gene_expressions, model.celltypes
 
     l1_losses = F.l1_loss(model.inputs, model.gene_expressions)
 
