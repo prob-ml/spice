@@ -49,6 +49,9 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
             lst.append(torch.nn.Linear(sizes[j], sizes[j + 1], bias=False))
         self.linears = torch.nn.ModuleList(lst)
 
+        if self.dropout:
+            self.dropouts = torch.nn.Dropout(self.dropout)
+
         # construct batchnorm layers we need
         if use_batchnorm:
             self.batchnorms = torch.nn.ModuleList(
@@ -59,8 +62,7 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
         orig_vals = vals
         for i, (dense, gmmlayer) in enumerate(zip(self.linears, self.gmms)):
             if self.dropout:
-                dropout_layer = torch.nn.Dropout(self.dropout)
-                vals = dropout_layer(vals)
+                vals = self.dropouts(vals)
             vals = gmmlayer(vals, edges, pseudo) + dense(vals)
             if (
                 i == len(list(enumerate(zip(self.linears, self.gmms)))) - 2
