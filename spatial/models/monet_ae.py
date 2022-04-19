@@ -98,7 +98,7 @@ class BasicAEMixin(pl.LightningModule):
 
     def mask_cells(self, batch):
         n_cells = batch.x.shape[0]
-        masked_indeces = torch.rand((n_cells, 1)) < self.mask_cells_prop
+        masked_indeces = ~(torch.rand((n_cells, 1)) < self.mask_cells_prop)
         new_batch_obj = deepcopy(batch)
         masked_indeces = masked_indeces.to(new_batch_obj.x.device)
         new_batch_obj.x *= masked_indeces
@@ -106,10 +106,10 @@ class BasicAEMixin(pl.LightningModule):
 
     def mask_genes(self, batch):
         n_genes = batch.x.shape[1]
-        masked_indeces = torch.rand((1, n_genes)) < self.mask_genes_prop
+        masked_indeces = ~(torch.rand((1, n_genes)) < self.mask_genes_prop)
         if self.responses:
-            masked_indeces = torch.zeros((1, n_genes), dtype=bool)
-            masked_indeces[:, self.response_genes] = (
+            masked_indeces = torch.ones((1, n_genes), dtype=bool)
+            masked_indeces[:, self.response_genes] = ~(
                 torch.rand(1, len(self.response_genes)) < self.mask_genes_prop
             )
         new_batch_obj = deepcopy(batch)
@@ -121,10 +121,10 @@ class BasicAEMixin(pl.LightningModule):
     def mask_at_random(self, batch):
 
         n_cells, n_genes = batch.x.shape[0], batch.x.shape[1]
-        masked_indeces = torch.rand((n_cells, n_genes)) < self.mask_random_prop
+        masked_indeces = ~(torch.rand((n_cells, n_genes)) < self.mask_random_prop)
         if self.responses:
-            masked_indeces = torch.zeros((n_cells, n_genes), dtype=bool)
-            masked_indeces[:, self.response_genes] = (
+            masked_indeces = torch.ones((n_cells, n_genes), dtype=bool)
+            masked_indeces[:, self.response_genes] = ~(
                 torch.rand(n_cells, len(self.response_genes)) < self.mask_random_prop
             )
         new_batch_obj = deepcopy(batch)
