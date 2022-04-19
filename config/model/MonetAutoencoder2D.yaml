@@ -8,7 +8,7 @@ kwargs:
   dim: 1
   kernel_size: 25
   mask_random_prop: 0
-  mask_cells_prop: 0.25
+  mask_cells_prop: 0.05
   mask_genes_prop: 0.0
   response_genes: # empty by default this is none so we can use the responses from the data
   celltype_lookup: 0 # this gets updated in train

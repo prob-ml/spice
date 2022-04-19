@@ -101,10 +101,7 @@ class BasicAEMixin(pl.LightningModule):
         # 0 in masked_indeces means mask applied, 1 means not
         masked_indeces = ~(torch.rand((n_cells, 1)) < self.mask_cells_prop)
         new_batch_obj = deepcopy(batch)
-        if masked_indeces.get_device() == -1:
-            masked_indeces = masked_indeces.type("torch.BoolTensor")
-        else:
-            masked_indeces = masked_indeces.type("torch.cuda.BoolTensor")
+        masked_indeces = masked_indeces.to(new_batch_obj.x.device)
         new_batch_obj.x *= masked_indeces
         return new_batch_obj, masked_indeces
 
@@ -118,10 +115,7 @@ class BasicAEMixin(pl.LightningModule):
                 torch.rand(1, len(self.response_genes)) < self.mask_genes_prop
             )
         new_batch_obj = deepcopy(batch)
-        if masked_indeces.get_device() == -1:
-            masked_indeces = masked_indeces.type("torch.BoolTensor")
-        else:
-            masked_indeces = masked_indeces.type("torch.cuda.BoolTensor")
+        masked_indeces = masked_indeces.to(new_batch_obj.x.device)
         new_batch_obj.x *= masked_indeces
 
         return new_batch_obj, masked_indeces
@@ -137,11 +131,7 @@ class BasicAEMixin(pl.LightningModule):
                 torch.rand(n_cells, len(self.response_genes)) < self.mask_random_prop
             )
         new_batch_obj = deepcopy(batch)
-        masked_indeces = masked_indeces.type_as(new_batch_obj.x)
-        if masked_indeces.get_device() == -1:
-            masked_indeces = masked_indeces.type("torch.BoolTensor")
-        else:
-            masked_indeces = masked_indeces.type("torch.cuda.BoolTensor")
+        masked_indeces = masked_indeces.to(new_batch_obj.x.device)
         new_batch_obj.x *= masked_indeces
 
         return new_batch_obj, masked_indeces

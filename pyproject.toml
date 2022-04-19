@@ -2,17 +2,17 @@
 name = "spatial"
 version = "0.1.0"
 description = "Deep Generative Models for Spatial Transcriptomics"
-authors = ["Roman Kouznetsov, Ariel Polani, Jackson Loper, Jeffrey Regier"]
+authors = ["Roman Kouznetsov, Jackson Loper, Jeffrey Regier"]
 license = "MIT"
 
 [tool.poetry.dependencies]
 python = "~3.8"
-torch = { url = "https://download.pytorch.org/whl/cu111/torch-1.8.1%2Bcu111-cp38-cp38-linux_x86_64.whl" }
-torch-scatter = { url = "https://data.pyg.org/whl/torch-1.8.0%2Bcu111/torch_scatter-2.0.8-cp38-cp38-linux_x86_64.whl" }
-torch-sparse = { url = "https://data.pyg.org/whl/torch-1.8.0%2Bcu111/torch_sparse-0.6.12-cp38-cp38-linux_x86_64.whl" }
-torch-cluster = { url = "https://data.pyg.org/whl/torch-1.8.0%2Bcu111/torch_cluster-1.5.9-cp38-cp38-linux_x86_64.whl" }
-torch-spline-conv = { url = "https://data.pyg.org/whl/torch-1.8.0%2Bcu111/torch_spline_conv-1.2.1-cp38-cp38-linux_x86_64.whl" }
-torch-geometric = "^1.6.3"
+torch = { url = "https://download.pytorch.org/whl/cu111/torch-1.10.2%2Bcu111-cp38-cp38-linux_x86_64.whl" }
+torch-scatter = { url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_scatter-2.0.9-cp38-cp38-linux_x86_64.whl" }
+torch-sparse = { url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_sparse-0.6.13-cp38-cp38-linux_x86_64.whl" }
+torch-cluster = { url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_cluster-1.6.0-cp38-cp38-linux_x86_64.whl" }
+torch-spline-conv = { url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_spline_conv-1.2.1-cp38-cp38-linux_x86_64.whl" }
+torch-geometric = ">=2.0.0"
 scikit-learn = ">=0.24.1"
 jupyter = "^1.0.0"
 pytorch-lightning = "^1.1.5"
@@ -25,7 +25,7 @@ pillow = "^9.0.0"
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.1"
 pytest-cov = "^2.11.1"
-black = "^20.8b1"
+black = "^22.3.0"
 jupyter = "^1.0.0"
 pylint = "^2.6.0"
 pre-commit-hooks = "^3.4.0"
