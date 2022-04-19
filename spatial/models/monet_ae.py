@@ -106,6 +106,7 @@ class BasicAEMixin(pl.LightningModule):
 
     def mask_genes(self, batch):
         n_genes = batch.x.shape[1]
+        # 0 in masked_indeces means mask applied, 1 means not
         masked_indeces = ~(torch.rand((1, n_genes)) < self.mask_genes_prop)
         if self.responses:
             masked_indeces = torch.ones((1, n_genes), dtype=bool)
@@ -120,6 +121,7 @@ class BasicAEMixin(pl.LightningModule):
 
     def mask_at_random(self, batch):
 
+        # 0 in masked_indeces means mask applied, 1 means not
         n_cells, n_genes = batch.x.shape[0], batch.x.shape[1]
         masked_indeces = ~(torch.rand((n_cells, n_genes)) < self.mask_random_prop)
         if self.responses:
@@ -142,8 +144,8 @@ class BasicAEMixin(pl.LightningModule):
         masking_tensor = random_mask * gene_mask * cell_mask
         # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(
-            reconstruction * masking_tensor,
-            batch.x * masking_tensor,
+            reconstruction[~masking_tensor],
+            batch.x[~masking_tensor],
             self.loss_type,
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
@@ -152,7 +154,11 @@ class BasicAEMixin(pl.LightningModule):
         for additional_loss in self.other_logged_losses:
             self.log(
                 "train_loss: " + additional_loss,
-                self.calc_loss(reconstruction, batch.x, additional_loss),
+                self.calc_loss(
+                    reconstruction[~masking_tensor],
+                    batch.x[~masking_tensor],
+                    additional_loss,
+                ),
                 prog_bar=True,
             )
         self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
@@ -166,8 +172,8 @@ class BasicAEMixin(pl.LightningModule):
         masking_tensor = random_mask * gene_mask * cell_mask
         # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(
-            reconstruction * masking_tensor,
-            batch.x * masking_tensor,
+            reconstruction[~masking_tensor],
+            batch.x[~masking_tensor],
             self.loss_type,
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
@@ -176,7 +182,11 @@ class BasicAEMixin(pl.LightningModule):
         for additional_loss in self.other_logged_losses:
             self.log(
                 "val_loss: " + additional_loss,
-                self.calc_loss(reconstruction, batch.x, additional_loss),
+                self.calc_loss(
+                    reconstruction[~masking_tensor],
+                    batch.x[~masking_tensor],
+                    additional_loss,
+                ),
                 prog_bar=True,
             )
         return loss
@@ -193,8 +203,8 @@ class BasicAEMixin(pl.LightningModule):
         masking_tensor = random_mask * gene_mask * cell_mask
         # print(f"This training batch has {batch.x.shape[0]} cells.")
         loss = self.calc_loss(
-            reconstruction * masking_tensor,
-            batch.x * masking_tensor,
+            reconstruction[~masking_tensor],
+            batch.x[~masking_tensor],
             self.loss_type,
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
@@ -202,7 +212,11 @@ class BasicAEMixin(pl.LightningModule):
         for additional_loss in self.other_logged_losses:
             self.log(
                 "test_loss: " + additional_loss,
-                self.calc_loss(reconstruction, batch.x, additional_loss),
+                self.calc_loss(
+                    reconstruction[~masking_tensor],
+                    batch.x[~masking_tensor],
+                    additional_loss,
+                ),
                 prog_bar=True,
             )
         self.log("test_loss", loss, prog_bar=True)
@@ -293,39 +307,6 @@ class BasicNN(BasicAEMixin):
         self.celltypes = torch.cat((self.celltypes, batch.y.cpu()), 0)
 
         return loss
-
-
-# NN for learning single mean expression per gene.
-class MeanExpressionNN(BasicNN):
-    def __init__(
-        self,
-        observables_dimension,
-        hidden_dimensions,
-        latent_dimension,
-        loss_type,
-        mask_cells_prop,
-        mask_genes_prop,
-    ):
-        """
-        observables_dimension -- number of values associated with each graph node
-        hidden_dimensions -- list of hidden values to associate with each graph node
-        latent_dimension -- number of latent values to associate with each graph node
-        """
-        super().__init__()
-
-        self.loss_type = loss_type
-        self.mask_cells_prop = mask_cells_prop
-        self.mask_genes_prop = mask_genes_prop
-
-        # no decoder needed as we are trying to stay in the "latent space"
-        self.encoder_network = base_networks.construct_dense_relu_network(
-            [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
-        )
-
-    def forward(self, batch):
-
-        latent_loadings = self.encoder_network(batch.x[:, self.features])
-        return latent_loadings
 
 
 class TrivialAutoencoder(BasicAEMixin):
