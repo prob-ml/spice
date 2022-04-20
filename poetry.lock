@@ -2062,7 +2062,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "torch"
-version = "1.10.2+cu102"
+version = "1.10.2+cu111"
 description = "Tensors and Dynamic neural networks in Python with strong GPU acceleration"
 category = "main"
 optional = false
@@ -2073,7 +2073,7 @@ typing-extensions = "*"
 
 [package.source]
 type = "url"
-url = "https://download.pytorch.org/whl/cu102/torch-1.10.2%2Bcu102-cp38-cp38-linux_x86_64.whl"
+url = "https://download.pytorch.org/whl/cu111/torch-1.10.2%2Bcu111-cp38-cp38-linux_x86_64.whl"
 [[package]]
 name = "torch-cluster"
 version = "1.6.0"
@@ -2087,7 +2087,7 @@ test = ["pytest", "pytest-cov", "scipy"]
 
 [package.source]
 type = "url"
-url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu102/torch_cluster-1.6.0-cp38-cp38-linux_x86_64.whl"
+url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_cluster-1.6.0-cp38-cp38-linux_x86_64.whl"
 [[package]]
 name = "torch-geometric"
 version = "2.0.4"
@@ -2124,7 +2124,7 @@ test = ["pytest", "pytest-cov"]
 
 [package.source]
 type = "url"
-url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu102/torch_scatter-2.0.9-cp38-cp38-linux_x86_64.whl"
+url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_scatter-2.0.9-cp38-cp38-linux_x86_64.whl"
 [[package]]
 name = "torch-sparse"
 version = "0.6.13"
@@ -2141,7 +2141,7 @@ test = ["pytest", "pytest-cov"]
 
 [package.source]
 type = "url"
-url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu102/torch_sparse-0.6.13-cp38-cp38-linux_x86_64.whl"
+url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_sparse-0.6.13-cp38-cp38-linux_x86_64.whl"
 [[package]]
 name = "torch-spline-conv"
 version = "1.2.1"
@@ -2155,7 +2155,7 @@ test = ["pytest", "pytest-cov"]
 
 [package.source]
 type = "url"
-url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu102/torch_spline_conv-1.2.1-cp38-cp38-linux_x86_64.whl"
+url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_spline_conv-1.2.1-cp38-cp38-linux_x86_64.whl"
 [[package]]
 name = "torchmetrics"
 version = "0.8.0"
@@ -2357,7 +2357,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.8"
-content-hash = "7390222d96d3b8279ec3110b89fbad5ab25d8d502e90d36f738bcdca7511e801"
+content-hash = "e8f453be191e496915ac8c48b07e6061542ca6dd93f953a524f7d47d605f8c0a"
 
 [metadata.files]
 absl-py = [
