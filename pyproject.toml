@@ -25,7 +25,7 @@ pillow = "^9.0.0"
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.1"
 pytest-cov = "^2.11.1"
-black = "^20.8b1"
+black = "^22.3.0"
 jupyter = "^1.0.0"
 pylint = "^2.6.0"
 pre-commit-hooks = "^3.4.0"
