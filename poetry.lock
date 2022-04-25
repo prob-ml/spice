@@ -664,7 +664,7 @@ gitdb = ">=4.0.1,<5"
 
 [[package]]
 name = "google-auth"
-version = "2.6.5"
+version = "2.6.6"
 description = "Google Authentication Library"
 category = "main"
 optional = false
@@ -695,6 +695,14 @@ requests-oauthlib = ">=0.7.0"
 
 [package.extras]
 tool = ["click (>=6.0.0)"]
+
+[[package]]
+name = "googledrivedownloader"
+version = "0.4"
+description = "Minimal class to download shared files from Google Drive."
+category = "main"
+optional = false
+python-versions = "*"
 
 [[package]]
 name = "grpcio"
@@ -877,6 +885,17 @@ widgetsnbextension = ">=3.6.0,<3.7.0"
 
 [package.extras]
 test = ["pytest (>=3.6.0)", "pytest-cov", "mock"]
+
+[[package]]
+name = "isodate"
+version = "0.6.1"
+description = "An ISO 8601 date/time/duration parser and formatter"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+six = "*"
 
 [[package]]
 name = "isort"
@@ -1193,6 +1212,21 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
+name = "networkx"
+version = "2.8"
+description = "Python package for creating and manipulating graphs and networks"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.extras]
+default = ["numpy (>=1.19)", "scipy (>=1.8)", "matplotlib (>=3.4)", "pandas (>=1.3)"]
+developer = ["pre-commit (>=2.18)", "mypy (>=0.942)"]
+doc = ["sphinx (>=4.5)", "pydata-sphinx-theme (>=0.8.1)", "sphinx-gallery (>=0.10)", "numpydoc (>=1.2)", "pillow (>=9.1)", "nb2plots (>=0.6)", "texext (>=0.6.6)"]
+extra = ["lxml (>=4.6)", "pygraphviz (>=1.9)", "pydot (>=1.4.2)", "sympy (>=1.10)"]
+test = ["pytest (>=7.1)", "pytest-cov (>=3.0)", "codecov (>=2.1)"]
+
+[[package]]
 name = "nodeenv"
 version = "1.6.0"
 description = "Node.js virtual environment builder"
@@ -1447,7 +1481,7 @@ wcwidth = "*"
 
 [[package]]
 name = "protobuf"
-version = "3.20.0"
+version = "3.20.1"
 description = "Protocol Buffers"
 category = "main"
 optional = false
@@ -1558,11 +1592,11 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "pygments"
-version = "2.11.2"
+version = "2.12.0"
 description = "Pygments is a syntax highlighting package written in Python."
 category = "main"
 optional = false
-python-versions = ">=3.5"
+python-versions = ">=3.6"
 
 [[package]]
 name = "pylint"
@@ -1651,6 +1685,18 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 
 [package.dependencies]
 six = ">=1.5"
+
+[[package]]
+name = "python-louvain"
+version = "0.16"
+description = "Louvain algorithm for community detection"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+networkx = "*"
+numpy = "*"
 
 [[package]]
 name = "pytorch-lightning"
@@ -1762,6 +1808,23 @@ packaging = "*"
 
 [package.extras]
 test = ["pytest (>=6.0.0)", "pytest-cov (>=3.0.0)", "pytest-qt"]
+
+[[package]]
+name = "rdflib"
+version = "6.1.1"
+description = "RDFLib is a Python library for working with RDF, a simple yet powerful language for representing information."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+isodate = "*"
+pyparsing = "*"
+
+[package.extras]
+docs = ["sphinx (<5)", "sphinxcontrib-apidoc"]
+html = ["html5lib"]
+tests = ["berkeleydb", "html5lib", "networkx", "pytest", "pytest-cov", "pytest-subtests"]
 
 [[package]]
 name = "requests"
@@ -2076,86 +2139,88 @@ type = "url"
 url = "https://download.pytorch.org/whl/cu111/torch-1.10.2%2Bcu111-cp38-cp38-linux_x86_64.whl"
 [[package]]
 name = "torch-cluster"
-version = "1.6.0"
+version = "1.5.9"
 description = "PyTorch Extension Library of Optimized Graph Cluster Algorithms"
 category = "main"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.6"
 
 [package.extras]
-test = ["pytest", "pytest-cov", "scipy"]
+test = ["pytest", "pytest-runner", "pytest-cov", "scipy"]
 
 [package.source]
 type = "url"
-url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_cluster-1.6.0-cp38-cp38-linux_x86_64.whl"
+url = "https://data.pyg.org/whl/torch-1.8.0%2Bcu111/torch_cluster-1.5.9-cp38-cp38-linux_x86_64.whl"
 [[package]]
 name = "torch-geometric"
-version = "2.0.4"
-description = "Graph Neural Network Library for PyTorch"
+version = "1.7.2"
+description = "Geometric Deep Learning Extension Library for PyTorch"
 category = "main"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.6"
 
 [package.dependencies]
+googledrivedownloader = "*"
 jinja2 = "*"
+networkx = "*"
 numpy = "*"
 pandas = "*"
 pyparsing = "*"
+python-louvain = "*"
+rdflib = "*"
 requests = "*"
 scikit-learn = "*"
 scipy = "*"
 tqdm = "*"
 
 [package.extras]
-dev = ["pytest", "pytest-cov", "pre-commit"]
-full = ["h5py", "yacs", "numba", "captum", "rdflib", "trimesh", "networkx", "tabulate", "hydra-core", "matplotlib", "scikit-image", "pytorch-memlab", "class-resolver (>=0.3.2)"]
-test = ["pytest", "pytest-cov"]
+test = ["pytest", "pytest-runner", "pytest-cov", "mock"]
 
 [[package]]
 name = "torch-scatter"
-version = "2.0.9"
+version = "2.0.8"
 description = "PyTorch Extension Library of Optimized Scatter Operations"
 category = "main"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.6"
 
 [package.extras]
-test = ["pytest", "pytest-cov"]
+test = ["pytest", "pytest-runner", "pytest-cov"]
 
 [package.source]
 type = "url"
-url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_scatter-2.0.9-cp38-cp38-linux_x86_64.whl"
+url = "https://data.pyg.org/whl/torch-1.8.0%2Bcu111/torch_scatter-2.0.8-cp38-cp38-linux_x86_64.whl"
 [[package]]
 name = "torch-sparse"
-version = "0.6.13"
+version = "0.6.12"
 description = "PyTorch Extension Library of Optimized Autograd Sparse Matrix Operations"
 category = "main"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.6"
 
 [package.dependencies]
 scipy = "*"
 
 [package.extras]
-test = ["pytest", "pytest-cov"]
+test = ["pytest", "pytest-runner", "pytest-cov"]
 
 [package.source]
 type = "url"
-url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_sparse-0.6.13-cp38-cp38-linux_x86_64.whl"
+url = "https://data.pyg.org/whl/torch-1.8.0%2Bcu111/torch_sparse-0.6.12-cp38-cp38-linux_x86_64.whl"
 [[package]]
 name = "torch-spline-conv"
 version = "1.2.1"
 description = "Implementation of the Spline-Based Convolution Operator of SplineCNN in PyTorch"
 category = "main"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.6"
 
 [package.extras]
-test = ["pytest", "pytest-cov"]
+test = ["pytest", "pytest-runner", "pytest-cov"]
 
 [package.source]
 type = "url"
-url = "https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_spline_conv-1.2.1-cp38-cp38-linux_x86_64.whl"
+url = "https://data.pyg.org/whl/torch-1.8.0%2Bcu111/torch_spline_conv-1.2.1-cp38-cp38-linux_x86_64.whl"
 [[package]]
 name = "torchmetrics"
 version = "0.8.0"
@@ -2357,7 +2422,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.8"
-content-hash = "e8f453be191e496915ac8c48b07e6061542ca6dd93f953a524f7d47d605f8c0a"
+content-hash = "b0b9160223d59ce7d2fc80827f6ffff72f1f0175b630fae6862cd9236ee306be"
 
 [metadata.files]
 absl-py = [
@@ -2855,12 +2920,16 @@ gitpython = [
     {file = "GitPython-3.1.27.tar.gz", hash = "sha256:1c885ce809e8ba2d88a29befeb385fcea06338d3640712b59ca623c220bb5704"},
 ]
 google-auth = [
-    {file = "google-auth-2.6.5.tar.gz", hash = "sha256:04e224f241c0566477bb35a8a93be8c635210de743bde454d49393cfb605266d"},
-    {file = "google_auth-2.6.5-py2.py3-none-any.whl", hash = "sha256:9a88ee548f6fd49467e2e443dfbfe10344e5a270629a137a3a0b3437ec6b02a6"},
+    {file = "google-auth-2.6.6.tar.gz", hash = "sha256:1ba4938e032b73deb51e59c4656a00e0939cf0b1112575099f136babb4563312"},
+    {file = "google_auth-2.6.6-py2.py3-none-any.whl", hash = "sha256:349ac49b18b01019453cc99c11c92ed772739778c92f184002b7ab3a5b7ac77d"},
 ]
 google-auth-oauthlib = [
     {file = "google-auth-oauthlib-0.4.6.tar.gz", hash = "sha256:a90a072f6993f2c327067bf65270046384cda5a8ecb20b94ea9a687f1f233a7a"},
     {file = "google_auth_oauthlib-0.4.6-py2.py3-none-any.whl", hash = "sha256:3f2a6e802eebbb6fb736a370fbf3b055edcb6b52878bf2f26330b5e041316c73"},
+]
+googledrivedownloader = [
+    {file = "googledrivedownloader-0.4-py2.py3-none-any.whl", hash = "sha256:26ef906c4a038de6fb36f375b0cb0af6f0b6d7ea9ce019a3a08abc50fd6a3b73"},
+    {file = "googledrivedownloader-0.4.tar.gz", hash = "sha256:4b34c1337b2ff3bf2bd7581818efbdcaea7d50ffd484ccf80809688f5ca0e204"},
 ]
 grpcio = [
     {file = "grpcio-1.45.0-cp310-cp310-linux_armv7l.whl", hash = "sha256:0d74a159df9401747e57960f0772f4371486e3281919004efa9df8a82985abee"},
@@ -2975,6 +3044,10 @@ ipython-genutils = [
 ipywidgets = [
     {file = "ipywidgets-7.7.0-py2.py3-none-any.whl", hash = "sha256:e58ff58bc94d481e91ecb6e13a5cb96a87b6b8ade135e055603d0ca24593df38"},
     {file = "ipywidgets-7.7.0.tar.gz", hash = "sha256:ab4a5596855a88b83761921c768707d65e5847068139bc1729ddfe834703542a"},
+]
+isodate = [
+    {file = "isodate-0.6.1-py2.py3-none-any.whl", hash = "sha256:0751eece944162659049d35f4f549ed815792b38793f07cf73381c1c87cbed96"},
+    {file = "isodate-0.6.1.tar.gz", hash = "sha256:48c5881de7e8b0a0d648cb024c8062dc84e7b840ed81e864c7614fd3c127bde9"},
 ]
 isort = [
     {file = "isort-5.10.1-py3-none-any.whl", hash = "sha256:6f62d78e2f89b4500b080fe3a81690850cd254227f27f75c3a0c491a1f351ba7"},
@@ -3203,6 +3276,10 @@ nest-asyncio = [
     {file = "nest_asyncio-1.5.5-py3-none-any.whl", hash = "sha256:b98e3ec1b246135e4642eceffa5a6c23a3ab12c82ff816a92c612d68205813b2"},
     {file = "nest_asyncio-1.5.5.tar.gz", hash = "sha256:e442291cd942698be619823a17a86a5759eabe1f8613084790de189fe9e16d65"},
 ]
+networkx = [
+    {file = "networkx-2.8-py3-none-any.whl", hash = "sha256:1a1e8fe052cc1b4e0339b998f6795099562a264a13a5af7a32cad45ab9d4e126"},
+    {file = "networkx-2.8.tar.gz", hash = "sha256:4a52cf66aed221955420e11b3e2e05ca44196b4829aab9576d4d439212b0a14f"},
+]
 nodeenv = [
     {file = "nodeenv-1.6.0-py2.py3-none-any.whl", hash = "sha256:621e6b7076565ddcacd2db0294c0381e01fd28945ab36bcf00f41c5daf63bef7"},
     {file = "nodeenv-1.6.0.tar.gz", hash = "sha256:3ef13ff90291ba2a4a7a4ff9a979b63ffdd00a464dbe04acf0ea6471517a4c2b"},
@@ -3361,30 +3438,30 @@ prompt-toolkit = [
     {file = "prompt_toolkit-3.0.29.tar.gz", hash = "sha256:bd640f60e8cecd74f0dc249713d433ace2ddc62b65ee07f96d358e0b152b6ea7"},
 ]
 protobuf = [
-    {file = "protobuf-3.20.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:9d0f3aca8ca51c8b5e204ab92bd8afdb2a8e3df46bd0ce0bd39065d79aabcaa4"},
-    {file = "protobuf-3.20.0-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:001c2160c03b6349c04de39cf1a58e342750da3632f6978a1634a3dcca1ec10e"},
-    {file = "protobuf-3.20.0-cp310-cp310-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:5b5860b790498f233cdc8d635a17fc08de62e59d4dcd8cdb6c6c0d38a31edf2b"},
-    {file = "protobuf-3.20.0-cp310-cp310-win32.whl", hash = "sha256:0b250c60256c8824219352dc2a228a6b49987e5bf94d3ffcf4c46585efcbd499"},
-    {file = "protobuf-3.20.0-cp310-cp310-win_amd64.whl", hash = "sha256:a1eebb6eb0653e594cb86cd8e536b9b083373fca9aba761ade6cd412d46fb2ab"},
-    {file = "protobuf-3.20.0-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:bc14037281db66aa60856cd4ce4541a942040686d290e3f3224dd3978f88f554"},
-    {file = "protobuf-3.20.0-cp36-cp36m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:47257d932de14a7b6c4ae1b7dbf592388153ee35ec7cae216b87ae6490ed39a3"},
-    {file = "protobuf-3.20.0-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:fbcbb068ebe67c4ff6483d2e2aa87079c325f8470b24b098d6bf7d4d21d57a69"},
-    {file = "protobuf-3.20.0-cp37-cp37m-manylinux2014_aarch64.whl", hash = "sha256:542f25a4adf3691a306dcc00bf9a73176554938ec9b98f20f929a044f80acf1b"},
-    {file = "protobuf-3.20.0-cp37-cp37m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:fd7133b885e356fa4920ead8289bb45dc6f185a164e99e10279f33732ed5ce15"},
-    {file = "protobuf-3.20.0-cp37-cp37m-win32.whl", hash = "sha256:8d84453422312f8275455d1cb52d850d6a4d7d714b784e41b573c6f5bfc2a029"},
-    {file = "protobuf-3.20.0-cp37-cp37m-win_amd64.whl", hash = "sha256:52bae32a147c375522ce09bd6af4d2949aca32a0415bc62df1456b3ad17c6001"},
-    {file = "protobuf-3.20.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:25d2fcd6eef340082718ec9ad2c58d734429f2b1f7335d989523852f2bba220b"},
-    {file = "protobuf-3.20.0-cp38-cp38-manylinux2014_aarch64.whl", hash = "sha256:88c8be0558bdfc35e68c42ae5bf785eb9390d25915d4863bbc7583d23da77074"},
-    {file = "protobuf-3.20.0-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:38fd9eb74b852e4ee14b16e9670cd401d147ee3f3ec0d4f7652e0c921d6227f8"},
-    {file = "protobuf-3.20.0-cp38-cp38-win32.whl", hash = "sha256:7dcd84dc31ebb35ade755e06d1561d1bd3b85e85dbdbf6278011fc97b22810db"},
-    {file = "protobuf-3.20.0-cp38-cp38-win_amd64.whl", hash = "sha256:1eb13f5a5a59ca4973bcfa2fc8fff644bd39f2109c3f7a60bd5860cb6a49b679"},
-    {file = "protobuf-3.20.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:1d24c81c2310f0063b8fc1c20c8ed01f3331be9374b4b5c2de846f69e11e21fb"},
-    {file = "protobuf-3.20.0-cp39-cp39-manylinux2014_aarch64.whl", hash = "sha256:8be43a91ab66fe995e85ccdbdd1046d9f0443d59e060c0840319290de25b7d33"},
-    {file = "protobuf-3.20.0-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:7a53d4035427b9dbfbb397f46642754d294f131e93c661d056366f2a31438263"},
-    {file = "protobuf-3.20.0-cp39-cp39-win32.whl", hash = "sha256:32bf4a90c207a0b4e70ca6dd09d43de3cb9898f7d5b69c2e9e3b966a7f342820"},
-    {file = "protobuf-3.20.0-cp39-cp39-win_amd64.whl", hash = "sha256:6efe066a7135233f97ce51a1aa007d4fb0be28ef093b4f88dac4ad1b3a2b7b6f"},
-    {file = "protobuf-3.20.0-py2.py3-none-any.whl", hash = "sha256:4eda68bd9e2a4879385e6b1ea528c976f59cd9728382005cc54c28bcce8db983"},
-    {file = "protobuf-3.20.0.tar.gz", hash = "sha256:71b2c3d1cd26ed1ec7c8196834143258b2ad7f444efff26fdc366c6f5e752702"},
+    {file = "protobuf-3.20.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:3cc797c9d15d7689ed507b165cd05913acb992d78b379f6014e013f9ecb20996"},
+    {file = "protobuf-3.20.1-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:ff8d8fa42675249bb456f5db06c00de6c2f4c27a065955917b28c4f15978b9c3"},
+    {file = "protobuf-3.20.1-cp310-cp310-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:cd68be2559e2a3b84f517fb029ee611546f7812b1fdd0aa2ecc9bc6ec0e4fdde"},
+    {file = "protobuf-3.20.1-cp310-cp310-win32.whl", hash = "sha256:9016d01c91e8e625141d24ec1b20fed584703e527d28512aa8c8707f105a683c"},
+    {file = "protobuf-3.20.1-cp310-cp310-win_amd64.whl", hash = "sha256:32ca378605b41fd180dfe4e14d3226386d8d1b002ab31c969c366549e66a2bb7"},
+    {file = "protobuf-3.20.1-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:9be73ad47579abc26c12024239d3540e6b765182a91dbc88e23658ab71767153"},
+    {file = "protobuf-3.20.1-cp36-cp36m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:097c5d8a9808302fb0da7e20edf0b8d4703274d140fd25c5edabddcde43e081f"},
+    {file = "protobuf-3.20.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:e250a42f15bf9d5b09fe1b293bdba2801cd520a9f5ea2d7fb7536d4441811d20"},
+    {file = "protobuf-3.20.1-cp37-cp37m-manylinux2014_aarch64.whl", hash = "sha256:cdee09140e1cd184ba9324ec1df410e7147242b94b5f8b0c64fc89e38a8ba531"},
+    {file = "protobuf-3.20.1-cp37-cp37m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:af0ebadc74e281a517141daad9d0f2c5d93ab78e9d455113719a45a49da9db4e"},
+    {file = "protobuf-3.20.1-cp37-cp37m-win32.whl", hash = "sha256:755f3aee41354ae395e104d62119cb223339a8f3276a0cd009ffabfcdd46bb0c"},
+    {file = "protobuf-3.20.1-cp37-cp37m-win_amd64.whl", hash = "sha256:62f1b5c4cd6c5402b4e2d63804ba49a327e0c386c99b1675c8a0fefda23b2067"},
+    {file = "protobuf-3.20.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:06059eb6953ff01e56a25cd02cca1a9649a75a7e65397b5b9b4e929ed71d10cf"},
+    {file = "protobuf-3.20.1-cp38-cp38-manylinux2014_aarch64.whl", hash = "sha256:cb29edb9eab15742d791e1025dd7b6a8f6fcb53802ad2f6e3adcb102051063ab"},
+    {file = "protobuf-3.20.1-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:69ccfdf3657ba59569c64295b7d51325f91af586f8d5793b734260dfe2e94e2c"},
+    {file = "protobuf-3.20.1-cp38-cp38-win32.whl", hash = "sha256:dd5789b2948ca702c17027c84c2accb552fc30f4622a98ab5c51fcfe8c50d3e7"},
+    {file = "protobuf-3.20.1-cp38-cp38-win_amd64.whl", hash = "sha256:77053d28427a29987ca9caf7b72ccafee011257561259faba8dd308fda9a8739"},
+    {file = "protobuf-3.20.1-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:6f50601512a3d23625d8a85b1638d914a0970f17920ff39cec63aaef80a93fb7"},
+    {file = "protobuf-3.20.1-cp39-cp39-manylinux2014_aarch64.whl", hash = "sha256:284f86a6207c897542d7e956eb243a36bb8f9564c1742b253462386e96c6b78f"},
+    {file = "protobuf-3.20.1-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:7403941f6d0992d40161aa8bb23e12575637008a5a02283a930addc0508982f9"},
+    {file = "protobuf-3.20.1-cp39-cp39-win32.whl", hash = "sha256:db977c4ca738dd9ce508557d4fce0f5aebd105e158c725beec86feb1f6bc20d8"},
+    {file = "protobuf-3.20.1-cp39-cp39-win_amd64.whl", hash = "sha256:7e371f10abe57cee5021797126c93479f59fccc9693dafd6bd5633ab67808a91"},
+    {file = "protobuf-3.20.1-py2.py3-none-any.whl", hash = "sha256:adfc6cf69c7f8c50fd24c793964eef18f0ac321315439d94945820612849c388"},
+    {file = "protobuf-3.20.1.tar.gz", hash = "sha256:adc31566d027f45efe3f44eeb5b1f329da43891634d61c75a5944e9be6dd42c9"},
 ]
 psutil = [
     {file = "psutil-5.9.0-cp27-cp27m-manylinux2010_i686.whl", hash = "sha256:55ce319452e3d139e25d6c3f85a1acf12d1607ddedea5e35fb47a552c051161b"},
@@ -3483,8 +3560,8 @@ pyflakes = [
     {file = "pyflakes-2.3.1.tar.gz", hash = "sha256:f5bc8ecabc05bb9d291eb5203d6810b49040f6ff446a756326104746cc00c1db"},
 ]
 pygments = [
-    {file = "Pygments-2.11.2-py3-none-any.whl", hash = "sha256:44238f1b60a76d78fc8ca0528ee429702aae011c265fe6a8dd8b63049ae41c65"},
-    {file = "Pygments-2.11.2.tar.gz", hash = "sha256:4e426f72023d88d03b2fa258de560726ce890ff3b630f88c21cbb8b2503b8c6a"},
+    {file = "Pygments-2.12.0-py3-none-any.whl", hash = "sha256:dc9c10fb40944260f6ed4c688ece0cd2048414940f1cea51b8b226318411c519"},
+    {file = "Pygments-2.12.0.tar.gz", hash = "sha256:5eb116118f9612ff1ee89ac96437bb6b49e8f04d8a13b514ba26f620208e26eb"},
 ]
 pylint = [
     {file = "pylint-2.13.7-py3-none-any.whl", hash = "sha256:13ddbbd8872c804574149e81197c28877eba75224ba6b76cd8652fc31df55c1c"},
@@ -3528,6 +3605,9 @@ pytest-cov = [
 python-dateutil = [
     {file = "python-dateutil-2.8.2.tar.gz", hash = "sha256:0123cacc1627ae19ddf3c27a5de5bd67ee4586fbdd6440d9748f8abb483d3e86"},
     {file = "python_dateutil-2.8.2-py2.py3-none-any.whl", hash = "sha256:961d03dc3453ebbc59dbdea9e4e11c5651520a876d0f4db161e8674aae935da9"},
+]
+python-louvain = [
+    {file = "python-louvain-0.16.tar.gz", hash = "sha256:b7ba2df5002fd28d3ee789a49532baad11fe648e4f2117cf0798e7520a1da56b"},
 ]
 pytorch-lightning = [
     {file = "pytorch-lightning-1.5.10.tar.gz", hash = "sha256:119e5a0ad0678444c0bbf95755da571e5e372ab12df7c6115ddd26e364a8ddfa"},
@@ -3649,6 +3729,10 @@ qtconsole = [
 qtpy = [
     {file = "QtPy-2.0.1-py3-none-any.whl", hash = "sha256:d93f2c98e97387fcc9d623d509772af5b6c15ab9d8f9f4c5dfbad9a73ad34812"},
     {file = "QtPy-2.0.1.tar.gz", hash = "sha256:adfd073ffbd2de81dc7aaa0b983499ef5c59c96adcfdcc9dea60d42ca885eb8f"},
+]
+rdflib = [
+    {file = "rdflib-6.1.1-py3-none-any.whl", hash = "sha256:fc81cef513cd552d471f2926141396b633207109d0154c8e77926222c70367fe"},
+    {file = "rdflib-6.1.1.tar.gz", hash = "sha256:8dbfa0af2990b98471dacbc936d6494c997ede92fd8ed693fb84ee700ef6f754"},
 ]
 requests = [
     {file = "requests-2.27.1-py2.py3-none-any.whl", hash = "sha256:f22fa1e554c9ddfd16e6e41ac79759e17be9e492b3587efa038054674760e72d"},
@@ -3824,7 +3908,7 @@ tomli = [
 torch = []
 torch-cluster = []
 torch-geometric = [
-    {file = "torch_geometric-2.0.4.tar.gz", hash = "sha256:d64e4c7486fcf0c7fa82f0acbf5dd52035855469708bf89f8bc7fc607671c8b7"},
+    {file = "torch_geometric-1.7.2.tar.gz", hash = "sha256:a57b115cb3891c81d16960380e0bc4d842da2c96bea5ca019d6d139e6f026b31"},
 ]
 torch-scatter = []
 torch-sparse = []
