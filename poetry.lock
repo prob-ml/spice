@@ -2125,18 +2125,19 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "torch"
-version = "1.10.2+cu111"
+version = "1.8.1+cu111"
 description = "Tensors and Dynamic neural networks in Python with strong GPU acceleration"
 category = "main"
 optional = false
 python-versions = ">=3.6.2"
 
 [package.dependencies]
+numpy = "*"
 typing-extensions = "*"
 
 [package.source]
 type = "url"
-url = "https://download.pytorch.org/whl/cu111/torch-1.10.2%2Bcu111-cp38-cp38-linux_x86_64.whl"
+url = "https://download.pytorch.org/whl/cu111/torch-1.8.1%2Bcu111-cp38-cp38-linux_x86_64.whl"
 [[package]]
 name = "torch-cluster"
 version = "1.5.9"
@@ -2422,7 +2423,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.8"
-content-hash = "b0b9160223d59ce7d2fc80827f6ffff72f1f0175b630fae6862cd9236ee306be"
+content-hash = "32cd78bbadac3cd8a4e9f5a0000f21425e85e8784bfadb57a8c83af1309edd64"
 
 [metadata.files]
 absl-py = [
