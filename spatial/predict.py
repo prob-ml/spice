@@ -8,6 +8,7 @@ from torch_geometric.data import DataLoader
 from spatial.models.monet_ae import (
     MonetAutoencoder2D,
     TrivialAutoencoder,
+    MonetDense,
 )
 from spatial.train import (
     setup_checkpoint_callback,
@@ -45,6 +46,11 @@ def test(cfg: DictConfig, data=None):
     )
 
     # Load the best model.
+    if cfg.model.name == "MonetDense":
+        model = MonetDense.load_from_checkpoint(
+            checkpoint_path=checkpoint_path,
+            **cfg.model.kwargs,
+        )
     if cfg.model.name == "TrivialAutoencoder":
         model = TrivialAutoencoder.load_from_checkpoint(
             checkpoint_path=checkpoint_path,

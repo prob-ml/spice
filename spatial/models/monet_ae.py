@@ -53,8 +53,40 @@ class BasicAEMixin(pl.LightningModule):
 
     # The above description is important because these methods ONLY
     # get used in the child class where class variables are defined.
-    saved_original_input = 0
-    hopefully_masked_input = 0
+    def __init__(
+        self,
+        observables_dimension,
+        hidden_dimensions,
+        latent_dimension,
+        loss_type,
+        other_logged_losses,
+        mask_random_prop,
+        mask_cells_prop,
+        mask_genes_prop,
+        response_genes,
+        celltype_lookup,
+        batchnorm,
+        final_relu,
+        dropout,
+        responses,
+    ):
+        super().__init__()
+        self.observables_dimension = observables_dimension
+        self.hidden_dimensions = hidden_dimensions
+        self.latent_dimension = latent_dimension
+        self.loss_type = loss_type
+        self.other_logged_losses = other_logged_losses
+        self.mask_random_prop = mask_random_prop
+        self.mask_cells_prop = mask_cells_prop
+        self.mask_genes_prop = mask_genes_prop
+        # needed so that during testing a different set
+        # of responses other than MERFISH is useable.
+        self.response_genes = response_genes
+        self.celltype_lookup = celltype_lookup
+        self.batchnorm = batchnorm
+        self.final_relu = final_relu
+        self.dropout = dropout
+        self.responses = responses
 
     def calc_loss(self, pred, val, losstype, celltype_data=None, celltype=None):
         # standard losses
@@ -254,64 +286,59 @@ class BasicAEMixin(pl.LightningModule):
         return torch.optim.Adam(self.parameters())
 
 
-class BasicNN(BasicAEMixin):
-    def training_step(self, batch, batch_idx):
-        if self.mask_cells_prop > 0:
-            mean_estimate = self(self.mask_cells(batch))
-        else:
-            mean_estimate = self(batch)
-        # print(f"This training batch has {batch.x.shape[0]} cells.")
-        loss = self.calc_loss(
-            mean_estimate, batch.x[:, self.response_genes], self.loss_type
-        )
-        self.log("train_loss", loss, prog_bar=True)
-        self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        mean_estimate = self(batch)
-        loss = self.calc_loss(
-            mean_estimate, batch.x[:, self.response_genes], self.loss_type
-        )
-        self.log("val_loss", loss, prog_bar=True)
-        return loss
-
-    gene_expressions = torch.tensor([])
-    inputs = torch.tensor([])
-    celltypes = torch.tensor([])
-
-    def test_step(self, batch, batch_idx):
-        mean_estimate = self(batch)
-        loss = self.calc_loss(
-            mean_estimate, batch.x[:, self.response_genes], self.loss_type
-        )
-        self.log("test_loss", loss, prog_bar=True)
-
-        # save input and output images
-        tensorboard = self.logger.experiment
-        tensorboard.add_image(
-            f"{self.__class__.__name__}/{self.logger.version}/{batch_idx}/input",
-            batch.x,
-            dataformats="HW",
-        )
-        tensorboard.add_image(
-            f"{self.__class__.__name__}/"
-            f"{self.logger.version}/{batch_idx}/reconstruction",
-            mean_estimate,
-            dataformats="HW",
+class MonetDense(BasicAEMixin):
+    def __init__(
+        self,
+        observables_dimension,
+        hidden_dimensions,
+        loss_type,
+        other_logged_losses,
+        mask_random_prop,
+        mask_cells_prop,
+        mask_genes_prop,
+        response_genes,
+        celltype_lookup,
+        batchnorm,
+        final_relu,
+        dropout,
+        responses,
+    ):
+        """
+        observables_dimension -- number of values associated with each graph node
+        hidden_dimensions -- list of hidden values to associate with each graph node
+        """
+        # constuctor ensures that output dimension matches the observables dimension
+        super().__init__(
+            observables_dimension,
+            hidden_dimensions,
+            observables_dimension,
+            loss_type,
+            other_logged_losses,
+            mask_random_prop,
+            mask_cells_prop,
+            mask_genes_prop,
+            response_genes,
+            celltype_lookup,
+            batchnorm,
+            final_relu,
+            dropout,
+            responses,
         )
 
-        self.inputs = torch.cat((self.inputs, batch.x[:, self.features].cpu()), 0)
-        self.gene_expressions = torch.cat(
-            (self.gene_expressions, mean_estimate.cpu()), 0
+        self.dense_network = base_networks.construct_dense_relu_network(
+            [observables_dimension] + list(hidden_dimensions) + [observables_dimension],
+            use_batchnorm=self.batchnorm,
+            dropout=self.dropout,
         )
-        self.celltypes = torch.cat((self.celltypes, batch.y.cpu()), 0)
 
-        return loss
+    def forward(self, batch):
+
+        output = self.dense_network(batch.x)
+        return batch.x, output
 
 
 class TrivialAutoencoder(BasicAEMixin):
-    """Autoencoder for graph data, ignoring the graph structurea"""
+    """Autoencoder for graph data, ignoring the graph structure"""
 
     def __init__(
         self,
@@ -335,21 +362,22 @@ class TrivialAutoencoder(BasicAEMixin):
         hidden_dimensions -- list of hidden values to associate with each graph node
         latent_dimension -- number of latent values to associate with each graph node
         """
-        super().__init__()
-
-        self.loss_type = loss_type
-        self.other_logged_losses = other_logged_losses
-        self.mask_random_prop = mask_random_prop
-        self.mask_cells_prop = mask_cells_prop
-        self.mask_genes_prop = mask_genes_prop
-        # needed so that during testing a different set
-        # of responses other than MERFISH is useable.
-        self.response_genes = response_genes
-        self.celltype_lookup = celltype_lookup
-        self.batchnorm = batchnorm
-        self.final_relu = final_relu
-        self.dropout = dropout
-        self.responses = responses
+        super().__init__(
+            observables_dimension,
+            hidden_dimensions,
+            latent_dimension,
+            loss_type,
+            other_logged_losses,
+            mask_random_prop,
+            mask_cells_prop,
+            mask_genes_prop,
+            response_genes,
+            celltype_lookup,
+            batchnorm,
+            final_relu,
+            dropout,
+            responses,
+        )
 
         self.encoder_network = base_networks.construct_dense_relu_network(
             [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
@@ -397,38 +425,44 @@ class MonetAutoencoder2D(BasicAEMixin):
         observables_dimension -- number of values associated with each graph node
         latent_dimension -- number of latent values to associate with each graph node
         """
-        super().__init__()
+        super().__init__(
+            observables_dimension,
+            hidden_dimensions,
+            latent_dimension,
+            loss_type,
+            other_logged_losses,
+            mask_random_prop,
+            mask_cells_prop,
+            mask_genes_prop,
+            response_genes,
+            celltype_lookup,
+            batchnorm,
+            final_relu,
+            dropout,
+            responses,
+        )
 
-        self.loss_type = loss_type
-        self.other_logged_losses = other_logged_losses
-        self.mask_random_prop = mask_random_prop
-        self.mask_cells_prop = mask_cells_prop
-        self.mask_genes_prop = mask_genes_prop
-        # needed so that during testing a different set
-        # of responses other than MERFISH is useable.
-        self.response_genes = response_genes
-        self.celltype_lookup = celltype_lookup
-        self.batchnorm = batchnorm
-        self.final_relu = final_relu
-        self.dropout = dropout
-        self.responses = responses
+        self.dim = dim
+        self.kernel_size = kernel_size
 
         self.encoder_network = base_networks.DenseReluGMMConvNetwork(
-            [observables_dimension] + list(hidden_dimensions) + [latent_dimension],
+            [self.observables_dimension]
+            + list(self.hidden_dimensions)
+            + [self.latent_dimension],
             use_batchnorm=self.batchnorm,
             dropout=self.dropout,
-            dim=dim,
-            kernel_size=kernel_size,
+            dim=self.dim,
+            kernel_size=self.kernel_size,
             include_skip_connections=False,
         )
         self.decoder_network = base_networks.DenseReluGMMConvNetwork(
-            [latent_dimension]
-            + list(reversed(hidden_dimensions))
-            + [observables_dimension],
+            [self.latent_dimension]
+            + list(reversed(self.hidden_dimensions))
+            + [self.observables_dimension],
             use_batchnorm=self.batchnorm,
             dropout=self.dropout,
-            dim=dim,
-            kernel_size=kernel_size,
+            dim=self.dim,
+            kernel_size=self.kernel_size,
             include_skip_connections=False,
         )
 

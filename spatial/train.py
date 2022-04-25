@@ -20,6 +20,7 @@ datasets = {cls.__name__: cls for cls in _datasets}
 _models = [
     monet_ae.TrivialAutoencoder,
     monet_ae.MonetAutoencoder2D,
+    monet_ae.MonetDense,
 ]
 models = {cls.__name__: cls for cls in _models}
 
