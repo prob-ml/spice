@@ -1,5 +1,3 @@
- lines (40 sloc)  1.44 KB
-
 [tool.poetry]
 name = "spatial"
 version = "0.1.0"
