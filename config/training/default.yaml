@@ -1,5 +1,5 @@
 plotting: True
-n_epochs: 600
+n_epochs: 15
 logger_name: maskcells0.05
 save_model_summary: False
 batch_size: 1

@@ -1890,7 +1890,7 @@ def cutSpaces(sample, xs, ys, n_part=3):
 
     # initalize
     idx_part = np.zeros(xs.shape)
-    metas = [(sample, i) for i in range(n_part ** 2)]
+    metas = [(sample, i) for i in range(n_part**2)]
     meta_idx = dict.fromkeys(metas)
 
     mark = 0

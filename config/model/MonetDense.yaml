@@ -1,12 +1,9 @@
-name: MonetAutoencoder2D
+name: MonetDense
 kwargs:
   observables_dimension: 155
   hidden_dimensions: [512, 512, 512] # try (20, 100, 200) and all 155
-  latent_dimension: 155 # try (20, 100, 200) and all 155
   loss_type: "mae" # laplace (Mae) would be better
   other_logged_losses: ["mse"]
-  dim: 1
-  kernel_size: 25
   mask_random_prop: 0
   mask_cells_prop: 0.05
   mask_genes_prop: 0.0
