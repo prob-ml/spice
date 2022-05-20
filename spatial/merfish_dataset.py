@@ -529,4 +529,4 @@ class FilteredMerfishDataset(MerfishDataset):
                 )
             )
 
-        return data_list
+        return sum(data_list, [])

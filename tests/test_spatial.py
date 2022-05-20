@@ -74,6 +74,7 @@ def test_merfish_dataset():
     # maybe change pytest.ini so the relpath is shorter?
     mfd = merfish_dataset.MerfishDataset(
         test_data_dir,
+        radius=8,
         non_response_genes_file="../spatial/spatial/non_response_blank_removed.txt",
     )
     mfd.get(0)
