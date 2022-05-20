@@ -100,6 +100,13 @@ def train(cfg: DictConfig, data=None):
     if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:
         raise AssertionError("Data dimension not in line with observables dimension.")
 
+    if cfg.model.kwargs.attach_mask:
+        OmegaConf.update(
+            cfg,
+            "model.kwargs.observables_dimension",
+            cfg.model.kwargs.observables_dimension * 2,
+        )
+
     # get response indeces so they can be passed into the model
     if cfg.model.kwargs.response_genes is None:
         OmegaConf.update(cfg, "model.kwargs.response_genes", data.response_genes)
