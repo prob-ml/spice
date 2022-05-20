@@ -1,6 +1,6 @@
 plotting: True
-n_epochs: 15
-logger_name: maskcells0.05
+n_epochs: 600
+logger_name: neighbors_large
 save_model_summary: False
 batch_size: 1
 dropout: True
@@ -21,4 +21,4 @@ trainer:
   check_val_every_n_epoch: 10
 #  strategy: dp
   log_every_n_steps: 10
-filepath: ${model.name}__${model.kwargs.hidden_dimensions}__${radius}__${model.kwargs.dropout}__${model.kwargs.mask_cells_prop} # ${model.name}__${model.kwargs.observables_dimension}__${model.kwargs.hidden_dimensions}__${model.kwargs.latent_dimension}__${radius}__${optimizer.params.lr}__${training.logger_name}__${training.seed}
+filepath: ${model.name}__${model.kwargs.hidden_dimensions}__${radius}__${model.kwargs.attach_mask}__${training.logger_name} # ${model.name}__${model.kwargs.observables_dimension}__${model.kwargs.hidden_dimensions}__${model.kwargs.latent_dimension}__${radius}__${optimizer.params.lr}__${training.logger_name}__${training.seed}

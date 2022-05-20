@@ -12,5 +12,6 @@ kwargs:
   celltype_lookup: 0
   batchnorm: True
   final_relu: False
+  attach_mask: False
   dropout: 0
   responses: False
