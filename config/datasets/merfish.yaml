@@ -1,2 +1,0 @@
-# name of txt file with predictor genes
-predictor_genes: ${paths.root}/spatial/non_response.txt

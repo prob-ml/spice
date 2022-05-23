@@ -10,6 +10,7 @@ dataset:
   sexes: ["Female"]
   behaviors: ["Naive"]
   test_animal: 1
+  splits: 2
 
 
 

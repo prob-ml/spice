@@ -26,6 +26,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         radius=None,
         non_response_genes_file="/home/roko/spatial/spatial/"
         "non_response_blank_removed.txt",
+        splits=2,
     ):
         super().__init__(root)
 
@@ -38,7 +39,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         self.response_genes = list(set(range(155)) - set(self.features))
 
         data_list = self.construct_graphs(
-            n_neighbors, train, log_transform, neighbor_celltypes, radius
+            n_neighbors, train, log_transform, neighbor_celltypes, radius, splits
         )
 
         with h5py.File(self.merfish_hdf5, "r") as h5f:
@@ -117,6 +118,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             gene_names = np.array(dataframe.keys()[9:], dtype="S80")
             h5f.create_dataset("gene_names", data=gene_names)
 
+    # pylint: disable=too-many-statements
     def construct_graph(
         self,
         data,
@@ -126,7 +128,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         log_transform,
         neighbor_celltypes,
         radius,
-        splits=True,
+        splits=1,
     ):
         def get_neighbors(edges, x_shape):
             return [edges[:, edges[0] == i][1] for i in range(x_shape)]
@@ -155,8 +157,9 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
         locations_for_this_slice = data.locations[good]
 
-        if splits:
+        if splits >= 1:
 
+            # initial split into fourths
             x_split = np.quantile(locations_for_this_slice, 0.5, 0)[0]
 
             y_split_lower_x = np.quantile(
@@ -172,16 +175,154 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
                 0.5,
             )
 
-            graph_filters = [
-                (data.locations[:, 0] <= x_split)
-                & (data.locations[:, 1] <= y_split_lower_x),
-                (data.locations[:, 0] <= x_split)
-                & (data.locations[:, 1] >= y_split_lower_x),
-                (data.locations[:, 0] >= x_split)
-                & (data.locations[:, 1] <= y_split_higher_x),
-                (data.locations[:, 0] >= x_split)
-                & (data.locations[:, 1] >= y_split_higher_x),
-            ]
+            if splits == 1:
+
+                graph_filters = [
+                    (data.locations[:, 0] <= x_split)
+                    & (data.locations[:, 1] <= y_split_lower_x),
+                    (data.locations[:, 0] <= x_split)
+                    & (data.locations[:, 1] >= y_split_lower_x),
+                    (data.locations[:, 0] >= x_split)
+                    & (data.locations[:, 1] <= y_split_higher_x),
+                    (data.locations[:, 0] >= x_split)
+                    & (data.locations[:, 1] >= y_split_higher_x),
+                ]
+
+            else:
+                # bottom left section split into fourths again
+                x_split_lower_y_lower_x = np.quantile(
+                    locations_for_this_slice[
+                        (locations_for_this_slice[:, 0] <= x_split)
+                        & (locations_for_this_slice[:, 1] <= y_split_lower_x)
+                    ][:, 0],
+                    0.5,
+                )
+
+                y_split_lower_x_lower_y_lower_x = np.quantile(
+                    locations_for_this_slice[
+                        (locations_for_this_slice[:, 0] <= x_split_lower_y_lower_x)
+                        & (locations_for_this_slice[:, 1] <= y_split_lower_x)
+                    ][:, 1],
+                    0.5,
+                )
+                y_split_higher_x_lower_y_lower_x = np.quantile(
+                    locations_for_this_slice[
+                        (locations_for_this_slice[:, 0] >= x_split_lower_y_lower_x)
+                        & (locations_for_this_slice[:, 1] <= y_split_lower_x)
+                    ][:, 1],
+                    0.5,
+                )
+
+                # top left section split into fourths again
+                x_split_higher_y_lower_x = np.quantile(
+                    locations_for_this_slice[
+                        (locations_for_this_slice[:, 0] <= x_split)
+                        & (locations_for_this_slice[:, 1] >= y_split_lower_x)
+                    ][:, 0],
+                    0.5,
+                )
+
+                y_split_lower_x_higher_y_lower_x = np.quantile(
+                    locations_for_this_slice[
+                        (locations_for_this_slice[:, 0] <= x_split_higher_y_lower_x)
+                        & (locations_for_this_slice[:, 1] >= y_split_lower_x)
+                    ][:, 1],
+                    0.5,
+                )
+                y_split_higher_x_higher_y_lower_x = np.quantile(
+                    locations_for_this_slice[
+                        (locations_for_this_slice[:, 0] >= x_split_higher_y_lower_x)
+                        & (locations_for_this_slice[:, 1] >= y_split_lower_x)
+                    ][:, 1],
+                    0.5,
+                )
+
+                # bottom right section split into fourths again
+                x_split_lower_y_higher_x = np.quantile(
+                    locations_for_this_slice[
+                        (locations_for_this_slice[:, 0] >= x_split)
+                        & (locations_for_this_slice[:, 1] <= y_split_higher_x)
+                    ][:, 0],
+                    0.5,
+                )
+
+                y_split_lower_x_lower_y_higher_x = np.quantile(
+                    locations_for_this_slice[
+                        (locations_for_this_slice[:, 0] <= x_split_lower_y_higher_x)
+                        & (locations_for_this_slice[:, 1] <= y_split_higher_x)
+                    ][:, 1],
+                    0.5,
+                )
+                y_split_higher_x_lower_y_higher_x = np.quantile(
+                    locations_for_this_slice[
+                        (locations_for_this_slice[:, 0] >= x_split_lower_y_higher_x)
+                        & (locations_for_this_slice[:, 1] <= y_split_higher_x)
+                    ][:, 1],
+                    0.5,
+                )
+
+                # top right section split into fourths again
+                x_split_higher_y_higher_x = np.quantile(
+                    locations_for_this_slice[
+                        (locations_for_this_slice[:, 0] >= x_split)
+                        & (locations_for_this_slice[:, 1] <= y_split_higher_x)
+                    ][:, 0],
+                    0.5,
+                )
+
+                y_split_lower_x_higher_y_higher_x = np.quantile(
+                    locations_for_this_slice[
+                        (locations_for_this_slice[:, 0] <= x_split_higher_y_higher_x)
+                        & (locations_for_this_slice[:, 1] >= y_split_higher_x)
+                    ][:, 1],
+                    0.5,
+                )
+                y_split_higher_x_higher_y_higher_x = np.quantile(
+                    locations_for_this_slice[
+                        (locations_for_this_slice[:, 0] >= x_split_higher_y_higher_x)
+                        & (locations_for_this_slice[:, 1] >= y_split_higher_x)
+                    ][:, 1],
+                    0.5,
+                )
+
+                graph_filters = [
+                    # bottom left section
+                    (data.locations[:, 0] <= x_split_lower_y_lower_x)
+                    & (data.locations[:, 1] <= y_split_lower_x_lower_y_lower_x),
+                    (data.locations[:, 0] <= x_split_lower_y_lower_x)
+                    & (data.locations[:, 1] >= y_split_lower_x_lower_y_lower_x),
+                    (data.locations[:, 0] >= x_split_lower_y_lower_x)
+                    & (data.locations[:, 1] <= y_split_higher_x_lower_y_lower_x),
+                    (data.locations[:, 0] >= x_split_lower_y_lower_x)
+                    & (data.locations[:, 1] >= y_split_higher_x_lower_y_lower_x),
+                    # top left section
+                    (data.locations[:, 0] <= x_split_higher_y_lower_x)
+                    & (data.locations[:, 1] <= y_split_lower_x_higher_y_lower_x),
+                    (data.locations[:, 0] <= x_split_higher_y_lower_x)
+                    & (data.locations[:, 1] >= y_split_lower_x_higher_y_lower_x),
+                    (data.locations[:, 0] >= x_split_higher_y_lower_x)
+                    & (data.locations[:, 1] <= y_split_higher_x_higher_y_lower_x),
+                    (data.locations[:, 0] >= x_split_higher_y_lower_x)
+                    & (data.locations[:, 1] >= y_split_higher_x_higher_y_lower_x),
+                    # bottom right section
+                    (data.locations[:, 0] <= x_split_lower_y_higher_x)
+                    & (data.locations[:, 1] <= y_split_lower_x_lower_y_higher_x),
+                    (data.locations[:, 0] <= x_split_lower_y_higher_x)
+                    & (data.locations[:, 1] >= y_split_lower_x_lower_y_higher_x),
+                    (data.locations[:, 0] >= x_split_lower_y_higher_x)
+                    & (data.locations[:, 1] <= y_split_higher_x_lower_y_higher_x),
+                    (data.locations[:, 0] >= x_split_lower_y_higher_x)
+                    & (data.locations[:, 1] >= y_split_higher_x_lower_y_higher_x),
+                    # top right section
+                    (data.locations[:, 0] <= x_split_higher_y_higher_x)
+                    & (data.locations[:, 1] <= y_split_lower_x_higher_y_higher_x),
+                    (data.locations[:, 0] <= x_split_higher_y_higher_x)
+                    & (data.locations[:, 1] >= y_split_lower_x_higher_y_higher_x),
+                    (data.locations[:, 0] >= x_split_higher_y_higher_x)
+                    & (data.locations[:, 1] <= y_split_higher_x_higher_y_higher_x),
+                    (data.locations[:, 0] >= x_split_higher_y_higher_x)
+                    & (data.locations[:, 1] >= y_split_higher_x_higher_y_higher_x),
+                ]
 
         else:
             graph_filters = [good]
@@ -283,6 +424,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         log_transform=True,
         neighbor_celltypes=False,
         radius=None,
+        splits=0,
     ):
         # load hdf5
         with h5py.File(self.merfish_hdf5, "r") as h5f:
@@ -319,7 +461,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
                         log_transform,
                         neighbor_celltypes,
                         radius,
-                        splits=True,
+                        splits=splits,
                     )
                 )
 
@@ -343,6 +485,7 @@ class FilteredMerfishDataset(MerfishDataset):
         behaviors=None,
         test_animal=None,
         full_animal_holdout=False,
+        splits=0,
     ):
         self.root = root
         self.animals = animals
@@ -376,6 +519,7 @@ class FilteredMerfishDataset(MerfishDataset):
             neighbor_celltypes=neighbor_celltypes,
             non_response_genes_file=non_response_genes_file,
             radius=radius,
+            splits=splits,
         )
         # print("Filtered hdf5 file created!")
 
@@ -400,6 +544,7 @@ class FilteredMerfishDataset(MerfishDataset):
         log_transform=True,
         neighbor_celltypes=False,
         radius=None,
+        splits=0,
     ):
         print(self.merfish_hdf5)
         # load hdf5
@@ -526,6 +671,7 @@ class FilteredMerfishDataset(MerfishDataset):
                     log_transform,
                     neighbor_celltypes,
                     radius,
+                    splits,
                 )
             )
 
