@@ -11,9 +11,10 @@ kwargs:
   mask_cells_prop: 0.0
   mask_genes_prop: 1.0
   response_genes: # empty by default this is none so we can use the responses from the data
-  celltype_lookup: 0 # this gets updated in train
+  celltypes:
   batchnorm: True
   final_relu: False
   attach_mask: False
   dropout: 0
   responses: True
+  hide_responses: True

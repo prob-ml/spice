@@ -41,6 +41,18 @@ def calc_pseudo(edge_index, pos, mode="polar"):
         raise ValueError("Mode improperly or not specified.")
 
 
+def calc_loss(pred, val, losstype, celltype_data=None, celltype=None):
+    # standard losses
+    if losstype == "mse_against_log1pdata":
+        return torch.mean((pred - torch.log(1 + val)) ** 2)
+    elif losstype == "mse":
+        return torch.mean((pred - val) ** 2)
+    elif losstype == "mae":
+        return torch.mean(torch.abs(pred - val))
+    else:
+        raise NotImplementedError
+
+
 class BasicAEMixin(pl.LightningModule):
 
     """
@@ -50,6 +62,25 @@ class BasicAEMixin(pl.LightningModule):
     - loss calculations
     - training_step, validation_step,test_step,configure_optimizers for pytorchlightning
     """
+
+    celltype_lookup = {
+        "Ambiguous": 0,
+        "Astrocyte": 1,
+        "Endothelial 1": 2,
+        "Endothelial 2": 3,
+        "Endothelial 3": 4,
+        "Ependymal": 5,
+        "Excitatory": 6,
+        "Inhibitory": 7,
+        "Microglia": 8,
+        "OD Immature 1": 9,
+        "OD Immature 2": 10,
+        "OD Mature 1": 11,
+        "OD Mature 2": 12,
+        "OD Mature 3": 13,
+        "OD Mature 4": 14,
+        "Pericytes": 15,
+    }
 
     # The above description is important because these methods ONLY
     # get used in the child class where class variables are defined.
@@ -64,12 +95,13 @@ class BasicAEMixin(pl.LightningModule):
         mask_cells_prop=0.05,
         mask_genes_prop=0,
         response_genes=None,
-        celltype_lookup=0,
+        celltypes=None,
         batchnorm=True,
         final_relu=False,
         attach_mask=False,
         dropout=0,
         responses=False,
+        hide_responses=True,
     ):
         super().__init__()
         self.observables_dimension = observables_dimension
@@ -83,52 +115,13 @@ class BasicAEMixin(pl.LightningModule):
         # needed so that during testing a different set
         # of responses other than MERFISH is useable.
         self.response_genes = response_genes
-        self.celltype_lookup = celltype_lookup
+        self.celltypes = celltypes
         self.batchnorm = batchnorm
         self.final_relu = final_relu
         self.attach_mask = attach_mask
         self.dropout = dropout
         self.responses = responses
-
-    def calc_loss(self, pred, val, losstype, celltype_data=None, celltype=None):
-        # standard losses
-        if losstype == "mse_against_log1pdata":
-            return torch.mean((pred - torch.log(1 + val)) ** 2)
-        elif losstype == "mse":
-            return torch.mean((pred - val) ** 2)
-        elif losstype == "mae":
-            return torch.mean(torch.abs(pred - val))
-
-        # response losses
-        elif losstype == "mae_response":
-            return torch.mean(
-                torch.abs(
-                    pred[:, torch.tensor(self.response_genes)]
-                    - val[:, torch.tensor(self.response_genes)]
-                )
-            )
-        elif losstype == "mse_response":
-            return torch.mean(
-                (
-                    pred[:, torch.tensor(self.response_genes)]
-                    - val[:, torch.tensor(self.response_genes)]
-                )
-                ** 2
-            )
-        elif losstype == "mae_response_celltype":
-            return torch.mean(
-                torch.abs(
-                    pred[:, torch.tensor(self.response_genes)]
-                    - val[:, torch.tensor(self.response_genes)]
-                )[
-                    (celltype_data == self.celltype_lookup[celltype]).nonzero(
-                        as_tuple=True
-                    )[0]
-                ]
-            )
-
-        else:
-            raise NotImplementedError
+        self.hide_responses = hide_responses
 
     def mask_cells(self, batch):
         n_cells = batch.x.shape[0]
@@ -170,12 +163,37 @@ class BasicAEMixin(pl.LightningModule):
 
         return new_batch_obj, masked_indeces
 
+    def mask_celltypes(self, batch, celltypes):
+        # 0 in masked_indeces means mask applied, 1 means not
+        if celltypes is None:
+            return batch, torch.ones((batch.x.shape[0], 1)).to(batch.x.device)
+        celltype_values = [self.celltype_lookup[celltype] for celltype in celltypes]
+        masked_indeces = ~(
+            sum(batch.y[:, 1] == val for val in celltype_values).bool().reshape(-1, 1)
+        )
+        new_batch_obj = deepcopy(batch)
+        masked_indeces = masked_indeces.to(new_batch_obj.x.device)
+        new_batch_obj.x *= masked_indeces
+        return new_batch_obj, masked_indeces
+
+    def remove_responses(self, batch):
+        new_batch_obj = deepcopy(batch)
+        responses = torch.tensor(
+            [0 if x in self.response_genes else 1 for x in range(batch.x.shape[1])]
+        )
+        responses = responses.to(new_batch_obj.x.device)
+        new_batch_obj.x *= torch.tensor(responses)
+        return new_batch_obj
+
     def training_step(self, batch, batch_idx):
 
-        new_batch_obj, random_mask = self.mask_at_random(batch)
+        new_batch_obj, celltype_mask = self.mask_celltypes(batch, self.celltypes)
+        new_batch_obj, random_mask = self.mask_at_random(new_batch_obj)
         new_batch_obj, gene_mask = self.mask_genes(new_batch_obj)
         new_batch_obj, cell_mask = self.mask_cells(new_batch_obj)
-        masking_tensor = random_mask * gene_mask * cell_mask
+        if self.hide_responses:
+            new_batch_obj = self.remove_responses(new_batch_obj)
+        masking_tensor = (celltype_mask * random_mask * gene_mask * cell_mask).bool()
         if self.attach_mask:
             new_batch_obj.x = torch.cat((new_batch_obj.x, masking_tensor), dim=1)
         _, reconstruction = self(new_batch_obj)
@@ -203,10 +221,13 @@ class BasicAEMixin(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
 
-        new_batch_obj, random_mask = self.mask_at_random(batch)
+        new_batch_obj, celltype_mask = self.mask_celltypes(batch, self.celltypes)
+        new_batch_obj, random_mask = self.mask_at_random(new_batch_obj)
         new_batch_obj, gene_mask = self.mask_genes(new_batch_obj)
         new_batch_obj, cell_mask = self.mask_cells(new_batch_obj)
-        masking_tensor = random_mask * gene_mask * cell_mask
+        if self.hide_responses:
+            new_batch_obj = self.remove_responses(new_batch_obj)
+        masking_tensor = (celltype_mask * random_mask * gene_mask * cell_mask).bool()
         if self.attach_mask:
             new_batch_obj.x = torch.cat((new_batch_obj.x, masking_tensor), dim=1)
         _, reconstruction = self(new_batch_obj)
@@ -233,14 +254,17 @@ class BasicAEMixin(pl.LightningModule):
 
     gene_expressions = torch.tensor([])
     inputs = torch.tensor([])
-    celltypes = torch.tensor([])
+    labelinfo = torch.tensor([])
 
     def test_step(self, batch, batch_idx):
 
-        new_batch_obj, random_mask = self.mask_at_random(batch)
+        new_batch_obj, celltype_mask = self.mask_celltypes(batch, self.celltypes)
+        new_batch_obj, random_mask = self.mask_at_random(new_batch_obj)
         new_batch_obj, gene_mask = self.mask_genes(new_batch_obj)
         new_batch_obj, cell_mask = self.mask_cells(new_batch_obj)
-        masking_tensor = random_mask * gene_mask * cell_mask
+        if self.hide_responses:
+            new_batch_obj = self.remove_responses(new_batch_obj)
+        masking_tensor = (celltype_mask * random_mask * gene_mask * cell_mask).bool()
         if self.attach_mask:
             new_batch_obj.x = torch.cat((new_batch_obj.x, masking_tensor), dim=1)
         _, reconstruction = self(new_batch_obj)
@@ -282,7 +306,7 @@ class BasicAEMixin(pl.LightningModule):
         self.gene_expressions = torch.cat(
             (self.gene_expressions, reconstruction.cpu()), 0
         )
-        self.celltypes = torch.cat((self.celltypes, batch.y.cpu()), 0)
+        self.labelinfo = torch.cat((self.labelinfo, batch.y.cpu()), 0)
 
         return loss
 
@@ -310,12 +334,13 @@ class MonetDense(BasicAEMixin):
         mask_cells_prop,
         mask_genes_prop,
         response_genes,
-        celltype_lookup,
+        celltypes,
         batchnorm,
         final_relu,
         attach_mask,
         dropout,
         responses,
+        hide_responses,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -332,12 +357,13 @@ class MonetDense(BasicAEMixin):
             mask_cells_prop,
             mask_genes_prop,
             response_genes,
-            celltype_lookup,
+            celltypes,
             batchnorm,
             final_relu,
             attach_mask,
             dropout,
             responses,
+            hide_responses,
         )
 
         self.dim = dim
@@ -374,12 +400,13 @@ class TrivialAutoencoder(BasicAEMixin):
         mask_cells_prop,
         mask_genes_prop,
         response_genes,
-        celltype_lookup,
+        celltypes,
         batchnorm,
         final_relu,
         attach_mask,
         dropout,
         responses,
+        hide_responses,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -396,12 +423,13 @@ class TrivialAutoencoder(BasicAEMixin):
             mask_cells_prop,
             mask_genes_prop,
             response_genes,
-            celltype_lookup,
+            celltypes,
             batchnorm,
             final_relu,
             attach_mask,
             dropout,
             responses,
+            hide_responses,
         )
 
         self.encoder_network = base_networks.construct_dense_relu_network(
@@ -440,12 +468,13 @@ class MonetAutoencoder2D(BasicAEMixin):
         mask_cells_prop,
         mask_genes_prop,
         response_genes,
-        celltype_lookup,
+        celltypes,
         batchnorm,
         final_relu,
         attach_mask,
         dropout,
         responses,
+        hide_responses,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -461,12 +490,13 @@ class MonetAutoencoder2D(BasicAEMixin):
             mask_cells_prop,
             mask_genes_prop,
             response_genes,
-            celltype_lookup,
+            celltypes,
             batchnorm,
             final_relu,
             attach_mask,
             dropout,
             responses,
+            hide_responses,
         )
 
         self.dim = dim

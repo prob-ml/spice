@@ -412,6 +412,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
                     pos=torch.tensor(locations_for_this_slice.astype(np.float32)),
                     y=torch.tensor(labelinfo),
                     bregma=breg,
+                    anid=anid,
                 )
             )
 
@@ -446,7 +447,12 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             unique_slices = np.unique(np.c_[data.anids, data.bregs], axis=0)
 
             # are we looking at train or test sets?
-            unique_slices = unique_slices[:150] if train else unique_slices[150:]
+            # the number for filtering represents animal id
+            unique_slices = (
+                unique_slices[unique_slices[:, 0] <= 30]
+                if train
+                else unique_slices[unique_slices[:, 0] > 30]
+            )
 
             # store all the slices in this list...
             data_list = []
