@@ -6,6 +6,7 @@ import torch
 import torch_geometric
 from hydra import compose, initialize
 from numpy import random as npr
+from spatial.models.monet_ae import calc_loss
 
 
 class SimulatedData(torch_geometric.data.InMemoryDataset):
@@ -316,7 +317,8 @@ def test_monetae2d(num_epochs=10):
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
-        "model.kwargs.mask_cells_prop": 0.5,
+        "model.kwargs.mask_cells_prop": 0.0,
+        "model.kwargs.mask_genes_prop": 1.0,
         "model.kwargs.dropout": 0,
         "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
@@ -336,15 +338,13 @@ def test_monetae2d(num_epochs=10):
 
     # get loss from trained network
     _, recon = trained_model(train_simulated_data[0])
-    train_loss = trained_model.calc_loss(
-        recon, train_simulated_data[0].x, cfg.model.kwargs.loss_type
-    )
+    train_loss = calc_loss(recon, train_simulated_data[0].x, cfg.model.kwargs.loss_type)
 
     # check if test loss is lower than dummy loss
     overrides_test = overrides_train.copy()
     test_addons = {
         "mode": "predict",
-        "predict.verbose": False,
+        "predict.verbose": True,
     }
     overrides_test.update(test_addons)
 
@@ -389,7 +389,8 @@ def test_trivial(num_epochs=10):
         "model.kwargs.observables_dimension": data_dimension,
         "model.kwargs.hidden_dimensions": [100, 50, 25, 10],
         "model.kwargs.latent_dimension": 2,
-        "model.kwargs.mask_cells_prop": 0.5,
+        "model.kwargs.mask_cells_prop": 0.0,
+        "model.kwargs.mask_genes_prop": 1.0,
         "model.kwargs.dropout": 0,
         "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
@@ -408,15 +409,13 @@ def test_trivial(num_epochs=10):
 
     # get loss from trained network
     _, recon = trained_model(train_simulated_data[0])
-    train_loss = trained_model.calc_loss(
-        recon, train_simulated_data[0].x, cfg.model.kwargs.loss_type
-    )
+    train_loss = calc_loss(recon, train_simulated_data[0].x, cfg.model.kwargs.loss_type)
 
     # check if test loss is lower than dummy loss
     overrides_test = overrides_train.copy()
     test_addons = {
         "mode": "predict",
-        "predict.verbose": False,
+        "predict.verbose": True,
     }
     overrides_test.update(test_addons)
 

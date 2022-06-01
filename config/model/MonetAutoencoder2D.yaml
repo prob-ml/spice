@@ -7,13 +7,14 @@ kwargs:
   other_logged_losses: ["mse"]
   dim: 1
   kernel_size: 25
-  mask_random_prop: 0
-  mask_cells_prop: 0.25
-  mask_genes_prop: 0.0
+  mask_random_prop: 0.0
+  mask_cells_prop: 0.0
+  mask_genes_prop: 1.0
   response_genes: # empty by default this is none so we can use the responses from the data
-  celltype_lookup: 0 # this gets updated in train
+  celltypes:
   batchnorm: True
   final_relu: False
   attach_mask: False
   dropout: 0
-  responses: False
+  responses: True
+  hide_responses: True
