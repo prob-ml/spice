@@ -198,7 +198,7 @@ class BasicAEMixin(pl.LightningModule):
             new_batch_obj.x = torch.cat((new_batch_obj.x, masking_tensor), dim=1)
         _, reconstruction = self(new_batch_obj)
         # print(f"This training batch has {batch.x.shape[0]} cells.")
-        loss = self.calc_loss(
+        loss = calc_loss(
             reconstruction[~masking_tensor],
             batch.x[~masking_tensor],
             self.loss_type,
@@ -209,7 +209,7 @@ class BasicAEMixin(pl.LightningModule):
         for additional_loss in self.other_logged_losses:
             self.log(
                 "train_loss: " + additional_loss,
-                self.calc_loss(
+                calc_loss(
                     reconstruction[~masking_tensor],
                     batch.x[~masking_tensor],
                     additional_loss,
@@ -232,7 +232,7 @@ class BasicAEMixin(pl.LightningModule):
             new_batch_obj.x = torch.cat((new_batch_obj.x, masking_tensor), dim=1)
         _, reconstruction = self(new_batch_obj)
         # print(f"This training batch has {batch.x.shape[0]} cells.")
-        loss = self.calc_loss(
+        loss = calc_loss(
             reconstruction[~masking_tensor],
             batch.x[~masking_tensor],
             self.loss_type,
@@ -243,7 +243,7 @@ class BasicAEMixin(pl.LightningModule):
         for additional_loss in self.other_logged_losses:
             self.log(
                 "val_loss: " + additional_loss,
-                self.calc_loss(
+                calc_loss(
                     reconstruction[~masking_tensor],
                     batch.x[~masking_tensor],
                     additional_loss,
@@ -269,7 +269,7 @@ class BasicAEMixin(pl.LightningModule):
             new_batch_obj.x = torch.cat((new_batch_obj.x, masking_tensor), dim=1)
         _, reconstruction = self(new_batch_obj)
         # print(f"This training batch has {batch.x.shape[0]} cells.")
-        loss = self.calc_loss(
+        loss = calc_loss(
             reconstruction[~masking_tensor],
             batch.x[~masking_tensor],
             self.loss_type,
@@ -279,7 +279,7 @@ class BasicAEMixin(pl.LightningModule):
         for additional_loss in self.other_logged_losses:
             self.log(
                 "test_loss: " + additional_loss,
-                self.calc_loss(
+                calc_loss(
                     reconstruction[~masking_tensor],
                     batch.x[~masking_tensor],
                     additional_loss,
