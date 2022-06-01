@@ -6,6 +6,7 @@ import torch
 import torch_geometric
 from hydra import compose, initialize
 from numpy import random as npr
+from spatial.models.monet_ae import calc_loss
 
 
 class SimulatedData(torch_geometric.data.InMemoryDataset):
@@ -337,9 +338,7 @@ def test_monetae2d(num_epochs=10):
 
     # get loss from trained network
     _, recon = trained_model(train_simulated_data[0])
-    train_loss = trained_model.calc_loss(
-        recon, train_simulated_data[0].x, cfg.model.kwargs.loss_type
-    )
+    train_loss = calc_loss(recon, train_simulated_data[0].x, cfg.model.kwargs.loss_type)
 
     # check if test loss is lower than dummy loss
     overrides_test = overrides_train.copy()
@@ -410,9 +409,7 @@ def test_trivial(num_epochs=10):
 
     # get loss from trained network
     _, recon = trained_model(train_simulated_data[0])
-    train_loss = trained_model.calc_loss(
-        recon, train_simulated_data[0].x, cfg.model.kwargs.loss_type
-    )
+    train_loss = calc_loss(recon, train_simulated_data[0].x, cfg.model.kwargs.loss_type)
 
     # check if test loss is lower than dummy loss
     overrides_test = overrides_train.copy()
