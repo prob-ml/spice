@@ -102,6 +102,7 @@ class BasicAEMixin(pl.LightningModule):
         dropout=0,
         responses=False,
         hide_responses=True,
+        include_skip_connections=False,
     ):
         super().__init__()
         self.observables_dimension = observables_dimension
@@ -122,6 +123,7 @@ class BasicAEMixin(pl.LightningModule):
         self.dropout = dropout
         self.responses = responses
         self.hide_responses = hide_responses
+        self.include_skip_connections = include_skip_connections
 
     def mask_cells(self, batch):
         n_cells = batch.x.shape[0]
@@ -341,6 +343,7 @@ class MonetDense(BasicAEMixin):
         dropout,
         responses,
         hide_responses,
+        include_skip_connections,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -364,6 +367,7 @@ class MonetDense(BasicAEMixin):
             dropout,
             responses,
             hide_responses,
+            include_skip_connections,
         )
 
         self.dim = dim
@@ -377,7 +381,7 @@ class MonetDense(BasicAEMixin):
             dropout=self.dropout,
             dim=self.dim,
             kernel_size=self.kernel_size,
-            include_skip_connections=False,
+            include_skip_connections=self.include_skip_connections,
         )
 
     def forward(self, batch):
@@ -407,6 +411,7 @@ class TrivialAutoencoder(BasicAEMixin):
         dropout,
         responses,
         hide_responses,
+        include_skip_connections,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -437,6 +442,7 @@ class TrivialAutoencoder(BasicAEMixin):
             use_batchnorm=self.batchnorm,
             dropout=self.dropout,
         )
+
         self.decoder_network = base_networks.construct_dense_relu_network(
             [latent_dimension]
             + list(reversed(hidden_dimensions))
@@ -475,6 +481,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         dropout,
         responses,
         hide_responses,
+        include_skip_connections,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -497,6 +504,7 @@ class MonetAutoencoder2D(BasicAEMixin):
             dropout,
             responses,
             hide_responses,
+            include_skip_connections,
         )
 
         self.dim = dim
@@ -510,7 +518,7 @@ class MonetAutoencoder2D(BasicAEMixin):
             dropout=self.dropout,
             dim=self.dim,
             kernel_size=self.kernel_size,
-            include_skip_connections=False,
+            include_skip_connections=self.include_skip_connections,
         )
         self.decoder_network = base_networks.DenseReluGMMConvNetwork(
             [self.latent_dimension]
@@ -520,7 +528,7 @@ class MonetAutoencoder2D(BasicAEMixin):
             dropout=self.dropout,
             dim=self.dim,
             kernel_size=self.kernel_size,
-            include_skip_connections=False,
+            include_skip_connections=self.include_skip_connections,
         )
 
     def forward(self, batch):

@@ -7,11 +7,12 @@ dataset:
   neighbor_celltypes: False
   radius: ${radius}
   non_response_genes_file: "/home/roko/spatial/spatial/non_response_blank_removed.txt"
-  sexes: ["Female"]
-  behaviors: ["Naive"]
+  animals:
+  bregmas:
+  sexes:
+  behaviors:
   test_animal: 1
+  full_animal_holdout: True
   splits: 1
-
-
 
 predictor_genes: ${paths.root}/spatial/non_response.txt
