@@ -1,10 +1,10 @@
 plotting: True
 n_epochs: 600
-logger_name: table2
+logger_name: table2_5CV
 save_model_summary: False
 batch_size: 1
 dropout: True
-early_stopping: True
+early_stopping: False
 log_transform: True
 seed: False
 trainer:

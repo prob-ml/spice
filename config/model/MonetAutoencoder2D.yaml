@@ -18,3 +18,4 @@ kwargs:
   dropout: 0
   responses: True
   hide_responses: True
+  include_skip_connections: False
