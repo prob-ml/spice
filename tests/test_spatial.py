@@ -322,13 +322,14 @@ def test_monetae2d(num_epochs=10):
         "model.kwargs.dropout": 0,
         "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
+        "training.logger_name": "test_spatial_only",
     }
     overrides_train_list = [f"{k}={v}" for k, v in overrides_train.items()]
 
     with initialize(config_path="../config"):
         cfg = compose(config_name="config", overrides=overrides_train_list)
         print(cfg)
-        trained_model = train.train(cfg, data=train_simulated_data)
+        trained_model, _ = train.train(cfg, data=train_simulated_data)
 
     ###################
     # check our performance on a training example
@@ -345,6 +346,7 @@ def test_monetae2d(num_epochs=10):
     test_addons = {
         "mode": "predict",
         "predict.verbose": True,
+        "training.logger_name": "test_spatial_only",
     }
     overrides_test.update(test_addons)
 
@@ -394,12 +396,13 @@ def test_trivial(num_epochs=10):
         "model.kwargs.dropout": 0,
         "training.n_epochs": num_epochs,
         "training.trainer.log_every_n_steps": 2,
+        "training.logger_name": "test_spatial_only",
     }
     overrides_train_list = [f"{k}={v}" for k, v in overrides_train.items()]
 
     with initialize(config_path="../config"):
         cfg = compose(config_name="config", overrides=overrides_train_list)
-        trained_model = train.train(cfg, data=train_simulated_data)
+        trained_model, _ = train.train(cfg, data=train_simulated_data)
 
     ###################
     # check our performance on a training example
@@ -416,6 +419,7 @@ def test_trivial(num_epochs=10):
     test_addons = {
         "mode": "predict",
         "predict.verbose": True,
+        "training.logger_name": "test_spatial_only",
     }
     overrides_test.update(test_addons)
 
