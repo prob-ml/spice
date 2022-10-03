@@ -148,3 +148,7 @@ multirun
 
 # toy jupyter notebooks for exploring
 # examples
+
+# MESSI stuff
+examples/reproduce/input/*.csv
+examples/reproduce/MESSI.py
