@@ -49,13 +49,11 @@ def setup_logger(cfg, filepath):
 # set up model saving (taken from bliss)
 def setup_checkpoint_callback(cfg, logger, filepath):
     callbacks = []
-    output = cfg.paths.output
     if cfg.training.trainer.enable_checkpointing:
-        checkpoint_dir = f"{output}/lightning_logs/checkpoints/{cfg.model.name}"
-        checkpoint_dir = os.path.join(output, checkpoint_dir)
+        checkpoint_dir = f"lightning_logs/checkpoints/{cfg.model.name}"
+        checkpoint_dir = os.path.join(cfg.paths.output, checkpoint_dir)
         checkpoint_callback = ModelCheckpoint(
             dirpath=checkpoint_dir,
-            save_top_k=True,
             verbose=True,
             monitor="val_loss",
             mode="min",
@@ -76,7 +74,7 @@ def setup_early_stopping(cfg, callbacks):
     return callbacks
 
 
-def train(cfg: DictConfig, data=None):
+def train(cfg: DictConfig, data=None, validate_only=False):
 
     # if this is a non-zero int, the run will have a seed
     if cfg.training.seed:
@@ -173,7 +171,15 @@ def train(cfg: DictConfig, data=None):
 
     # GPU Memory logging (NOT YET IMPLETMENED)
 
-    # train!
-    trainer.fit(model, train_loader, val_loader)
+    # train or validate
+    if validate_only:
+        checkpoint_dir = f"lightning_logs/checkpoints/{cfg.model.name}"
+        checkpoint_dir = os.path.join(cfg.paths.output, checkpoint_dir)
+        ckpt_path_for_validation = os.path.join(
+            checkpoint_dir, cfg.training.filepath + ".ckpt"
+        )
+        trainer.validate(model, val_loader, ckpt_path=ckpt_path_for_validation)
+    else:
+        trainer.fit(model, train_loader, val_loader)
 
-    return model
+    return model, trainer

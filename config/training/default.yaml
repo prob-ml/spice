@@ -1,6 +1,6 @@
 plotting: True
 n_epochs: 600
-logger_name: table2_5CV
+logger_name: response142
 save_model_summary: False
 batch_size: 1
 dropout: True
@@ -21,4 +21,4 @@ trainer:
   check_val_every_n_epoch: 10
 #  strategy: dp
   log_every_n_steps: 10
-filepath: ${model.name}__${model.kwargs.hidden_dimensions}__${radius}__${training.logger_name}
+filepath: ${model.name}__${model.kwargs.hidden_dimensions}__${model.kwargs.response_genes}__${radius}__${training.logger_name}
