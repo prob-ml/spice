@@ -8,6 +8,7 @@ import requests
 import torch
 import torch.nn.functional as F
 import torch_geometric
+import tqdm
 from sklearn import neighbors
 from scipy.spatial import cKDTree
 
@@ -23,7 +24,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         radius=None,
         non_response_genes_file="/home/roko/spatial/spatial/"
         "non_response_blank_removed.txt",
-        splits=2,
+        splits=0,
     ):
         super().__init__(root)
 
@@ -115,6 +116,57 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             gene_names = np.array(dataframe.keys()[9:], dtype="S80")
             h5f.create_dataset("gene_names", data=gene_names)
 
+    @staticmethod
+    def data_transform(data, split_locations, log_transform):
+        return torch.log1p(data) if log_transform else data
+
+    @staticmethod
+    def calculate_neighborhood(split_locations, radius, n_neighbors):
+        # only include self edges if n_neighbors is 0
+        if n_neighbors == 0 and radius is None:
+            edges = np.concatenate(
+                [
+                    np.c_[np.array([i]), np.array([i])]
+                    for i in range(split_locations.shape[0])
+                ],
+                axis=0,
+            )
+
+        else:
+
+            if radius is None:
+                nbrs = neighbors.NearestNeighbors(
+                    n_neighbors=n_neighbors + 1, algorithm="ball_tree"
+                )
+                nbrs.fit(split_locations)
+                _, kneighbors = nbrs.kneighbors(split_locations)
+                edges = np.concatenate(
+                    [
+                        np.c_[kneighbors[:, 0], kneighbors[:, i]]
+                        for i in range(n_neighbors + 1)
+                    ],
+                    axis=0,
+                )
+
+            else:
+
+                tree = cKDTree(split_locations)
+                kneighbors = tree.query_ball_point(
+                    split_locations, r=radius, return_sorted=False
+                )
+                edges = np.concatenate(
+                    [
+                        np.c_[
+                            np.repeat(i, len(kneighbors[i])),
+                            list(kneighbors[i]),
+                        ]
+                        for i in range(len(kneighbors))
+                    ],
+                    axis=0,
+                )
+
+        return torch.tensor(edges, dtype=torch.long).T
+
     # pylint: disable=too-many-statements
     def construct_graph(
         self,
@@ -125,7 +177,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         log_transform,
         neighbor_celltypes,
         radius,
-        splits=1,
+        splits=0,
     ):
         def get_neighbors(edges, x_shape):
             return [edges[:, edges[0] == i][1] for i in range(x_shape)]
@@ -152,240 +204,56 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         # get subset of cells in this slice
         good = (data.anids == anid) & (data.bregs == breg)
 
-        locations_for_this_slice = data.locations[good]
+        # index 0 is behavior, index 1 is celltype,
+        # last 2 are the location. Will update it
+        # to be last 3 in the case that bregma is included in location.
+        data_for_this_slice = np.concatenate(
+            (
+                data.behavior[good].reshape(-1, 1),
+                data.celltypes[good].reshape(-1, 1),
+                data.expression[good],
+                data.locations[good],
+            ),
+            axis=1,
+        )
 
-        if splits >= 1:
-
-            # initial split into fourths
-            x_split = np.quantile(locations_for_this_slice, 0.5, 0)[0]
-
-            y_split_lower_x = np.quantile(
-                locations_for_this_slice[locations_for_this_slice[:, 0] <= x_split][
-                    :, 1
-                ],
-                0.5,
-            )
-            y_split_higher_x = np.quantile(
-                locations_for_this_slice[locations_for_this_slice[:, 0] >= x_split][
-                    :, 1
-                ],
-                0.5,
-            )
-
-            if splits == 1:
-
-                graph_filters = [
-                    (data.locations[:, 0] <= x_split)
-                    & (data.locations[:, 1] <= y_split_lower_x),
-                    (data.locations[:, 0] <= x_split)
-                    & (data.locations[:, 1] >= y_split_lower_x),
-                    (data.locations[:, 0] >= x_split)
-                    & (data.locations[:, 1] <= y_split_higher_x),
-                    (data.locations[:, 0] >= x_split)
-                    & (data.locations[:, 1] >= y_split_higher_x),
-                ]
-
-            else:
-                # bottom left section split into fourths again
-                x_split_lower_y_lower_x = np.quantile(
-                    locations_for_this_slice[
-                        (locations_for_this_slice[:, 0] <= x_split)
-                        & (locations_for_this_slice[:, 1] <= y_split_lower_x)
-                    ][:, 0],
-                    0.5,
-                )
-
-                y_split_lower_x_lower_y_lower_x = np.quantile(
-                    locations_for_this_slice[
-                        (locations_for_this_slice[:, 0] <= x_split_lower_y_lower_x)
-                        & (locations_for_this_slice[:, 1] <= y_split_lower_x)
-                    ][:, 1],
-                    0.5,
-                )
-                y_split_higher_x_lower_y_lower_x = np.quantile(
-                    locations_for_this_slice[
-                        (locations_for_this_slice[:, 0] >= x_split_lower_y_lower_x)
-                        & (locations_for_this_slice[:, 1] <= y_split_lower_x)
-                    ][:, 1],
-                    0.5,
-                )
-
-                # top left section split into fourths again
-                x_split_higher_y_lower_x = np.quantile(
-                    locations_for_this_slice[
-                        (locations_for_this_slice[:, 0] <= x_split)
-                        & (locations_for_this_slice[:, 1] >= y_split_lower_x)
-                    ][:, 0],
-                    0.5,
-                )
-
-                y_split_lower_x_higher_y_lower_x = np.quantile(
-                    locations_for_this_slice[
-                        (locations_for_this_slice[:, 0] <= x_split_higher_y_lower_x)
-                        & (locations_for_this_slice[:, 1] >= y_split_lower_x)
-                    ][:, 1],
-                    0.5,
-                )
-                y_split_higher_x_higher_y_lower_x = np.quantile(
-                    locations_for_this_slice[
-                        (locations_for_this_slice[:, 0] >= x_split_higher_y_lower_x)
-                        & (locations_for_this_slice[:, 1] >= y_split_lower_x)
-                    ][:, 1],
-                    0.5,
-                )
-
-                # bottom right section split into fourths again
-                x_split_lower_y_higher_x = np.quantile(
-                    locations_for_this_slice[
-                        (locations_for_this_slice[:, 0] >= x_split)
-                        & (locations_for_this_slice[:, 1] <= y_split_higher_x)
-                    ][:, 0],
-                    0.5,
-                )
-
-                y_split_lower_x_lower_y_higher_x = np.quantile(
-                    locations_for_this_slice[
-                        (locations_for_this_slice[:, 0] <= x_split_lower_y_higher_x)
-                        & (locations_for_this_slice[:, 1] <= y_split_higher_x)
-                    ][:, 1],
-                    0.5,
-                )
-                y_split_higher_x_lower_y_higher_x = np.quantile(
-                    locations_for_this_slice[
-                        (locations_for_this_slice[:, 0] >= x_split_lower_y_higher_x)
-                        & (locations_for_this_slice[:, 1] <= y_split_higher_x)
-                    ][:, 1],
-                    0.5,
-                )
-
-                # top right section split into fourths again
-                x_split_higher_y_higher_x = np.quantile(
-                    locations_for_this_slice[
-                        (locations_for_this_slice[:, 0] >= x_split)
-                        & (locations_for_this_slice[:, 1] <= y_split_higher_x)
-                    ][:, 0],
-                    0.5,
-                )
-
-                y_split_lower_x_higher_y_higher_x = np.quantile(
-                    locations_for_this_slice[
-                        (locations_for_this_slice[:, 0] <= x_split_higher_y_higher_x)
-                        & (locations_for_this_slice[:, 1] >= y_split_higher_x)
-                    ][:, 1],
-                    0.5,
-                )
-                y_split_higher_x_higher_y_higher_x = np.quantile(
-                    locations_for_this_slice[
-                        (locations_for_this_slice[:, 0] >= x_split_higher_y_higher_x)
-                        & (locations_for_this_slice[:, 1] >= y_split_higher_x)
-                    ][:, 1],
-                    0.5,
-                )
-
-                graph_filters = [
-                    # bottom left section
-                    (data.locations[:, 0] <= x_split_lower_y_lower_x)
-                    & (data.locations[:, 1] <= y_split_lower_x_lower_y_lower_x),
-                    (data.locations[:, 0] <= x_split_lower_y_lower_x)
-                    & (data.locations[:, 1] >= y_split_lower_x_lower_y_lower_x),
-                    (data.locations[:, 0] >= x_split_lower_y_lower_x)
-                    & (data.locations[:, 1] <= y_split_higher_x_lower_y_lower_x),
-                    (data.locations[:, 0] >= x_split_lower_y_lower_x)
-                    & (data.locations[:, 1] >= y_split_higher_x_lower_y_lower_x),
-                    # top left section
-                    (data.locations[:, 0] <= x_split_higher_y_lower_x)
-                    & (data.locations[:, 1] <= y_split_lower_x_higher_y_lower_x),
-                    (data.locations[:, 0] <= x_split_higher_y_lower_x)
-                    & (data.locations[:, 1] >= y_split_lower_x_higher_y_lower_x),
-                    (data.locations[:, 0] >= x_split_higher_y_lower_x)
-                    & (data.locations[:, 1] <= y_split_higher_x_higher_y_lower_x),
-                    (data.locations[:, 0] >= x_split_higher_y_lower_x)
-                    & (data.locations[:, 1] >= y_split_higher_x_higher_y_lower_x),
-                    # bottom right section
-                    (data.locations[:, 0] <= x_split_lower_y_higher_x)
-                    & (data.locations[:, 1] <= y_split_lower_x_lower_y_higher_x),
-                    (data.locations[:, 0] <= x_split_lower_y_higher_x)
-                    & (data.locations[:, 1] >= y_split_lower_x_lower_y_higher_x),
-                    (data.locations[:, 0] >= x_split_lower_y_higher_x)
-                    & (data.locations[:, 1] <= y_split_higher_x_lower_y_higher_x),
-                    (data.locations[:, 0] >= x_split_lower_y_higher_x)
-                    & (data.locations[:, 1] >= y_split_higher_x_lower_y_higher_x),
-                    # top right section
-                    (data.locations[:, 0] <= x_split_higher_y_higher_x)
-                    & (data.locations[:, 1] <= y_split_lower_x_higher_y_higher_x),
-                    (data.locations[:, 0] <= x_split_higher_y_higher_x)
-                    & (data.locations[:, 1] >= y_split_lower_x_higher_y_higher_x),
-                    (data.locations[:, 0] >= x_split_higher_y_higher_x)
-                    & (data.locations[:, 1] <= y_split_higher_x_higher_y_higher_x),
-                    (data.locations[:, 0] >= x_split_higher_y_higher_x)
-                    & (data.locations[:, 1] >= y_split_higher_x_higher_y_higher_x),
-                ]
-
-        else:
-            graph_filters = [good]
+        # graph splitting
+        graph_splits = [data_for_this_slice]
+        new_splits = []
+        while splits != 0:
+            for graph in graph_splits:
+                locations = graph[:, -2:].astype(np.float32)
+                x_split = np.median(locations, 0)[0].astype(np.float32)
+                x_0 = graph[locations[:, 0] < x_split]
+                x_1 = graph[locations[:, 0] >= x_split]
+                x_0_locations = x_0[:, -2:].astype(np.float32)
+                x_1_locations = x_1[:, -2:].astype(np.float32)
+                y_split_x_0 = np.median(x_0_locations, 0)[1].astype(np.float32)
+                y_split_x_1 = np.median(x_1_locations, 0)[1].astype(np.float32)
+                x_00 = x_0[x_0_locations[:, 1] < y_split_x_0]
+                x_01 = x_0[x_0_locations[:, 1] >= y_split_x_0]
+                x_10 = x_1[x_1_locations[:, 1] < y_split_x_1]
+                x_11 = x_1[x_1_locations[:, 1] >= y_split_x_1]
+                new_splits += [x_00, x_01, x_10, x_11]
+            graph_splits = new_splits
+            new_splits = []
+            splits -= 1
 
         data_splits = []
 
-        for split in graph_filters:
-            # figure out neighborhood structure
-            locations_for_this_slice = data.locations[good & split]
+        for split in graph_splits:
 
-            # only include self edges if n_neighbors is 0
-            if n_neighbors == 0:
-                edges = np.concatenate(
-                    [
-                        np.c_[np.array([i]), np.array([i])]
-                        for i in range(locations_for_this_slice.shape[0])
-                    ],
-                    axis=0,
-                )
+            split_locations = split[:, -2:]
 
-            else:
-
-                if radius is None:
-                    nbrs = neighbors.NearestNeighbors(
-                        n_neighbors=n_neighbors + 1, algorithm="ball_tree"
-                    )
-                    nbrs.fit(locations_for_this_slice)
-                    _, kneighbors = nbrs.kneighbors(locations_for_this_slice)
-                    edges = np.concatenate(
-                        [
-                            np.c_[kneighbors[:, 0], kneighbors[:, i]]
-                            for i in range(n_neighbors + 1)
-                        ],
-                        axis=0,
-                    )
-
-                else:
-
-                    tree = cKDTree(locations_for_this_slice)
-                    kneighbors = tree.query_ball_point(
-                        locations_for_this_slice, r=radius, return_sorted=False
-                    )
-                    edges = np.concatenate(
-                        [
-                            np.c_[
-                                np.repeat(i, len(kneighbors[i]) - 1),
-                                [x for x in kneighbors[i] if x != i],
-                            ]
-                            for i in range(len(kneighbors))
-                        ],
-                        axis=0,
-                    )
-
-            edges = torch.tensor(edges, dtype=torch.long).T
+            edges = self.calculate_neighborhood(split_locations, radius, n_neighbors)
 
             # remove gene 144.  which is bad.  for some reason.
-            subexpression = data.expression[good & split]
+            subexpression = split[:, 2:-2]
             subexpression = subexpression[:, ~self.bad_genes]
 
             # get behavior ids
-            behavior_ids = np.array(
-                [self.behavior_lookup[x] for x in data.behavior[good & split]]
-            )
-            celltype_ids = np.array(
-                [self.celltype_lookup[x] for x in data.celltypes[good & split]]
-            )
+            behavior_ids = np.array([self.behavior_lookup[x] for x in split[:, 0]])
+            celltype_ids = np.array([self.celltype_lookup[x] for x in split[:, 1]])
             labelinfo = np.c_[behavior_ids, celltype_ids]
 
             # make it into a torch geometric data object, add it to the list!
@@ -399,14 +267,15 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
                     get_neighbors(edges, predictors_x.shape[0]),
                 )
                 predictors_x = torch.cat((predictors_x, test_simplex), dim=1)
-            if log_transform:
-                predictors_x = torch.log1p(predictors_x)
+            predictors_x = self.data_transform(
+                predictors_x, split_locations, log_transform
+            )
 
             data_splits.append(
                 torch_geometric.data.Data(
                     x=predictors_x,
                     edge_index=edges,
-                    pos=torch.tensor(locations_for_this_slice.astype(np.float32)),
+                    pos=torch.tensor(split[:, -2:].astype("float")),
                     y=torch.tensor(labelinfo),
                     bregma=breg,
                     anid=anid,
@@ -454,7 +323,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             # store all the slices in this list...
             data_list = []
 
-            for anid, breg in unique_slices:
+            for anid, breg in tqdm.tqdm(unique_slices):
                 data_list.append(
                     self.construct_graph(
                         data,
@@ -549,7 +418,7 @@ class FilteredMerfishDataset(MerfishDataset):
         radius=None,
         splits=0,
     ):
-        print(self.merfish_hdf5)
+
         # load hdf5
         with h5py.File(self.merfish_hdf5, "r") as h5f:
             # pylint: disable=no-member
@@ -636,7 +505,6 @@ class FilteredMerfishDataset(MerfishDataset):
 
         else:
             num_slices = len(unique_slices)
-            print(num_slices)
             min_holdout = max(1, round((1 / 7) * num_slices))
             unique_slices = (
                 unique_slices[: (num_slices - min_holdout)]
@@ -661,3 +529,225 @@ class FilteredMerfishDataset(MerfishDataset):
             )
 
         return sum(data_list, [])
+
+
+class SyntheticDataset0(MerfishDataset):
+    @staticmethod
+    def __gate(edges, data, i):
+        neighboring_gene1_expr = torch.sum(data[edges[:, edges[0] == i][1], 1])
+        return neighboring_gene1_expr.item() * (neighboring_gene1_expr > 1).item()
+
+    def data_transform(
+        self, x, split_locations, log_transform, true_radius=30, cell_volume=5
+    ):
+        edges = self.calculate_neighborhood(
+            split_locations, radius=true_radius, n_neighbors=None
+        )
+        x = (
+            torch.distributions.negative_binomial.NegativeBinomial(1, 0.5).sample(
+                x.shape
+            )
+            / cell_volume
+        )
+        x[:, 0] = torch.arange(len(x), dtype=torch.float64).apply_(
+            lambda i, edges=edges, x=x: self.__gate(edges, x, i)
+        )
+        return torch.log1p(x) if log_transform else x
+
+
+class SyntheticDataset1(MerfishDataset):
+    @staticmethod
+    def __gate(edges, data, i):
+        neighboring_gene1_expr = torch.sum(data[edges[:, edges[0] == i][1], 1])
+        return neighboring_gene1_expr.item() * (neighboring_gene1_expr > 1).item()
+
+    def data_transform(self, x, split_locations, log_transform, true_radius=30):
+        edges = self.calculate_neighborhood(
+            split_locations, radius=true_radius, n_neighbors=None
+        )
+        x = torch.distributions.exponential.Exponential(10).rsample(x.shape)
+        x[:, 0] = torch.arange(len(x), dtype=torch.float64).apply_(
+            lambda i, edges=edges, x=x: self.__gate(edges, x, i)
+        )
+        return torch.log1p(x) if log_transform else x
+
+
+class SyntheticDataset2(MerfishDataset):
+    @staticmethod
+    def __transform(edges, data, i):
+        neighboring_gene_expr = (
+            torch.mean(data[edges[:, edges[0] == i][1], 1:10])
+        ).item()
+        return neighboring_gene_expr * (2 ** np.sign(neighboring_gene_expr - 1.6))
+
+    def data_transform(self, x, split_locations, log_transform, true_radius=30):
+        edges = self.calculate_neighborhood(
+            split_locations, radius=true_radius, n_neighbors=None
+        )
+        x = torch.exp(torch.distributions.normal.Normal(0, 1).rsample(x.shape))
+        x[:, 0] += torch.arange(len(x), dtype=torch.float64).apply_(
+            lambda i, edges=edges, x=x: self.__transform(edges, x, i)
+        )
+        return torch.log1p(x) if log_transform else x
+
+
+class SyntheticDataset3(MerfishDataset):
+    @staticmethod
+    def __transform(edges, data, i):
+        average_gene1_expr = torch.mean(data[:, 1])
+        average_gene2_expr = torch.mean(data[:, 2])
+        neighboring_gene1_expr = torch.mean(data[edges[:, edges[0] == i][1], 1])
+        neighboring_gene2_expr = torch.mean(data[edges[:, edges[0] == i][1], 2])
+        return 2 ** (
+            1
+            if torch.sign(neighboring_gene1_expr - average_gene1_expr)
+            - torch.sign(neighboring_gene2_expr - average_gene2_expr)
+            > 0
+            else -1
+        )
+
+    def data_transform(self, x, split_locations, log_transform, true_radius=30):
+        edges = self.calculate_neighborhood(
+            split_locations, radius=true_radius, n_neighbors=None
+        )
+        x = torch.exp(torch.distributions.normal.Normal(0, 0.25).rsample(x.shape))
+        x[:, 0] *= torch.arange(len(x), dtype=torch.float64).apply_(
+            lambda i, edges=edges, x=x: self.__transform(edges, x, i)
+        )
+        return torch.log1p(x) if log_transform else x
+
+
+class MerfishDataset3D(MerfishDataset):
+
+    # pylint: disable=too-many-statements
+    def construct_graph(
+        self,
+        data,
+        anid,
+        breg,
+        n_neighbors,
+        log_transform,
+        neighbor_celltypes,
+        radius,
+        splits=0,
+    ):
+        def get_neighbors(edges, x_shape):
+            return [edges[:, edges[0] == i][1] for i in range(x_shape)]
+
+        def get_celltype_simplex(cell_behavior_tensor, neighbors_tensor):
+            num_classes = cell_behavior_tensor.max() + 1
+            return torch.cat(
+                [
+                    (
+                        torch.mean(
+                            1.0
+                            * F.one_hot(
+                                cell_behavior_tensor.index_select(0, neighbors),
+                                num_classes=num_classes,
+                            ),
+                            dim=0,
+                        )
+                    ).unsqueeze(0)
+                    for neighbors in neighbors_tensor
+                ],
+                dim=0,
+            )
+
+        # get subset of cells in this slice
+        good = data.anids == anid
+
+        # index 0 is behavior, index 1 is celltype,
+        # last 2 are the location. Will update it
+        # to be last 3 in the case that bregma is included in location.
+        data_for_this_slice = np.concatenate(
+            (
+                data.behavior[good].reshape(-1, 1),
+                data.celltypes[good].reshape(-1, 1),
+                data.expression[good],
+                data.locations[good],
+                data.bregs[good].reshape(-1, 1),
+            ),
+            axis=1,
+        )
+
+        # graph splitting
+        graph_splits = [data_for_this_slice]
+        new_splits = []
+        while splits != 0:
+            for graph in graph_splits:
+                locations = graph[:, -3:].astype(np.float32)
+                x_split = np.median(locations, 0)[0].astype(np.float32)
+                x_0 = graph[locations[:, 0] < x_split]
+                x_1 = graph[locations[:, 0] >= x_split]
+                x_0_locations = x_0[:, -3:].astype(np.float32)
+                x_1_locations = x_1[:, -3:].astype(np.float32)
+                y_split_x_0 = np.median(x_0_locations, 0)[1].astype(np.float32)
+                y_split_x_1 = np.median(x_1_locations, 0)[1].astype(np.float32)
+                x_00 = x_0[x_0_locations[:, 1] < y_split_x_0]
+                x_01 = x_0[x_0_locations[:, 1] >= y_split_x_0]
+                x_10 = x_1[x_1_locations[:, 1] < y_split_x_1]
+                x_11 = x_1[x_1_locations[:, 1] >= y_split_x_1]
+                x_00_locations = x_00[:, -3:].astype(np.float32)
+                x_01_locations = x_01[:, -3:].astype(np.float32)
+                x_10_locations = x_10[:, -3:].astype(np.float32)
+                x_11_locations = x_11[:, -3:].astype(np.float32)
+                z_split_x_0_y_0 = np.median(x_00_locations, 0)[2].astype(np.float32)
+                z_split_x_0_y_1 = np.median(x_01_locations, 0)[2].astype(np.float32)
+                z_split_x_1_y_0 = np.median(x_10_locations, 0)[2].astype(np.float32)
+                z_split_x_1_y_1 = np.median(x_11_locations, 0)[2].astype(np.float32)
+                x_000 = x_00[x_00_locations[:, 2] < z_split_x_0_y_0]
+                x_001 = x_00[x_00_locations[:, 2] >= z_split_x_0_y_0]
+                x_010 = x_01[x_01_locations[:, 2] < z_split_x_0_y_1]
+                x_011 = x_01[x_01_locations[:, 2] >= z_split_x_0_y_1]
+                x_100 = x_10[x_10_locations[:, 2] < z_split_x_1_y_0]
+                x_101 = x_10[x_10_locations[:, 2] >= z_split_x_1_y_0]
+                x_110 = x_11[x_11_locations[:, 2] < z_split_x_1_y_1]
+                x_111 = x_11[x_11_locations[:, 2] >= z_split_x_1_y_1]
+                new_splits += [x_000, x_001, x_010, x_011, x_100, x_101, x_110, x_111]
+            graph_splits = new_splits
+            new_splits = []
+            splits -= 1
+
+        data_splits = []
+
+        for split in graph_splits:
+
+            split_locations = split[:, -3:]
+
+            edges = self.calculate_neighborhood(split_locations, radius, n_neighbors)
+
+            # remove gene 144.  which is bad.  for some reason.
+            subexpression = split[:, 2:-3]
+            subexpression = subexpression[:, ~self.bad_genes]
+
+            # get behavior ids
+            behavior_ids = np.array([self.behavior_lookup[x] for x in split[:, 0]])
+            celltype_ids = np.array([self.celltype_lookup[x] for x in split[:, 1]])
+            labelinfo = np.c_[behavior_ids, celltype_ids]
+
+            # make it into a torch geometric data object, add it to the list!
+
+            # if we want to first log transform the data, we do it here
+            # make this one return statement only changing x
+            predictors_x = torch.tensor(subexpression.astype(np.float32))
+            if neighbor_celltypes:
+                test_simplex = get_celltype_simplex(
+                    torch.tensor(labelinfo[:, 1]),
+                    get_neighbors(edges, predictors_x.shape[0]),
+                )
+                predictors_x = torch.cat((predictors_x, test_simplex), dim=1)
+            predictors_x = self.data_transform(
+                predictors_x, split_locations, log_transform
+            )
+
+            data_splits.append(
+                torch_geometric.data.Data(
+                    x=predictors_x,
+                    edge_index=edges,
+                    pos=torch.tensor(split[:, -3:].astype("float")),
+                    y=torch.tensor(labelinfo),
+                    anid=anid,
+                )
+            )
+
+        return data_splits

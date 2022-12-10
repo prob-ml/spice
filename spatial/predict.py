@@ -20,7 +20,10 @@ def test(cfg: DictConfig, data=None):
 
     # Set up testing data.
     if data is None:
-        data = instantiate(cfg.datasets.dataset, train=False)
+        if isinstance(cfg.datasets.dataset, list):
+            data = instantiate(cfg.datasets.dataset[0], train=False)
+        else:
+            data = instantiate(cfg.datasets.dataset, train=False)
 
     # ensuring data dimension is correct
     if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:

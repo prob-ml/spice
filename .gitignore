@@ -152,3 +152,7 @@ multirun
 # MESSI stuff
 examples/reproduce/input/*.csv
 examples/reproduce/MESSI.py
+
+# figures
+examples/static/shap/
+examples/static/shap_recovery/
