@@ -13,6 +13,6 @@ dataset:
   behaviors:
   test_animal: 1
   full_animal_holdout: True
-  splits: 1
+  splits: 0
 
 predictor_genes: ${paths.root}/spatial/non_response.txt

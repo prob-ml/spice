@@ -10,7 +10,7 @@ mode: train
 
 n_neighbors: 3
 
-radius:
+radius: 50
 
 gpus:
   - 1

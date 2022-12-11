@@ -72,7 +72,7 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
 
             # do batchnorm
             if self.use_batchnorm:
-                vals = self.batchnorms[i](vals)
+                vals = self.batchnorms[i](vals.float())
 
             # do relu (or not, if final_relu=False and we're on the last layer)
             if self.final_relu or (i != len(self.gmms) - 1):
