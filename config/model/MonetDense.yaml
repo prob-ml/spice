@@ -3,7 +3,7 @@ kwargs:
   observables_dimension: 155
   hidden_dimensions: [128, 128] # try (20, 100, 200) and all 155
   latent_dimension: 155
-  loss_type: "mae" # laplace (Mae) would be better
+  loss_type: "mse" # laplace (Mae) would be better
   other_logged_losses: ["mse"]
   dim: 1
   kernel_size: 25

@@ -363,6 +363,44 @@ def construct_problem(
             else:
                 local_processed_expression[i, 0] *= 0.5
 
+    elif synthetic_mode == 4:
+        local_processed_expression = (
+            torch.distributions.exponential.Exponential(10)
+            .rsample(local_processed_expression.shape)
+            .numpy()
+        )
+        selfset_exprs = local_processed_expression[:, selfset_idxs]
+        for i in range(local_processed_expression.shape[0]):
+            neighboring_gene1_expr = selfset_exprs[
+                true_edges.T[:, true_edges.T[0] == i][1], 1
+            ]
+            neighboring_gene1_distances = true_distances.T[1][true_distances.T[0] == i]
+            neighboring_gene1_expr = np.dot(
+                neighboring_gene1_expr, 1 / (1 + neighboring_gene1_distances)
+            )
+            local_processed_expression[i, 0] = neighboring_gene1_expr
+
+    elif synthetic_mode == 5:
+        local_processed_expression = (
+            torch.distributions.exponential.Exponential(10)
+            .rsample(local_processed_expression.shape)
+            .numpy()
+        )
+        selfset_exprs = local_processed_expression[:, selfset_idxs]
+
+        def __weight(x):
+            return 1 - np.arcsinh(5.863 * x) / 5.863
+
+        for i in range(local_processed_expression.shape[0]):
+            neighboring_gene1_expr = selfset_exprs[
+                true_edges.T[:, true_edges.T[0] == i][1], 1
+            ]
+            neighboring_gene1_distances = true_distances.T[1][true_distances.T[0] == i]
+            neighboring_gene1_expr = np.dot(
+                neighboring_gene1_expr, __weight(neighboring_gene1_distances)
+            )
+            local_processed_expression[i, 0] = neighboring_gene1_expr
+
     local_processed_expression = np.log1p(local_processed_expression)
     selfset_exprs = np.log1p(selfset_exprs)
     collected_feature_names += list(self_genes)
@@ -452,22 +490,47 @@ ad.write_h5ad(h5ad_location)
 ad = anndata.read_h5ad(h5ad_location)
 row = np.zeros(0, dtype=int)
 col = np.zeros(0, dtype=int)
-radius = 30
+true_radius = 30
 
 for tid in tqdm.notebook.tqdm(np.unique(ad.obs["Tissue_ID"])):
     good = ad.obs["Tissue_ID"] == tid
     pos = np.array(ad.obs[good][["Centroid_X", "Centroid_Y"]])
     idxs = np.where(good)[0]
-    p = sp.spatial.cKDTree(pos)
-    # E=p.query_ball_point(pos, r=radius, return_sorted=False)
-    edges = p.query_pairs(r=radius)
+    p = sklearn.neighbors.KDTree(pos)
+    true_edges, true_distances = p.query_radius(
+        pos, r=true_radius, return_distance=True
+    )
+    true_distances = np.concatenate(
+        [
+            np.c_[
+                np.repeat(i, len(true_distances[i])),
+                list(true_distances[i]),
+            ]
+            for i in range(len(true_distances))
+        ],
+        axis=0,
+    )
+    true_edges = np.concatenate(
+        [
+            np.c_[
+                np.repeat(i, len(true_edges[i])),
+                list(true_edges[i]),
+            ]
+            for i in range(len(true_edges))
+        ],
+        axis=0,
+    )
     col = np.r_[
         col,
-        np.concatenate((idxs[[y for (x, y) in edges]], idxs[[x for (x, y) in edges]])),
+        np.concatenate(
+            (idxs[[y for (x, y) in true_edges]], idxs[[x for (x, y) in true_edges]])
+        ),
     ]
     row = np.r_[
         row,
-        np.concatenate((idxs[[x for (x, y) in edges]], idxs[[y for (x, y) in edges]])),
+        np.concatenate(
+            (idxs[[x for (x, y) in true_edges]], idxs[[y for (x, y) in true_edges]])
+        ),
     ]
 
 E = (
@@ -475,7 +538,7 @@ E = (
     + sp.sparse.coo_matrix((np.ones(len(col)), (row, col)), shape=(len(ad), len(ad)))
 ).tocsr()
 
-anndata.AnnData(E).write_h5ad(connectivity_matrix_template % (radius, "rad"))
+anndata.AnnData(E).write_h5ad(connectivity_matrix_template % (true_radius, "rad"))
 
 # load data
 # These are set above. You can change these here if you want though.
@@ -483,7 +546,7 @@ anndata.AnnData(E).write_h5ad(connectivity_matrix_template % (radius, "rad"))
 # mode="rad"
 ad = anndata.read_h5ad(h5ad_location)
 true_connectivity_matrix = anndata.read_h5ad(
-    connectivity_matrix_template % (radius, "rad")
+    connectivity_matrix_template % (true_radius, "rad")
 ).X
 gene_lookup = {x: i for (i, x) in enumerate(ad.var.index)}
 
@@ -491,7 +554,7 @@ results_dict = {}
 
 response_gene = "Ace2"  # make the response gene the first response
 
-for synth_experiment in range(4):
+for synth_experiment in range(6):
     for radius_value in range(0, 65, 5):
 
         # Build the Current Radius Graph
@@ -504,9 +567,29 @@ for synth_experiment in range(4):
             good = ad.obs["Tissue_ID"] == tid
             pos = np.array(ad.obs[good][["Centroid_X", "Centroid_Y"]])
             idxs = np.where(good)[0]
-            p = sp.spatial.cKDTree(pos)
+            p = sklearn.neighbors.KDTree(pos)
             # E=p.query_ball_point(pos, r=radius, return_sorted=False)
-            edges = p.query_pairs(r=radius)
+            edges, distances = p.query_radius(pos, r=radius, return_distance=True)
+            distances = np.concatenate(
+                [
+                    np.c_[
+                        np.repeat(i, len(distances[i])),
+                        list(distances[i]),
+                    ]
+                    for i in range(len(distances))
+                ],
+                axis=0,
+            )
+            edges = np.concatenate(
+                [
+                    np.c_[
+                        np.repeat(i, len(edges[i])),
+                        list(edges[i]),
+                    ]
+                    for i in range(len(edges))
+                ],
+                axis=0,
+            )
             col = np.r_[
                 col,
                 np.concatenate(
@@ -565,7 +648,7 @@ for synth_experiment in range(4):
         )
         model.fit(trainX, trainY)
         results_dict[f"LightGBM {radius_value} {synth_experiment}"] = np.mean(
-            np.abs(model.predict(testX) - testY)
+            np.mean((model.predict(testX) - testY) ** 2)
         )
 
         df = pd.DataFrame(testX, columns=feature_names)
@@ -583,7 +666,7 @@ for synth_experiment in range(4):
         model = sklearn.linear_model.Ridge(alpha=1.0)
         model.fit(trainX, trainY)
         results_dict[f"Ridge {radius_value} {synth_experiment}"] = np.mean(
-            np.abs(model.predict(testX) - testY)
+            np.mean((model.predict(testX) - testY) ** 2)
         )
 
         df = pd.DataFrame(testX, columns=feature_names)
@@ -601,7 +684,7 @@ for synth_experiment in range(4):
         model = sklearn.linear_model.Lasso(alpha=1.0)
         model.fit(trainX, trainY)
         results_dict[f"Lasso {radius_value} {synth_experiment}"] = np.mean(
-            np.abs(model.predict(testX) - testY)
+            np.mean((model.predict(testX) - testY) ** 2)
         )
 
         df = pd.DataFrame(testX, columns=feature_names)
@@ -619,7 +702,7 @@ for synth_experiment in range(4):
         model = sklearn.linear_model.ElasticNet(alpha=1.0, l1_ratio=0.5)
         model.fit(trainX, trainY)
         results_dict[f"ElasticNet {radius_value} {synth_experiment}"] = np.mean(
-            np.abs(model.predict(testX) - testY)
+            np.mean((model.predict(testX) - testY) ** 2)
         )
 
         df = pd.DataFrame(testX, columns=feature_names)
@@ -629,10 +712,10 @@ for synth_experiment in range(4):
         plt.rcParams["figure.dpi"] = 100
         plt.rcParams["savefig.dpi"] = 100
         plt.savefig(
-            f"static/shap_recovery/(ElasticNet,{radius_value},{synth_experiment}).png",
+            f"static/shap/(ElasticNet,{radius_value},{synth_experiment}).png",
             bbox_inches="tight",
         )
         plt.clf()
 
-    with open("LightGBM_synthetic_results_alt.json", "w") as synth_results:
+    with open("LightGBM_synthetic_results.json", "w") as synth_results:
         json.dump(results_dict, synth_results)

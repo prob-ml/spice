@@ -1,3 +1,4 @@
+# pylint: disable=invalid-name
 import os
 import types
 
@@ -9,8 +10,9 @@ import torch
 import torch.nn.functional as F
 import torch_geometric
 import tqdm
-from sklearn import neighbors
 from scipy.spatial import cKDTree
+from sklearn import neighbors
+from sklearn.neighbors import KDTree
 
 
 class MerfishDataset(torch_geometric.data.InMemoryDataset):
@@ -96,7 +98,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         # download csv if necessary
         if not os.path.exists(self.merfish_csv):
             with open(self.merfish_csv, "wb") as csvf:
-                csvf.write(requests.get(self.url).content)
+                csvf.write(requests.get(self.url, timeout=180).content)
 
         # process csv if necessary
         dataframe = pd.read_csv(self.merfish_csv)
@@ -615,6 +617,66 @@ class SyntheticDataset3(MerfishDataset):
             lambda i, edges=edges, x=x: self.__transform(edges, x, i)
         )
         return torch.log1p(x) if log_transform else x
+
+
+class SyntheticDataset4(MerfishDataset):
+    @staticmethod
+    def _weighted_sum(edges, distances, data, i):
+        neighboring_gene1_expr = data[edges[:, edges[0] == i][1], 1].to(torch.float64)
+        neighboring_gene1_distances = torch.tensor(
+            distances[1][distances[0] == i], dtype=torch.float64
+        )
+        neighboring_gene1_expr = torch.dot(
+            neighboring_gene1_expr, 1 / (1 + neighboring_gene1_distances)
+        )
+        return neighboring_gene1_expr
+
+    def data_transform(self, x, split_locations, log_transform, true_radius=30):
+        tree = KDTree(split_locations)
+        edges, distances = tree.query_radius(
+            split_locations, r=true_radius, return_distance=True
+        )
+        distances = np.concatenate(
+            [
+                np.c_[
+                    np.repeat(i, len(distances[i])),
+                    list(distances[i]),
+                ]
+                for i in range(len(distances))
+            ],
+            axis=0,
+        ).T
+        edges = np.concatenate(
+            [
+                np.c_[
+                    np.repeat(i, len(edges[i])),
+                    list(edges[i]),
+                ]
+                for i in range(len(edges))
+            ],
+            axis=0,
+        ).T
+        x = torch.distributions.exponential.Exponential(10).rsample(x.shape)
+        x[:, 0] = torch.arange(len(x), dtype=torch.float64).apply_(
+            lambda i, edges=edges, x=x: self._weighted_sum(edges, distances, x, i)
+        )
+        return torch.log1p(x) if log_transform else x
+
+
+class SyntheticDataset5(SyntheticDataset4):
+    @staticmethod
+    def _weight(x):
+        return 1 - torch.asinh(5.863 * x) / 5.863
+
+    def _weighted_sum(self, edges, distances, data, i):
+        neighboring_gene1_expr = data[edges[:, edges[0] == i][1], 1].to(torch.float64)
+        neighboring_gene1_distances = torch.tensor(
+            distances[1][distances[0] == i], dtype=torch.float64
+        )
+        neighboring_gene1_expr = torch.dot(
+            neighboring_gene1_expr, self._weight(neighboring_gene1_distances)
+        )
+        return neighboring_gene1_expr
 
 
 class MerfishDataset3D(MerfishDataset):
