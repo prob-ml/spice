@@ -20,7 +20,6 @@ disable=
     # arguments, but if we include all the arguments, we'd
     # get unused variable warnings instead
     arguments-differ,
-    unused-arguments,
 
     # this is invaluable for tests, and generally
     # good practice whenever you want to limit your
