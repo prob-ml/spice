@@ -1,11 +1,13 @@
-# import pathlib
+import pathlib
 
 # import numpy as np
-# import pandas as pd
+import pandas as pd
+
 # import torch
 # import torch_geometric
 # from hydra import compose, initialize
 # from numpy import random as npr
+
 # from spatial.models.monet_ae import calc_loss
 
 
@@ -66,127 +68,127 @@
 #     return datalist, data_dimension
 
 
-# def test_merfish_dataset():
-#     from spatial import merfish_dataset
+def test_merfish_dataset():
+    from spatial import merfish_dataset
 
-#     test_dir = pathlib.Path(__file__).parent.absolute()
-#     test_data_dir = test_dir.joinpath("data")
-#     # relative path needed to pass test on Github
-#     # maybe change pytest.ini so the relpath is shorter?
-#     mfd = merfish_dataset.MerfishDataset(
-#         test_data_dir,
-#         radius=8,
-#         non_response_genes_file="../spatial/spatial/non_response_blank_removed.txt",
-#     )
-#     mfd.get(0)
+    test_dir = pathlib.Path(__file__).parent.absolute()
+    test_data_dir = test_dir.joinpath("data")
+    # relative path needed to pass test on Github
+    # maybe change pytest.ini so the relpath is shorter?
+    mfd = merfish_dataset.MerfishDataset(
+        test_data_dir,
+        radius=8,
+        non_response_genes_file="../spatial/spatial/non_response_blank_removed.txt",
+    )
+    mfd.get(0)
 
-#     # make sure that the data dimensions is correct
-#     assert mfd[0].x.shape[1] == 155
+    # make sure that the data dimensions is correct
+    assert mfd[0].x.shape[1] == 155
 
-#     merfish_df = pd.read_csv(mfd.merfish_csv)
-#     merfish_df = merfish_df.drop(
-#         ["Blank_1", "Blank_2", "Blank_3", "Blank_4", "Blank_5", "Fos"], axis=1
-#     )
-#     print(mfd.response_genes)
-#     print(merfish_df.columns[9:][mfd.response_genes])
-#     # Removing this test as we may want to test a single gene at a time.
-#     # assert all(
-#     #     merfish_df.columns[9:][mfd.responses]
-#     #     == [
-#     #         "Ace2",
-#     #         "Aldh1l1",
-#     #         "Amigo2",
-#     #         "Ano3",
-#     #         "Aqp4",
-#     #         "Ar",
-#     #         "Arhgap36",
-#     #         "Baiap2",
-#     #         "Ccnd2",
-#     #         "Cd24a",
-#     #         "Cdkn1a",
-#     #         "Cenpe",
-#     #         "Chat",
-#     #         "Coch",
-#     #         "Col25a1",
-#     #         "Cplx3",
-#     #         "Cpne5",
-#     #         "Creb3l1",
-#     #         "Cspg5",
-#     #         "Cyp19a1",
-#     #         "Cyp26a1",
-#     #         "Dgkk",
-#     #         "Ebf3",
-#     #         "Egr2",
-#     #         "Ermn",
-#     #         "Esr1",
-#     #         "Etv1",
-#     #         "Fbxw13",
-#     #         "Fezf1",
-#     #         "Gbx2",
-#     #         "Gda",
-#     #         "Gem",
-#     #         "Gjc3",
-#     #         "Greb1",
-#     #         "Irs4",
-#     #         "Isl1",
-#     #         "Klf4",
-#     #         "Krt90",
-#     #         "Lmod1",
-#     #         "Man1a",
-#     #         "Mki67",
-#     #         "Mlc1",
-#     #         "Myh11",
-#     #         "Ndnf",
-#     #         "Ndrg1",
-#     #         "Necab1",
-#     #         "Nos1",
-#     #         "Npas1",
-#     #         "Nup62cl",
-#     #         "Omp",
-#     #         "Onecut2",
-#     #         "Opalin",
-#     #         "Pak3",
-#     #         "Pcdh11x",
-#     #         "Pgr",
-#     #         "Plin3",
-#     #         "Pou3f2",
-#     #         "Rgs2",
-#     #         "Rgs5",
-#     #         "Rnd3",
-#     #         "Scgn",
-#     #         "Serpinb1b",
-#     #         "Sgk1",
-#     #         "Slc15a3",
-#     #         "Slc17a6",
-#     #         "Slc17a8",
-#     #         "Slco1a4",
-#     #         "Sox4",
-#     #         "Sox6",
-#     #         "Sox8",
-#     #         "Sp9",
-#     #         "Synpr",
-#     #         "Syt2",
-#     #         "Syt4",
-#     #         "Sytl4",
-#     #         "Tiparp",
-#     #         "Tmem108",
-#     #         "Traf4",
-#     #         "Ttn",
-#     #         "Ttyh2",
-#     #         "Mbp",
-#     #         "Nnat",
-#     #         "Sln",
-#     #         "Th",
-#     #     ]
-#     # )
+    merfish_df = pd.read_csv(mfd.merfish_csv)
+    merfish_df = merfish_df.drop(
+        ["Blank_1", "Blank_2", "Blank_3", "Blank_4", "Blank_5", "Fos"], axis=1
+    )
+    print(mfd.response_genes)
+    print(merfish_df.columns[9:][mfd.response_genes])
+    # Removing this test as we may want to test a single gene at a time.
+    # assert all(
+    #     merfish_df.columns[9:][mfd.responses]
+    #     == [
+    #         "Ace2",
+    #         "Aldh1l1",
+    #         "Amigo2",
+    #         "Ano3",
+    #         "Aqp4",
+    #         "Ar",
+    #         "Arhgap36",
+    #         "Baiap2",
+    #         "Ccnd2",
+    #         "Cd24a",
+    #         "Cdkn1a",
+    #         "Cenpe",
+    #         "Chat",
+    #         "Coch",
+    #         "Col25a1",
+    #         "Cplx3",
+    #         "Cpne5",
+    #         "Creb3l1",
+    #         "Cspg5",
+    #         "Cyp19a1",
+    #         "Cyp26a1",
+    #         "Dgkk",
+    #         "Ebf3",
+    #         "Egr2",
+    #         "Ermn",
+    #         "Esr1",
+    #         "Etv1",
+    #         "Fbxw13",
+    #         "Fezf1",
+    #         "Gbx2",
+    #         "Gda",
+    #         "Gem",
+    #         "Gjc3",
+    #         "Greb1",
+    #         "Irs4",
+    #         "Isl1",
+    #         "Klf4",
+    #         "Krt90",
+    #         "Lmod1",
+    #         "Man1a",
+    #         "Mki67",
+    #         "Mlc1",
+    #         "Myh11",
+    #         "Ndnf",
+    #         "Ndrg1",
+    #         "Necab1",
+    #         "Nos1",
+    #         "Npas1",
+    #         "Nup62cl",
+    #         "Omp",
+    #         "Onecut2",
+    #         "Opalin",
+    #         "Pak3",
+    #         "Pcdh11x",
+    #         "Pgr",
+    #         "Plin3",
+    #         "Pou3f2",
+    #         "Rgs2",
+    #         "Rgs5",
+    #         "Rnd3",
+    #         "Scgn",
+    #         "Serpinb1b",
+    #         "Sgk1",
+    #         "Slc15a3",
+    #         "Slc17a6",
+    #         "Slc17a8",
+    #         "Slco1a4",
+    #         "Sox4",
+    #         "Sox6",
+    #         "Sox8",
+    #         "Sp9",
+    #         "Synpr",
+    #         "Syt2",
+    #         "Syt4",
+    #         "Sytl4",
+    #         "Tiparp",
+    #         "Tmem108",
+    #         "Traf4",
+    #         "Ttn",
+    #         "Ttyh2",
+    #         "Mbp",
+    #         "Nnat",
+    #         "Sln",
+    #         "Th",
+    #     ]
+    # )
 
-#     # check that radius instantiations work
-#     mfd = merfish_dataset.MerfishDataset(
-#         test_data_dir,
-#         non_response_genes_file="../spatial/spatial/non_response_blank_removed.txt",
-#         radius=32,
-#     )
-#     mfd.get(0)
+    # check that radius instantiations work
+    mfd = merfish_dataset.MerfishDataset(
+        test_data_dir,
+        non_response_genes_file="../spatial/spatial/non_response_blank_removed.txt",
+        radius=32,
+    )
+    mfd.get(0)
 
 
 # def test_filtered_merfish_dataset():
