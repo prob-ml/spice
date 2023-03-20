@@ -1,4 +1,4 @@
-name: torch.optim.SGD
+name: SGD
 params:
-  lr: 0.001
+  lr: 0.01
   weight_decay: 1e-6
