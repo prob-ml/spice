@@ -13,6 +13,7 @@ from spatial.models.monet_ae import (
 from spatial.train import (
     setup_checkpoint_callback,
     setup_logger,
+    setup_optimizer,
 )
 
 # pylint: disable=too-many-branches
@@ -42,6 +43,9 @@ def test(cfg: DictConfig, data=None):
         cfg, logger, filepath=cfg.training.filepath
     )
 
+    # setup optimizer
+    optimizer = setup_optimizer(cfg)
+
     checkpoint_path = (
         f"{cfg.paths.root}/output/lightning_logs/checkpoints/{cfg.model.name}/"
         + cfg.training.filepath
@@ -53,16 +57,19 @@ def test(cfg: DictConfig, data=None):
         model = MonetDense.load_from_checkpoint(
             checkpoint_path=checkpoint_path,
             **cfg.model.kwargs,
+            optimizer=optimizer,
         )
     if cfg.model.name == "TrivialAutoencoder":
         model = TrivialAutoencoder.load_from_checkpoint(
             checkpoint_path=checkpoint_path,
             **cfg.model.kwargs,
+            optimizer=optimizer,
         )
     if cfg.model.name == "MonetAutoencoder2D":
         model = MonetAutoencoder2D.load_from_checkpoint(
             checkpoint_path=checkpoint_path,
             **cfg.model.kwargs,
+            optimizer=optimizer,
         )
 
     test_loader = DataLoader(data, batch_size=cfg.predict.batch_size, num_workers=2)

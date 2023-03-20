@@ -1,6 +1,7 @@
 import torch
 import torch_geometric
 from torch.nn import functional as fcl
+from torch_sparse import SparseTensor
 
 
 def construct_dense_relu_network(
@@ -63,7 +64,9 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
         for i, (dense, gmmlayer) in enumerate(zip(self.linears, self.gmms)):
             if self.dropout:
                 vals = self.dropouts(vals)
-            vals = gmmlayer(vals, edges, pseudo) + dense(vals)
+            adj = SparseTensor(row=edges[0], col=edges[1], value=pseudo)
+            vals = gmmlayer(vals, adj.t()) + dense(vals)
+            # vals = gmmlayer(vals, edges, pseudo) + dense(vals)
             if (
                 i == len(list(enumerate(zip(self.linears, self.gmms)))) - 2
                 and self.include_skip_connections
@@ -76,6 +79,6 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
 
             # do relu (or not, if final_relu=False and we're on the last layer)
             if self.final_relu or (i != len(self.gmms) - 1):
-                vals = fcl.relu(vals)
+                vals = fcl.relu(vals.float())
 
         return vals

@@ -38,7 +38,7 @@ def main(cfg):
         from spatial.predict import test as task
     else:
         raise KeyError
-    print(cfg)
+    # print(cfg)
     task(cfg)
 
 

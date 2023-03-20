@@ -74,6 +74,10 @@ def setup_early_stopping(cfg, callbacks):
     return callbacks
 
 
+def setup_optimizer(cfg):
+    return {"name": cfg.optimizer.name, "params": cfg.optimizer.params}
+
+
 def train(cfg: DictConfig, data=None, validate_only=False):
 
     # if this is a non-zero int, the run will have a seed
@@ -131,8 +135,11 @@ def train(cfg: DictConfig, data=None, validate_only=False):
     )
     trainer = pl.Trainer(**trainer_dict)
 
+    # setup optimizer
+    optimizer = setup_optimizer(cfg)
+
     # specify model
-    model = models[cfg.model.name](**cfg.model.kwargs)
+    model = models[cfg.model.name](**cfg.model.kwargs, optimizer=optimizer)
 
     # save model info
     # if cfg.training.save_model_summary:

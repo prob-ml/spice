@@ -7,12 +7,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import scipy as sp
-import scipy.sparse.linalg
-import torch
+import h5py
 import tqdm.notebook
 import sklearn.neighbors
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import GridSearchCV
+
 
 rng = np.random.default_rng()
 
@@ -32,8 +33,7 @@ for colnm, dtype in zip(dataframe.keys()[:9], dataframe.dtypes[:9]):
     else:
         dct[colnm] = np.require(dataframe[colnm])
 # change expression here to make it synthetic
-expression = np.array(dataframe[dataframe.keys()[9:]]).astype(np.float16)
-print(expression)
+expression = np.array(dataframe[dataframe.keys()[9:]]).astype(np.float64)
 gene_names = np.array(dataframe.keys()[9:], dtype="U80")
 cellid = dct.pop("Cell_ID")
 
@@ -273,134 +273,16 @@ def construct_problem(
     collected_feature_names = []
 
     # load subset of data relevant to mask
-    local_processed_expression = np.log1p(
-        ad.X[mask].astype(float)
-    )  # get expression on subset of cells
     local_edges = connectivity_matrix[mask][:, mask]  # get edges for subset
-
-    true_local_edges = true_connectivity_matrix[mask][:, mask]  # get edges for subset
-
     selfset_idxs = [
         gene_lookup[x] for x in self_genes
     ]  # collect the column indexes associated with them
 
-    if synthetic_mode == 0:
-        cell_volume = 5
-        local_processed_expression = (
-            torch.distributions.negative_binomial.NegativeBinomial(1, 0.5).sample(
-                local_processed_expression.shape
-            )
-            / cell_volume
-        ).numpy()
-        selfset_exprs = local_processed_expression[
-            :, selfset_idxs
-        ]  # collect ligand and receptor expressions
-        for i in range(local_processed_expression.shape[0]):
-            neighboring_gene1_expr = np.sum(
-                selfset_exprs[list(true_local_edges[i].nonzero()[1]), 1]
-            )
-            if neighboring_gene1_expr > 1:
-                local_processed_expression[i, 0] = neighboring_gene1_expr
-            else:
-                local_processed_expression[i, 0] = 0
-
-    if synthetic_mode == 1:
-        local_processed_expression = (
-            torch.distributions.exponential.Exponential(10)
-            .rsample(local_processed_expression.shape)
-            .numpy()
-        )
-        selfset_exprs = local_processed_expression[
-            :, selfset_idxs
-        ]  # collect ligand and receptor expressions
-        for i in range(local_processed_expression.shape[0]):
-            neighboring_gene1_expr = np.sum(
-                selfset_exprs[list(true_local_edges[i].nonzero()[1]), 1]
-            )
-            if neighboring_gene1_expr > 1:
-                local_processed_expression[i, 0] += neighboring_gene1_expr
-
-    elif synthetic_mode == 2:
-        local_processed_expression = torch.exp(
-            torch.distributions.normal.Normal(0, 1).rsample(
-                local_processed_expression.shape
-            )
-        ).numpy()
-        selfset_exprs = local_processed_expression[
-            :, selfset_idxs
-        ]  # collect ligand and receptor expressions
-        for i in range(local_processed_expression.shape[0]):
-            neighboring_gene_expr = np.mean(
-                selfset_exprs[list(true_local_edges[i].nonzero()[1]), 1:10]
-            )
-            local_processed_expression[i, 0] += neighboring_gene_expr * (
-                2 ** np.sign(neighboring_gene_expr - 1.6)
-            )
-
-    elif synthetic_mode == 3:
-        local_processed_expression = torch.exp(
-            torch.distributions.normal.Normal(0, 0.25).rsample(
-                local_processed_expression.shape
-            )
-        ).numpy()
-        selfset_exprs = local_processed_expression[
-            :, selfset_idxs
-        ]  # collect ligand and receptor expressions
-        average_gene1_expr = np.mean(selfset_exprs[:, 1])
-        average_gene2_expr = np.mean(selfset_exprs[:, 2])
-        for i in range(local_processed_expression.shape[0]):
-            neighboring_gene1_expr = np.mean(
-                selfset_exprs[list(true_local_edges[i].nonzero()[1]), 1]
-            )
-            neighboring_gene2_expr = np.mean(
-                selfset_exprs[list(true_local_edges[i].nonzero()[1]), 2]
-            )
-            if (
-                np.sign(neighboring_gene1_expr - average_gene1_expr)
-                - np.sign(neighboring_gene2_expr - average_gene2_expr)
-            ) > 0:
-                local_processed_expression[i, 0] *= 2
-            else:
-                local_processed_expression[i, 0] *= 0.5
-
-    elif synthetic_mode == 4:
-        local_processed_expression = (
-            torch.distributions.exponential.Exponential(10)
-            .rsample(local_processed_expression.shape)
-            .numpy()
-        )
-        selfset_exprs = local_processed_expression[:, selfset_idxs]
-        for i in range(local_processed_expression.shape[0]):
-            neighboring_gene1_expr = selfset_exprs[
-                true_edges.T[:, true_edges.T[0] == i][1], 1
-            ]
-            neighboring_gene1_distances = true_distances.T[1][true_distances.T[0] == i]
-            neighboring_gene1_expr = np.dot(
-                neighboring_gene1_expr, 1 / (1 + neighboring_gene1_distances)
-            )
-            local_processed_expression[i, 0] = neighboring_gene1_expr
-
-    elif synthetic_mode == 5:
-        local_processed_expression = (
-            torch.distributions.exponential.Exponential(10)
-            .rsample(local_processed_expression.shape)
-            .numpy()
-        )
-        selfset_exprs = local_processed_expression[:, selfset_idxs]
-
-        def __weight(x):
-            return 1 - np.arcsinh(5.863 * x) / 5.863
-
-        for i in range(local_processed_expression.shape[0]):
-            neighboring_gene1_expr = selfset_exprs[
-                true_edges.T[:, true_edges.T[0] == i][1], 1
-            ]
-            neighboring_gene1_distances = true_distances.T[1][true_distances.T[0] == i]
-            neighboring_gene1_expr = np.dot(
-                neighboring_gene1_expr, __weight(neighboring_gene1_distances)
-            )
-            local_processed_expression[i, 0] = neighboring_gene1_expr
-
+    with h5py.File(f"../data/raw/synth{synthetic_mode}.hdf5", "r") as data:
+        local_processed_expression = data["expression"][:].astype("float64")[mask]
+    selfset_exprs = local_processed_expression[
+        :, selfset_idxs
+    ]  # collect ligand and receptor expressions
     local_processed_expression = np.log1p(local_processed_expression)
     selfset_exprs = np.log1p(selfset_exprs)
     collected_feature_names += list(self_genes)
@@ -415,11 +297,10 @@ def construct_problem(
     collected_feature_names += [x + " from Neighbors" for x in neighbor_genes]
 
     n_neighs = local_edges @ np.ones(local_edges.shape[0])
-    # print(local_edges)
-    # print(n_neighs)
-    neigh_avgs = (local_edges @ neighset_exprs) / n_neighs[
-        :, None
-    ]  # average ligand/receptor for neighbors
+    # SANITY CHECK REMOVES DIVISION
+    neigh_avgs = local_edges @ neighset_exprs  # / n_neighs[
+    #         :, None
+    #     ]  # average ligand/receptor for neighbors
 
     neigh_cellclass_avgs = (local_edges @ cell_class_onehots[mask]) / n_neighs[
         :, None
@@ -459,7 +340,7 @@ for colnm, dtype in zip(dataframe.keys()[:9], dataframe.dtypes[:9]):
         dct[colnm] = np.require(dataframe[colnm], dtype="U36")
     else:
         dct[colnm] = np.require(dataframe[colnm])
-expression = np.array(dataframe[dataframe.keys()[9:]]).astype(np.float16)
+expression = np.array(dataframe[dataframe.keys()[9:]]).astype(np.float64)
 gene_names = np.array(dataframe.keys()[9:], dtype="U80")
 cellid = dct.pop("Cell_ID")
 
@@ -520,22 +401,11 @@ for tid in tqdm.notebook.tqdm(np.unique(ad.obs["Tissue_ID"])):
         ],
         axis=0,
     )
-    col = np.r_[
-        col,
-        np.concatenate(
-            (idxs[[y for (x, y) in true_edges]], idxs[[x for (x, y) in true_edges]])
-        ),
-    ]
-    row = np.r_[
-        row,
-        np.concatenate(
-            (idxs[[x for (x, y) in true_edges]], idxs[[y for (x, y) in true_edges]])
-        ),
-    ]
+    col = np.r_[col, idxs[[y for (x, y) in true_edges]]]
+    row = np.r_[row, idxs[[x for (x, y) in true_edges]]]
 
 E = (
-    scipy.sparse.diags([1] * len(ad), 0)
-    + sp.sparse.coo_matrix((np.ones(len(col)), (row, col)), shape=(len(ad), len(ad)))
+    sp.sparse.coo_matrix((np.ones(len(col)), (row, col)), shape=(len(ad), len(ad)))
 ).tocsr()
 
 anndata.AnnData(E).write_h5ad(connectivity_matrix_template % (true_radius, "rad"))
@@ -554,7 +424,7 @@ results_dict = {}
 
 response_gene = "Ace2"  # make the response gene the first response
 
-for synth_experiment in range(6):
+for synth_experiment in range(10):
     for radius_value in range(0, 65, 5):
 
         # Build the Current Radius Graph
@@ -590,22 +460,11 @@ for synth_experiment in range(6):
                 ],
                 axis=0,
             )
-            col = np.r_[
-                col,
-                np.concatenate(
-                    (idxs[[y for (x, y) in edges]], idxs[[x for (x, y) in edges]])
-                ),
-            ]
-            row = np.r_[
-                row,
-                np.concatenate(
-                    (idxs[[x for (x, y) in edges]], idxs[[y for (x, y) in edges]])
-                ),
-            ]
+            col = np.r_[col, idxs[[y for (x, y) in edges]]]
+            row = np.r_[row, idxs[[x for (x, y) in edges]]]
 
         E = (
-            scipy.sparse.diags([1] * len(ad), 0)
-            + sp.sparse.coo_matrix(
+            sp.sparse.coo_matrix(
                 (np.ones(len(col)), (row, col)), shape=(len(ad), len(ad))
             )
         ).tocsr()
@@ -632,6 +491,10 @@ for synth_experiment in range(6):
             oset,
             synthetic_mode=synth_experiment,
         )
+        print(trainX.shape, trainY.shape)
+        print(testX.shape, testY.shape)
+
+        df = pd.DataFrame(testX, columns=feature_names)
 
         scaler = StandardScaler().fit(trainX)
         trainX = scaler.transform(trainX)
@@ -644,78 +507,112 @@ for synth_experiment in range(6):
             random_state=129,
             max_iter=1000,
             n_iter_no_change=10,
-            tol=0.001,
-        )
-        model.fit(trainX, trainY)
-        results_dict[f"LightGBM {radius_value} {synth_experiment}"] = np.mean(
-            np.mean((model.predict(testX) - testY) ** 2)
+            tol=0.00001,
         )
 
-        df = pd.DataFrame(testX, columns=feature_names)
+        model.fit(trainX, trainY)
+        results_dict[f"LightGBM {radius_value} {synth_experiment}"] = np.mean(
+            (model.predict(testX) - testY) ** 2
+        )
         shap_values = shap.TreeExplainer(model).shap_values(df)
         shap.summary_plot(shap_values, df, show=False)
         plt.title(f"(LightGBM, {radius_value}, {synth_experiment})")
         plt.rcParams["figure.dpi"] = 100
         plt.rcParams["savefig.dpi"] = 100
         plt.savefig(
-            f"static/shap_recovery/(LightGBM, {radius_value}, {synth_experiment}).png",
+            f"static/shap/(LightGBM, {radius_value}, {synth_experiment}).png",
             bbox_inches="tight",
         )
         plt.clf()
 
-        model = sklearn.linear_model.Ridge(alpha=1.0)
+        model = sklearn.linear_model.LinearRegression()
         model.fit(trainX, trainY)
-        results_dict[f"Ridge {radius_value} {synth_experiment}"] = np.mean(
+        results_dict[f"OLS {radius_value} {synth_experiment}"] = np.mean(
             np.mean((model.predict(testX) - testY) ** 2)
+        )
+        shap_values = shap.LinearExplainer(model, trainX).shap_values(df)
+        shap.summary_plot(shap_values, df, show=False)
+        plt.title(f"(LightGBM, {radius_value}, {synth_experiment})")
+        plt.rcParams["figure.dpi"] = 100
+        plt.rcParams["savefig.dpi"] = 100
+        plt.savefig(
+            f"static/shap/(OLS, {radius_value}, {synth_experiment}).png",
+            bbox_inches="tight",
+        )
+        plt.clf()
+
+        model = sklearn.linear_model.Ridge()
+        tuned_parameters = {"alpha": [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]}
+        grid_search = GridSearchCV(
+            model, tuned_parameters, scoring="neg_mean_squared_error", cv=5
+        )
+        grid_search.fit(trainX, trainY)
+        results_dict[f"Ridge {radius_value} {synth_experiment}"] = np.mean(
+            np.mean((grid_search.predict(testX) - testY) ** 2)
         )
 
         df = pd.DataFrame(testX, columns=feature_names)
-        shap_values = shap.LinearExplainer(model, trainX).shap_values(df)
+        shap_values = shap.LinearExplainer(
+            grid_search.best_estimator_, trainX
+        ).shap_values(df)
         shap.summary_plot(shap_values, df, show=False)
         plt.title(f"(Ridge, {radius_value}, {synth_experiment})")
         plt.rcParams["figure.dpi"] = 100
         plt.rcParams["savefig.dpi"] = 100
         plt.savefig(
-            f"static/shap_recovery/(Ridge, {radius_value}, {synth_experiment}).png",
+            f"static/shap/(Ridge, {radius_value}, {synth_experiment}).png",
             bbox_inches="tight",
         )
         plt.clf()
 
-        model = sklearn.linear_model.Lasso(alpha=1.0)
-        model.fit(trainX, trainY)
+        model = sklearn.linear_model.Lasso(alpha=0.1)
+        tuned_parameters = {"alpha": [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]}
+        grid_search = GridSearchCV(
+            model, tuned_parameters, scoring="neg_mean_squared_error", cv=5
+        )
+        grid_search.fit(trainX, trainY)
         results_dict[f"Lasso {radius_value} {synth_experiment}"] = np.mean(
-            np.mean((model.predict(testX) - testY) ** 2)
+            np.mean((grid_search.predict(testX) - testY) ** 2)
         )
 
-        df = pd.DataFrame(testX, columns=feature_names)
-        shap_values = shap.LinearExplainer(model, trainX).shap_values(df)
+        shap_values = shap.LinearExplainer(
+            grid_search.best_estimator_, trainX
+        ).shap_values(df)
         shap.summary_plot(shap_values, df, show=False)
         plt.title(f"(Lasso, {radius_value}, {synth_experiment})")
         plt.rcParams["figure.dpi"] = 100
         plt.rcParams["savefig.dpi"] = 100
         plt.savefig(
-            f"static/shap_recovery/(Lasso, {radius_value}, {synth_experiment}).png",
+            f"static/shap/(Lasso, {radius_value}, {synth_experiment}).png",
             bbox_inches="tight",
         )
         plt.clf()
 
-        model = sklearn.linear_model.ElasticNet(alpha=1.0, l1_ratio=0.5)
-        model.fit(trainX, trainY)
+        model = sklearn.linear_model.ElasticNet(alpha=0.1, l1_ratio=0.5)
+        tuned_parameters = {
+            "alpha": [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
+            "l1_ratio": [0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.95, 0.99],
+        }
+        grid_search = GridSearchCV(
+            model, tuned_parameters, scoring="neg_mean_squared_error", cv=5
+        )
+        grid_search.fit(trainX, trainY)
         results_dict[f"ElasticNet {radius_value} {synth_experiment}"] = np.mean(
-            np.mean((model.predict(testX) - testY) ** 2)
+            np.mean((grid_search.predict(testX) - testY) ** 2)
         )
 
-        df = pd.DataFrame(testX, columns=feature_names)
-        shap_values = shap.LinearExplainer(model, trainX).shap_values(df)
+        shap_values = shap.LinearExplainer(
+            grid_search.best_estimator_, trainX
+        ).shap_values(df)
         shap.summary_plot(shap_values, df, show=False)
         plt.title(f"(ElasticNet, {radius_value}, {synth_experiment})")
         plt.rcParams["figure.dpi"] = 100
         plt.rcParams["savefig.dpi"] = 100
         plt.savefig(
-            f"static/shap/(ElasticNet,{radius_value},{synth_experiment}).png",
+            f"static/shap/(ElasticNet, {radius_value}, {synth_experiment}).png",
             bbox_inches="tight",
         )
         plt.clf()
 
-    with open("LightGBM_synthetic_results.json", "w") as synth_results:
-        json.dump(results_dict, synth_results)
+        with open("LightGBM_synthetic_results.json", "w") as synth_results:
+            json.dump(results_dict, synth_results)

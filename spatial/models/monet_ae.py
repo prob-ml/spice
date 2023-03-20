@@ -103,6 +103,7 @@ class BasicAEMixin(pl.LightningModule):
         responses=False,
         hide_responses=True,
         include_skip_connections=False,
+        optimizer="sgd",
     ):
         super().__init__()
         self.observables_dimension = observables_dimension
@@ -124,6 +125,7 @@ class BasicAEMixin(pl.LightningModule):
         self.responses = responses
         self.hide_responses = hide_responses
         self.include_skip_connections = include_skip_connections
+        self.optimizer = optimizer
 
     def mask_cells(self, batch):
         n_cells = batch.x.shape[0]
@@ -319,7 +321,17 @@ class BasicAEMixin(pl.LightningModule):
     #     )
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters())
+        if self.optimizer["name"] == "Adam":
+            optimizer = torch.optim.Adam(self.parameters(), **self.optimizer["params"])
+        elif self.optimizer["name"] == "SGD":
+            optimizer = torch.optim.SGD(self.parameters(), **self.optimizer["params"])
+        scheduler = {
+            "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, "min", patience=5
+            ),
+            "monitor": "val_loss",
+        }
+        return ([optimizer], [scheduler])
 
 
 class MonetDense(BasicAEMixin):
@@ -344,6 +356,7 @@ class MonetDense(BasicAEMixin):
         responses,
         hide_responses,
         include_skip_connections,
+        optimizer,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -368,6 +381,7 @@ class MonetDense(BasicAEMixin):
             responses,
             hide_responses,
             include_skip_connections,
+            optimizer,
         )
 
         self.dim = dim
@@ -412,6 +426,7 @@ class TrivialAutoencoder(BasicAEMixin):
         responses,
         hide_responses,
         include_skip_connections,
+        optimizer,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -435,6 +450,8 @@ class TrivialAutoencoder(BasicAEMixin):
             dropout,
             responses,
             hide_responses,
+            include_skip_connections,
+            optimizer,
         )
 
         self.encoder_network = base_networks.construct_dense_relu_network(
@@ -465,7 +482,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         self,
         observables_dimension,
         hidden_dimensions,
-        latent_dimension,
+        output_dimension,
         loss_type,
         other_logged_losses,
         dim,
@@ -482,6 +499,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         responses,
         hide_responses,
         include_skip_connections,
+        optimizer,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -490,7 +508,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         super().__init__(
             observables_dimension,
             hidden_dimensions,
-            latent_dimension,
+            output_dimension,
             loss_type,
             other_logged_losses,
             mask_random_prop,
@@ -505,6 +523,7 @@ class MonetAutoencoder2D(BasicAEMixin):
             responses,
             hide_responses,
             include_skip_connections,
+            optimizer,
         )
 
         self.dim = dim

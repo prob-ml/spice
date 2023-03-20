@@ -1,4 +1,4 @@
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name,too-many-lines
 import os
 import types
 
@@ -9,6 +9,7 @@ import requests
 import torch
 import torch.nn.functional as F
 import torch_geometric
+import torch_geometric.transforms as T
 import tqdm
 from scipy.spatial import cKDTree
 from sklearn import neighbors
@@ -19,6 +20,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
     def __init__(
         self,
         root,
+        pre_transform=T.ToSparseTensor(),
         n_neighbors=3,
         train=True,
         log_transform=True,
@@ -28,7 +30,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         "non_response_blank_removed.txt",
         splits=0,
     ):
-        super().__init__(root)
+        super().__init__(root, pre_transform=pre_transform)
 
         # non-response genes (columns) in MERFISH
         with open(non_response_genes_file, "r", encoding="utf8") as genes_file:
@@ -112,7 +114,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
                 else:
                     h5f.create_dataset(colnm, data=np.require(dataframe[colnm]))
 
-            expression = np.array(dataframe[dataframe.keys()[9:]]).astype(np.float16)
+            expression = np.array(dataframe[dataframe.keys()[9:]]).astype(np.float64)
             h5f.create_dataset("expression", data=expression)
 
             gene_names = np.array(dataframe.keys()[9:], dtype="S80")
@@ -534,92 +536,384 @@ class FilteredMerfishDataset(MerfishDataset):
 
 
 class SyntheticDataset0(MerfishDataset):
+    @property
+    def raw_file_names(self):
+        return ["synth0.csv", "synth0.hdf5"]
+
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "synth0.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "synth0.hdf5")
+
     @staticmethod
-    def __gate(edges, data, i):
+    def _gate(edges, data, i):
         neighboring_gene1_expr = torch.sum(data[edges[:, edges[0] == i][1], 1])
         return neighboring_gene1_expr.item() * (neighboring_gene1_expr > 1).item()
 
-    def data_transform(
-        self, x, split_locations, log_transform, true_radius=30, cell_volume=5
-    ):
-        edges = self.calculate_neighborhood(
-            split_locations, radius=true_radius, n_neighbors=None
-        )
-        x = (
-            torch.distributions.negative_binomial.NegativeBinomial(1, 0.5).sample(
-                x.shape
+    def download(self):
+
+        # download csv if necessary
+        if not os.path.exists(self.merfish_csv):
+            with open(self.merfish_csv, "wb") as csvf:
+                csvf.write(requests.get(self.url, timeout=180).content)
+
+        # process csv if necessary
+        dataframe = pd.read_csv(self.merfish_csv)
+        preserve_columns = dataframe.columns
+        cell_volume, true_radius = 5, 30
+        torch.manual_seed(88)
+        new_dataframe = pd.DataFrame(columns=preserve_columns)
+        unique_slices = dataframe.drop_duplicates(["Animal_ID", "Bregma"])[
+            ["Animal_ID", "Bregma"]
+        ]
+        for i in range(len(unique_slices)):
+            animal_id, bregma = unique_slices.iloc[i]
+            sub_dataframe = dataframe[
+                (dataframe["Animal_ID"] == animal_id) & (dataframe["Bregma"] == bregma)
+            ]
+            edges = self.calculate_neighborhood(
+                torch.tensor(sub_dataframe.to_numpy()[:, 5:7].astype("float64")),
+                radius=true_radius,
+                n_neighbors=None,
+            ).to("cuda:0")
+            sub_dataframe = sub_dataframe.to_numpy()
+            sub_dataframe[:, 9:] = (
+                torch.distributions.negative_binomial.NegativeBinomial(1, 0.5).sample(
+                    sub_dataframe[:, 9:].shape
+                )
+                / cell_volume
             )
-            / cell_volume
+            expressions = torch.tensor(sub_dataframe[:, 9:].astype("float64")).to(
+                "cuda:0"
+            )
+            output = torch.arange(len(sub_dataframe), dtype=torch.float64).apply_(
+                lambda i, edges=edges, data=expressions: self._gate(edges, data, i)
+            )
+            sub_dataframe[:, 9:][:, 0] = output.numpy()
+            new_dataframe = new_dataframe.append(
+                pd.DataFrame(sub_dataframe, columns=preserve_columns)
+            )
+
+        new_dataframe = new_dataframe.astype(
+            {
+                "Animal_ID": "int64",
+                "Bregma": "float64",
+                "Centroid_X": "float64",
+                "Centroid_Y": "float64",
+            }
         )
-        x[:, 0] = torch.arange(len(x), dtype=torch.float64).apply_(
-            lambda i, edges=edges, x=x: self.__gate(edges, x, i)
-        )
-        return torch.log1p(x) if log_transform else x
+
+        with h5py.File(self.merfish_hdf5, "w") as h5f:
+            # pylint: disable=no-member
+            for colnm, dtype in zip(new_dataframe.keys()[:9], new_dataframe.dtypes[:9]):
+                if dtype.kind == "O":
+                    data = np.require(new_dataframe[colnm], dtype="S36")
+                    h5f.create_dataset(colnm, data=data)
+                else:
+                    h5f.create_dataset(colnm, data=np.require(new_dataframe[colnm]))
+
+            expression = np.array(new_dataframe[new_dataframe.keys()[9:]]).astype(
+                np.float64
+            )
+            h5f.create_dataset("expression", data=expression)
+
+            gene_names = np.array(new_dataframe.keys()[9:], dtype="S80")
+            h5f.create_dataset("gene_names", data=gene_names)
 
 
 class SyntheticDataset1(MerfishDataset):
+    @property
+    def raw_file_names(self):
+        return ["synth1.csv", "synth1.hdf5"]
+
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "synth1.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "synth1.hdf5")
+
     @staticmethod
-    def __gate(edges, data, i):
+    def _gate(edges, data, i):
         neighboring_gene1_expr = torch.sum(data[edges[:, edges[0] == i][1], 1])
         return neighboring_gene1_expr.item() * (neighboring_gene1_expr > 1).item()
 
-    def data_transform(self, x, split_locations, log_transform, true_radius=30):
-        edges = self.calculate_neighborhood(
-            split_locations, radius=true_radius, n_neighbors=None
+    def download(self):
+
+        # download csv if necessary
+        if not os.path.exists(self.merfish_csv):
+            with open(self.merfish_csv, "wb") as csvf:
+                csvf.write(requests.get(self.url, timeout=180).content)
+
+        # process csv if necessary
+        dataframe = pd.read_csv(self.merfish_csv)
+        preserve_columns = dataframe.columns
+        true_radius = 30
+        torch.manual_seed(88)
+        new_dataframe = pd.DataFrame(columns=preserve_columns)
+        unique_slices = dataframe.drop_duplicates(["Animal_ID", "Bregma"])[
+            ["Animal_ID", "Bregma"]
+        ]
+        for i in range(len(unique_slices)):
+            animal_id, bregma = unique_slices.iloc[i]
+            sub_dataframe = dataframe[
+                (dataframe["Animal_ID"] == animal_id) & (dataframe["Bregma"] == bregma)
+            ]
+            edges = self.calculate_neighborhood(
+                torch.tensor(sub_dataframe.to_numpy()[:, 5:7].astype("float64")),
+                radius=true_radius,
+                n_neighbors=None,
+            ).to("cuda:0")
+            sub_dataframe = sub_dataframe.to_numpy()
+            sub_dataframe[:, 9:] = torch.distributions.exponential.Exponential(
+                10
+            ).rsample(sub_dataframe[:, 9:].shape)
+            expressions = torch.tensor(sub_dataframe[:, 9:].astype("float64")).to(
+                "cuda:0"
+            )
+            output = torch.arange(len(sub_dataframe), dtype=torch.float64).apply_(
+                lambda i, edges=edges, data=expressions: self._gate(edges, data, i)
+            )
+            sub_dataframe[:, 9:][:, 0] += output.numpy()
+            new_dataframe = new_dataframe.append(
+                pd.DataFrame(sub_dataframe, columns=preserve_columns)
+            )
+
+        new_dataframe = new_dataframe.astype(
+            {
+                "Animal_ID": "int64",
+                "Bregma": "float64",
+                "Centroid_X": "float64",
+                "Centroid_Y": "float64",
+            }
         )
-        x = torch.distributions.exponential.Exponential(10).rsample(x.shape)
-        x[:, 0] = torch.arange(len(x), dtype=torch.float64).apply_(
-            lambda i, edges=edges, x=x: self.__gate(edges, x, i)
-        )
-        return torch.log1p(x) if log_transform else x
+
+        with h5py.File(self.merfish_hdf5, "w") as h5f:
+            # pylint: disable=no-member
+            for colnm, dtype in zip(new_dataframe.keys()[:9], new_dataframe.dtypes[:9]):
+                if dtype.kind == "O":
+                    data = np.require(new_dataframe[colnm], dtype="S36")
+                    h5f.create_dataset(colnm, data=data)
+                else:
+                    h5f.create_dataset(colnm, data=np.require(new_dataframe[colnm]))
+
+            expression = np.array(new_dataframe[new_dataframe.keys()[9:]]).astype(
+                np.float64
+            )
+            h5f.create_dataset("expression", data=expression)
+
+            gene_names = np.array(new_dataframe.keys()[9:], dtype="S80")
+            h5f.create_dataset("gene_names", data=gene_names)
 
 
 class SyntheticDataset2(MerfishDataset):
+    @property
+    def raw_file_names(self):
+        return ["synth2.csv", "synth2.hdf5"]
+
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "synth2.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "synth2.hdf5")
+
     @staticmethod
-    def __transform(edges, data, i):
+    def _transform(edges, data, i):
         neighboring_gene_expr = (
             torch.mean(data[edges[:, edges[0] == i][1], 1:10])
         ).item()
-        return neighboring_gene_expr * (2 ** np.sign(neighboring_gene_expr - 1.6))
+        return neighboring_gene_expr * (
+            2 ** np.sign(neighboring_gene_expr - torch.mean(data[:, 1]).item())
+        )
 
-    def data_transform(self, x, split_locations, log_transform, true_radius=30):
-        edges = self.calculate_neighborhood(
-            split_locations, radius=true_radius, n_neighbors=None
+    def download(self):
+
+        # download csv if necessary
+        if not os.path.exists(self.merfish_csv):
+            with open(self.merfish_csv, "wb") as csvf:
+                csvf.write(requests.get(self.url, timeout=180).content)
+
+        # process csv if necessary
+        dataframe = pd.read_csv(self.merfish_csv)
+        preserve_columns = dataframe.columns
+        true_radius = 30
+        torch.manual_seed(88)
+        new_dataframe = pd.DataFrame(columns=preserve_columns)
+        unique_slices = dataframe.drop_duplicates(["Animal_ID", "Bregma"])[
+            ["Animal_ID", "Bregma"]
+        ]
+        for i in range(len(unique_slices)):
+            animal_id, bregma = unique_slices.iloc[i]
+            sub_dataframe = dataframe[
+                (dataframe["Animal_ID"] == animal_id) & (dataframe["Bregma"] == bregma)
+            ]
+            edges = self.calculate_neighborhood(
+                torch.tensor(sub_dataframe.to_numpy()[:, 5:7].astype("float64")),
+                radius=true_radius,
+                n_neighbors=None,
+            ).to("cuda:0")
+            sub_dataframe = sub_dataframe.to_numpy()
+            sub_dataframe[:, 9:] = torch.exp(
+                torch.distributions.normal.Normal(0, 1).rsample(
+                    sub_dataframe[:, 9:].shape
+                )
+            )
+            expressions = torch.tensor(sub_dataframe[:, 9:].astype("float64")).to(
+                "cuda:0"
+            )
+            output = torch.arange(len(sub_dataframe), dtype=torch.float64).apply_(
+                lambda i, edges=edges, data=expressions: self._transform(edges, data, i)
+            )
+            sub_dataframe[:, 9:][:, 0] += output.numpy()
+            new_dataframe = new_dataframe.append(
+                pd.DataFrame(sub_dataframe, columns=preserve_columns)
+            )
+
+        new_dataframe = new_dataframe.astype(
+            {
+                "Animal_ID": "int64",
+                "Bregma": "float64",
+                "Centroid_X": "float64",
+                "Centroid_Y": "float64",
+            }
         )
-        x = torch.exp(torch.distributions.normal.Normal(0, 1).rsample(x.shape))
-        x[:, 0] += torch.arange(len(x), dtype=torch.float64).apply_(
-            lambda i, edges=edges, x=x: self.__transform(edges, x, i)
-        )
-        return torch.log1p(x) if log_transform else x
+
+        with h5py.File(self.merfish_hdf5, "w") as h5f:
+            # pylint: disable=no-member
+            for colnm, dtype in zip(new_dataframe.keys()[:9], new_dataframe.dtypes[:9]):
+                if dtype.kind == "O":
+                    data = np.require(new_dataframe[colnm], dtype="S36")
+                    h5f.create_dataset(colnm, data=data)
+                else:
+                    h5f.create_dataset(colnm, data=np.require(new_dataframe[colnm]))
+
+            expression = np.array(new_dataframe[new_dataframe.keys()[9:]]).astype(
+                np.float64
+            )
+            h5f.create_dataset("expression", data=expression)
+
+            gene_names = np.array(new_dataframe.keys()[9:], dtype="S80")
+            h5f.create_dataset("gene_names", data=gene_names)
 
 
 class SyntheticDataset3(MerfishDataset):
+    @property
+    def raw_file_names(self):
+        return ["synth3.csv", "synth3.hdf5"]
+
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "synth3.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "synth3.hdf5")
+
     @staticmethod
-    def __transform(edges, data, i):
+    def _transform(edges, data, i):
         average_gene1_expr = torch.mean(data[:, 1])
         average_gene2_expr = torch.mean(data[:, 2])
         neighboring_gene1_expr = torch.mean(data[edges[:, edges[0] == i][1], 1])
         neighboring_gene2_expr = torch.mean(data[edges[:, edges[0] == i][1], 2])
         return 2 ** (
             1
-            if torch.sign(neighboring_gene1_expr - average_gene1_expr)
-            - torch.sign(neighboring_gene2_expr - average_gene2_expr)
+            if (
+                torch.sign(neighboring_gene1_expr - average_gene1_expr)
+                - torch.sign(neighboring_gene2_expr - average_gene2_expr)
+            )
             > 0
             else -1
         )
 
-    def data_transform(self, x, split_locations, log_transform, true_radius=30):
-        edges = self.calculate_neighborhood(
-            split_locations, radius=true_radius, n_neighbors=None
+    def download(self):
+
+        # download csv if necessary
+        if not os.path.exists(self.merfish_csv):
+            with open(self.merfish_csv, "wb") as csvf:
+                csvf.write(requests.get(self.url, timeout=180).content)
+
+        # process csv if necessary
+        dataframe = pd.read_csv(self.merfish_csv)
+        preserve_columns = dataframe.columns
+        true_radius = 30
+        torch.manual_seed(88)
+        new_dataframe = pd.DataFrame(columns=preserve_columns)
+        unique_slices = dataframe.drop_duplicates(["Animal_ID", "Bregma"])[
+            ["Animal_ID", "Bregma"]
+        ]
+        for i in range(len(unique_slices)):
+            animal_id, bregma = unique_slices.iloc[i]
+            sub_dataframe = dataframe[
+                (dataframe["Animal_ID"] == animal_id) & (dataframe["Bregma"] == bregma)
+            ]
+            edges = self.calculate_neighborhood(
+                torch.tensor(sub_dataframe.to_numpy()[:, 5:7].astype("float64")),
+                radius=true_radius,
+                n_neighbors=None,
+            ).to("cuda:0")
+            sub_dataframe = sub_dataframe.to_numpy()
+            sub_dataframe[:, 9:] = torch.exp(
+                torch.distributions.normal.Normal(0, 0.25).rsample(
+                    sub_dataframe[:, 9:].shape
+                )
+            )
+            expressions = torch.tensor(sub_dataframe[:, 9:].astype("float64")).to(
+                "cuda:0"
+            )
+            output = torch.arange(len(sub_dataframe), dtype=torch.float64).apply_(
+                lambda i, edges=edges, data=expressions: self._transform(edges, data, i)
+            )
+            sub_dataframe[:, 9:][:, 0] *= output.numpy()
+            new_dataframe = new_dataframe.append(
+                pd.DataFrame(sub_dataframe, columns=preserve_columns)
+            )
+
+        new_dataframe = new_dataframe.astype(
+            {
+                "Animal_ID": "int64",
+                "Bregma": "float64",
+                "Centroid_X": "float64",
+                "Centroid_Y": "float64",
+            }
         )
-        x = torch.exp(torch.distributions.normal.Normal(0, 0.25).rsample(x.shape))
-        x[:, 0] *= torch.arange(len(x), dtype=torch.float64).apply_(
-            lambda i, edges=edges, x=x: self.__transform(edges, x, i)
-        )
-        return torch.log1p(x) if log_transform else x
+
+        with h5py.File(self.merfish_hdf5, "w") as h5f:
+            # pylint: disable=no-member
+            for colnm, dtype in zip(new_dataframe.keys()[:9], new_dataframe.dtypes[:9]):
+                if dtype.kind == "O":
+                    data = np.require(new_dataframe[colnm], dtype="S36")
+                    h5f.create_dataset(colnm, data=data)
+                else:
+                    h5f.create_dataset(colnm, data=np.require(new_dataframe[colnm]))
+
+            expression = np.array(new_dataframe[new_dataframe.keys()[9:]]).astype(
+                np.float64
+            )
+            h5f.create_dataset("expression", data=expression)
+
+            gene_names = np.array(new_dataframe.keys()[9:], dtype="S80")
+            h5f.create_dataset("gene_names", data=gene_names)
 
 
 class SyntheticDataset4(MerfishDataset):
+    @property
+    def raw_file_names(self):
+        return ["synth4.csv", "synth4.hdf5"]
+
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "synth4.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "synth4.hdf5")
+
     @staticmethod
     def _weighted_sum(edges, distances, data, i):
         neighboring_gene1_expr = data[edges[:, edges[0] == i][1], 1].to(torch.float64)
@@ -631,39 +925,114 @@ class SyntheticDataset4(MerfishDataset):
         )
         return neighboring_gene1_expr
 
-    def data_transform(self, x, split_locations, log_transform, true_radius=30):
-        tree = KDTree(split_locations)
-        edges, distances = tree.query_radius(
-            split_locations, r=true_radius, return_distance=True
+    def download(self):
+
+        # download csv if necessary
+        if not os.path.exists(self.merfish_csv):
+            with open(self.merfish_csv, "wb") as csvf:
+                csvf.write(requests.get(self.url, timeout=180).content)
+
+        # process csv if necessary
+        dataframe = pd.read_csv(self.merfish_csv)
+        preserve_columns = dataframe.columns
+        true_radius = 30
+        torch.manual_seed(88)
+        new_dataframe = pd.DataFrame(columns=preserve_columns)
+        unique_slices = dataframe.drop_duplicates(["Animal_ID", "Bregma"])[
+            ["Animal_ID", "Bregma"]
+        ]
+        for i in range(len(unique_slices)):
+            animal_id, bregma = unique_slices.iloc[i]
+            sub_dataframe = dataframe[
+                (dataframe["Animal_ID"] == animal_id) & (dataframe["Bregma"] == bregma)
+            ]
+            sub_dataframe = sub_dataframe.to_numpy()
+            tree = KDTree(torch.tensor(sub_dataframe[:, 5:7].astype("float64")))
+            edges, distances = tree.query_radius(
+                torch.tensor(sub_dataframe[:, 5:7].astype("float64")),
+                r=true_radius,
+                return_distance=True,
+            )
+            distances = torch.tensor(
+                np.concatenate(
+                    [
+                        np.c_[
+                            np.repeat(i, len(distances[i])),
+                            list(distances[i]),
+                        ]
+                        for i in range(len(distances))
+                    ],
+                    axis=0,
+                ).T
+            ).to("cuda:0")
+            edges = torch.tensor(
+                np.concatenate(
+                    [
+                        np.c_[
+                            np.repeat(i, len(edges[i])),
+                            list(edges[i]),
+                        ]
+                        for i in range(len(edges))
+                    ],
+                    axis=0,
+                ).T
+            ).to("cuda:0")
+            sub_dataframe[:, 9:] = torch.distributions.exponential.Exponential(
+                10
+            ).rsample(sub_dataframe[:, 9:].shape)
+            expressions = torch.tensor(sub_dataframe[:, 9:].astype("float64")).to(
+                "cuda:0"
+            )
+            output = torch.arange(len(sub_dataframe), dtype=torch.float64).apply_(
+                lambda i, edges=edges, distances=distances, data=expressions: self._weighted_sum(  # pylint: disable=line-too-long
+                    edges, distances, data, i
+                )
+            )
+            sub_dataframe[:, 9:][:, 0] = output.numpy()
+            new_dataframe = new_dataframe.append(
+                pd.DataFrame(sub_dataframe, columns=preserve_columns)
+            )
+
+        new_dataframe = new_dataframe.astype(
+            {
+                "Animal_ID": "int64",
+                "Bregma": "float64",
+                "Centroid_X": "float64",
+                "Centroid_Y": "float64",
+            }
         )
-        distances = np.concatenate(
-            [
-                np.c_[
-                    np.repeat(i, len(distances[i])),
-                    list(distances[i]),
-                ]
-                for i in range(len(distances))
-            ],
-            axis=0,
-        ).T
-        edges = np.concatenate(
-            [
-                np.c_[
-                    np.repeat(i, len(edges[i])),
-                    list(edges[i]),
-                ]
-                for i in range(len(edges))
-            ],
-            axis=0,
-        ).T
-        x = torch.distributions.exponential.Exponential(10).rsample(x.shape)
-        x[:, 0] = torch.arange(len(x), dtype=torch.float64).apply_(
-            lambda i, edges=edges, x=x: self._weighted_sum(edges, distances, x, i)
-        )
-        return torch.log1p(x) if log_transform else x
+
+        with h5py.File(self.merfish_hdf5, "w") as h5f:
+            # pylint: disable=no-member
+            for colnm, dtype in zip(new_dataframe.keys()[:9], new_dataframe.dtypes[:9]):
+                if dtype.kind == "O":
+                    data = np.require(new_dataframe[colnm], dtype="S36")
+                    h5f.create_dataset(colnm, data=data)
+                else:
+                    h5f.create_dataset(colnm, data=np.require(new_dataframe[colnm]))
+
+            expression = np.array(new_dataframe[new_dataframe.keys()[9:]]).astype(
+                np.float64
+            )
+            h5f.create_dataset("expression", data=expression)
+
+            gene_names = np.array(new_dataframe.keys()[9:], dtype="S80")
+            h5f.create_dataset("gene_names", data=gene_names)
 
 
 class SyntheticDataset5(SyntheticDataset4):
+    @property
+    def raw_file_names(self):
+        return ["synth5.csv", "synth5.hdf5"]
+
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "synth5.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "synth5.hdf5")
+
     @staticmethod
     def _weight(x):
         return 1 - torch.asinh(5.863 * x) / 5.863
@@ -677,6 +1046,243 @@ class SyntheticDataset5(SyntheticDataset4):
             neighboring_gene1_expr, self._weight(neighboring_gene1_distances)
         )
         return neighboring_gene1_expr
+
+
+class SyntheticDataset6(SyntheticDataset4):
+    @property
+    def raw_file_names(self):
+        return ["synth6.csv", "synth6.hdf5"]
+
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "synth6.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "synth6.hdf5")
+
+    @staticmethod
+    def _weighted_sum(edges, distances, data, i):
+        neighboring_gene1_expr = data[edges[:, edges[0] == i][1], 1].to(torch.float64)
+        neighboring_gene1_distances = torch.tensor(
+            distances[1][distances[0] == i], dtype=torch.float64
+        )
+        neighboring_gene1_expr = torch.dot(
+            neighboring_gene1_expr, 1 / (1 + neighboring_gene1_distances)
+        )
+        neighboring_gene1_expr += torch.distributions.half_normal.HalfNormal(
+            0.1
+        ).rsample(neighboring_gene1_expr.shape)
+        return neighboring_gene1_expr
+
+
+class SyntheticDataset7(SyntheticDataset4):
+    @property
+    def raw_file_names(self):
+        return ["synth7.csv", "synth7.hdf5"]
+
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "synth7.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "synth7.hdf5")
+
+    @staticmethod
+    def _weight(x):
+        return 1 - torch.asinh(5.863 * x) / 5.863
+
+    def _weighted_sum(self, edges, distances, data, i):
+        neighboring_gene1_expr = data[edges[:, edges[0] == i][1], 1].to(torch.float64)
+        neighboring_gene1_distances = torch.tensor(
+            distances[1][distances[0] == i], dtype=torch.float64
+        )
+        neighboring_gene1_expr = torch.dot(
+            neighboring_gene1_expr, self._weight(neighboring_gene1_distances)
+        )
+        neighboring_gene1_expr += torch.distributions.half_normal.HalfNormal(
+            0.1
+        ).rsample(neighboring_gene1_expr.shape)
+        return neighboring_gene1_expr
+
+
+class SyntheticDataset8(MerfishDataset):
+    @property
+    def raw_file_names(self):
+        return ["synth8.csv", "synth8.hdf5"]
+
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "synth8.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "synth8.hdf5")
+
+    @staticmethod
+    def _gate(edges, data, i):
+        neighboring_gene1_expr = torch.sum(data[edges[:, edges[0] == i][1], 1])
+        return neighboring_gene1_expr.item() * (neighboring_gene1_expr > 1).item()
+
+    def download(self):
+
+        # download csv if necessary
+        if not os.path.exists(self.merfish_csv):
+            with open(self.merfish_csv, "wb") as csvf:
+                csvf.write(requests.get(self.url, timeout=180).content)
+
+        # process csv if necessary
+        dataframe = pd.read_csv(self.merfish_csv)
+        preserve_columns = dataframe.columns
+        cell_volume, true_radius = 60, 30
+        torch.manual_seed(88)
+        new_dataframe = pd.DataFrame(columns=preserve_columns)
+        unique_slices = dataframe.drop_duplicates(["Animal_ID", "Bregma"])[
+            ["Animal_ID", "Bregma"]
+        ]
+        for i in range(len(unique_slices)):
+            animal_id, bregma = unique_slices.iloc[i]
+            sub_dataframe = dataframe[
+                (dataframe["Animal_ID"] == animal_id) & (dataframe["Bregma"] == bregma)
+            ]
+            edges = self.calculate_neighborhood(
+                torch.tensor(sub_dataframe.to_numpy()[:, 5:7].astype("float64")),
+                radius=true_radius,
+                n_neighbors=None,
+            ).to("cuda:0")
+            sub_dataframe = sub_dataframe.to_numpy()
+            sub_dataframe[:, 9:] = (
+                torch.distributions.negative_binomial.NegativeBinomial(20, 0.5).sample(
+                    sub_dataframe[:, 9:].shape
+                )
+                / cell_volume
+            )
+            expressions = torch.tensor(sub_dataframe[:, 9:].astype("float64")).to(
+                "cuda:0"
+            )
+            output = torch.arange(len(sub_dataframe), dtype=torch.float64).apply_(
+                lambda i, edges=edges, data=expressions: self._gate(edges, data, i)
+            )
+            sub_dataframe[:, 9:][:, 0] = output.numpy()
+            new_dataframe = new_dataframe.append(
+                pd.DataFrame(sub_dataframe, columns=preserve_columns)
+            )
+
+        new_dataframe = new_dataframe.astype(
+            {
+                "Animal_ID": "int64",
+                "Bregma": "float64",
+                "Centroid_X": "float64",
+                "Centroid_Y": "float64",
+            }
+        )
+
+        with h5py.File(self.merfish_hdf5, "w") as h5f:
+            # pylint: disable=no-member
+            for colnm, dtype in zip(new_dataframe.keys()[:9], new_dataframe.dtypes[:9]):
+                if dtype.kind == "O":
+                    data = np.require(new_dataframe[colnm], dtype="S36")
+                    h5f.create_dataset(colnm, data=data)
+                else:
+                    h5f.create_dataset(colnm, data=np.require(new_dataframe[colnm]))
+
+            expression = np.array(new_dataframe[new_dataframe.keys()[9:]]).astype(
+                np.float64
+            )
+            h5f.create_dataset("expression", data=expression)
+
+            gene_names = np.array(new_dataframe.keys()[9:], dtype="S80")
+            h5f.create_dataset("gene_names", data=gene_names)
+
+
+class SyntheticDataset9(MerfishDataset):
+    @property
+    def raw_file_names(self):
+        return ["synth9.csv", "synth9.hdf5"]
+
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "synth9.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "synth9.hdf5")
+
+    @staticmethod
+    def _gate(edges, data, i):
+        neighboring_gene1_expr = torch.sum(data[edges[:, edges[0] == i][1], 1])
+        return neighboring_gene1_expr.item() * (neighboring_gene1_expr > 1).item()
+
+    def download(self):
+
+        # download csv if necessary
+        if not os.path.exists(self.merfish_csv):
+            with open(self.merfish_csv, "wb") as csvf:
+                csvf.write(requests.get(self.url, timeout=180).content)
+
+        # process csv if necessary
+        dataframe = pd.read_csv(self.merfish_csv)
+        preserve_columns = dataframe.columns
+        cell_volume, true_radius = 60, 30
+        torch.manual_seed(88)
+        new_dataframe = pd.DataFrame(columns=preserve_columns)
+        unique_slices = dataframe.drop_duplicates(["Animal_ID", "Bregma"])[
+            ["Animal_ID", "Bregma"]
+        ]
+        for i in range(len(unique_slices)):
+            animal_id, bregma = unique_slices.iloc[i]
+            sub_dataframe = dataframe[
+                (dataframe["Animal_ID"] == animal_id) & (dataframe["Bregma"] == bregma)
+            ]
+            edges = self.calculate_neighborhood(
+                torch.tensor(sub_dataframe.to_numpy()[:, 5:7].astype("float64")),
+                radius=true_radius,
+                n_neighbors=None,
+            ).to("cuda:0")
+            sub_dataframe = sub_dataframe.to_numpy()
+            sub_dataframe[:, 9:] = (
+                torch.distributions.negative_binomial.NegativeBinomial(20, 0.5).sample(
+                    sub_dataframe[:, 9:].shape
+                )
+                / cell_volume
+            )
+            expressions = torch.tensor(sub_dataframe[:, 9:].astype("float64")).to(
+                "cuda:0"
+            )
+            output = torch.arange(len(sub_dataframe), dtype=torch.float64).apply_(
+                lambda i, edges=edges, data=expressions: self._gate(edges, data, i)
+            )
+            sub_dataframe[:, 9:][:, 0] += output.numpy()
+            new_dataframe = new_dataframe.append(
+                pd.DataFrame(sub_dataframe, columns=preserve_columns)
+            )
+
+        new_dataframe = new_dataframe.astype(
+            {
+                "Animal_ID": "int64",
+                "Bregma": "float64",
+                "Centroid_X": "float64",
+                "Centroid_Y": "float64",
+            }
+        )
+
+        with h5py.File(self.merfish_hdf5, "w") as h5f:
+            # pylint: disable=no-member
+            for colnm, dtype in zip(new_dataframe.keys()[:9], new_dataframe.dtypes[:9]):
+                if dtype.kind == "O":
+                    data = np.require(new_dataframe[colnm], dtype="S36")
+                    h5f.create_dataset(colnm, data=data)
+                else:
+                    h5f.create_dataset(colnm, data=np.require(new_dataframe[colnm]))
+
+            expression = np.array(new_dataframe[new_dataframe.keys()[9:]]).astype(
+                np.float64
+            )
+            h5f.create_dataset("expression", data=expression)
+
+            gene_names = np.array(new_dataframe.keys()[9:], dtype="S80")
+            h5f.create_dataset("gene_names", data=gene_names)
 
 
 class MerfishDataset3D(MerfishDataset):
