@@ -2,7 +2,8 @@ from hydra.utils import instantiate
 
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
-from torch.nn import functional as F
+
+# from torch.nn import functional as F
 from torch_geometric.data import DataLoader
 
 from spatial.models.monet_ae import (
@@ -25,10 +26,10 @@ def test(cfg: DictConfig, data=None):
             data = instantiate(cfg.datasets.dataset[0], train=False)
         else:
             data = instantiate(cfg.datasets.dataset, train=False)
-
     # ensuring data dimension is correct
-    if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:
-        raise AssertionError("Data dimension not in line with observables dimension.")
+    # FIX THIS TO BE IN LINE WITH THE MODEL AT HAND
+    # if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:
+    #     raise AssertionError("Data dimension not in line with observables dimension.")
 
     # get response indeces so they can be passed into the model
     if cfg.model.kwargs.response_genes is None:
@@ -81,7 +82,7 @@ def test(cfg: DictConfig, data=None):
 
     test_results = trainer.test(model, test_loader, verbose=cfg.predict.verbose)
 
-    l1_losses = F.l1_loss(model.inputs, model.gene_expressions)
+    l1_losses = "currently unneeded"  # F.l1_loss(model.inputs, model.gene_expressions)
 
     # first is needed for testing, the rest is for jupyter notebook exploration fun!
     return (

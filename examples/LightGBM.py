@@ -261,7 +261,6 @@ def construct_problem(
     neighbor_genes,
     self_genes,
     filter_excitatory=False,
-    synthetic_mode=0,
 ):
     """
     mask -- set of cells
@@ -278,7 +277,7 @@ def construct_problem(
         gene_lookup[x] for x in self_genes
     ]  # collect the column indexes associated with them
 
-    with h5py.File(f"../data/raw/synth{synthetic_mode}.hdf5", "r") as data:
+    with h5py.File("../data/raw/merfish.hdf5", "r") as data:
         local_processed_expression = data["expression"][:].astype("float64")[mask]
     selfset_exprs = local_processed_expression[
         :, selfset_idxs
@@ -297,7 +296,7 @@ def construct_problem(
     collected_feature_names += [x + " from Neighbors" for x in neighbor_genes]
 
     n_neighs = local_edges @ np.ones(local_edges.shape[0])
-    # SANITY CHECK REMOVES DIVISION
+    # DIVISION BY NEIGHBORS GIVES AVERAGE. OTHERWISE THIS IS A SUM.
     neigh_avgs = local_edges @ neighset_exprs  # / n_neighs[
     #         :, None
     #     ]  # average ligand/receptor for neighbors
@@ -332,26 +331,6 @@ def construct_problem(
     return covariates, predict, collected_feature_names
 
 
-dataframe = pd.read_csv(csv_location)
-
-dct = {}
-for colnm, dtype in zip(dataframe.keys()[:9], dataframe.dtypes[:9]):
-    if dtype.kind == "O":
-        dct[colnm] = np.require(dataframe[colnm], dtype="U36")
-    else:
-        dct[colnm] = np.require(dataframe[colnm])
-expression = np.array(dataframe[dataframe.keys()[9:]]).astype(np.float64)
-gene_names = np.array(dataframe.keys()[9:], dtype="U80")
-cellid = dct.pop("Cell_ID")
-
-ad = anndata.AnnData(
-    X=expression,
-    var=pd.DataFrame(index=gene_names),
-    obs=pd.DataFrame(dct, index=cellid),
-)
-
-ad.write_h5ad(h5ad_location)
-
 ad = anndata.read_h5ad(h5ad_location)
 animal_ids = np.unique(ad.obs["Animal_ID"])
 bregmas = np.unique(ad.obs["Bregma"])
@@ -367,130 +346,74 @@ for aid in animal_ids:
 ad.obs["Tissue_ID"] = tissue_id
 ad.write_h5ad(h5ad_location)
 
-# Building Radius 30 Graph (Ground Truth)
-ad = anndata.read_h5ad(h5ad_location)
-row = np.zeros(0, dtype=int)
-col = np.zeros(0, dtype=int)
-true_radius = 30
+with open("LightGBM_results.json", "r") as results:
+    results_dict = json.load(results)
 
-for tid in tqdm.notebook.tqdm(np.unique(ad.obs["Tissue_ID"])):
-    good = ad.obs["Tissue_ID"] == tid
-    pos = np.array(ad.obs[good][["Centroid_X", "Centroid_Y"]])
-    idxs = np.where(good)[0]
-    p = sklearn.neighbors.KDTree(pos)
-    true_edges, true_distances = p.query_radius(
-        pos, r=true_radius, return_distance=True
-    )
-    true_distances = np.concatenate(
-        [
-            np.c_[
-                np.repeat(i, len(true_distances[i])),
-                list(true_distances[i]),
-            ]
-            for i in range(len(true_distances))
-        ],
-        axis=0,
-    )
-    true_edges = np.concatenate(
-        [
-            np.c_[
-                np.repeat(i, len(true_edges[i])),
-                list(true_edges[i]),
-            ]
-            for i in range(len(true_edges))
-        ],
-        axis=0,
-    )
-    col = np.r_[col, idxs[[y for (x, y) in true_edges]]]
-    row = np.r_[row, idxs[[x for (x, y) in true_edges]]]
+SHAP = False
 
-E = (
-    sp.sparse.coo_matrix((np.ones(len(col)), (row, col)), shape=(len(ad), len(ad)))
-).tocsr()
+for radius_value in range(0, 65, 5):
 
-anndata.AnnData(E).write_h5ad(connectivity_matrix_template % (true_radius, "rad"))
+    # Build the Current Radius Graph
+    ad = anndata.read_h5ad(h5ad_location)
+    row = np.zeros(0, dtype=int)
+    col = np.zeros(0, dtype=int)
+    radius = radius_value
 
-# load data
-# These are set above. You can change these here if you want though.
-# radius=60
-# mode="rad"
-ad = anndata.read_h5ad(h5ad_location)
-true_connectivity_matrix = anndata.read_h5ad(
-    connectivity_matrix_template % (true_radius, "rad")
-).X
-gene_lookup = {x: i for (i, x) in enumerate(ad.var.index)}
+    for tid in tqdm.notebook.tqdm(np.unique(ad.obs["Tissue_ID"])):
+        good = ad.obs["Tissue_ID"] == tid
+        pos = np.array(ad.obs[good][["Centroid_X", "Centroid_Y"]])
+        idxs = np.where(good)[0]
+        p = sklearn.neighbors.KDTree(pos)
+        # E=p.query_ball_point(pos, r=radius, return_sorted=False)
+        edges, distances = p.query_radius(pos, r=radius, return_distance=True)
+        distances = np.concatenate(
+            [
+                np.c_[
+                    np.repeat(i, len(distances[i])),
+                    list(distances[i]),
+                ]
+                for i in range(len(distances))
+            ],
+            axis=0,
+        )
+        edges = np.concatenate(
+            [
+                np.c_[
+                    np.repeat(i, len(edges[i])),
+                    list(edges[i]),
+                ]
+                for i in range(len(edges))
+            ],
+            axis=0,
+        )
+        col = np.r_[col, idxs[[y for (x, y) in edges]]]
+        row = np.r_[row, idxs[[x for (x, y) in edges]]]
 
-with open("LightGBM_synthetic_results.json", "r") as synth_results:
-    results_dict = json.load(synth_results)
+    E = (
+        sp.sparse.coo_matrix((np.ones(len(col)), (row, col)), shape=(len(ad), len(ad)))
+    ).tocsr()
 
-response_gene = "Ace2"  # make the response gene the first response
+    anndata.AnnData(E).write_h5ad(connectivity_matrix_template % (radius, "rad"))
 
-for synth_experiment in ["Nonlinear"]:
-    for radius_value in range(0, 65, 5):
+    ad = anndata.read_h5ad(h5ad_location)
+    connectivity_matrix = anndata.read_h5ad(
+        connectivity_matrix_template % (radius, "rad")
+    ).X
+    gene_lookup = {x: i for (i, x) in enumerate(ad.var.index)}
 
-        # Build the Current Radius Graph
-        ad = anndata.read_h5ad(h5ad_location)
-        row = np.zeros(0, dtype=int)
-        col = np.zeros(0, dtype=int)
-        radius = radius_value
-
-        for tid in tqdm.notebook.tqdm(np.unique(ad.obs["Tissue_ID"])):
-            good = ad.obs["Tissue_ID"] == tid
-            pos = np.array(ad.obs[good][["Centroid_X", "Centroid_Y"]])
-            idxs = np.where(good)[0]
-            p = sklearn.neighbors.KDTree(pos)
-            # E=p.query_ball_point(pos, r=radius, return_sorted=False)
-            edges, distances = p.query_radius(pos, r=radius, return_distance=True)
-            distances = np.concatenate(
-                [
-                    np.c_[
-                        np.repeat(i, len(distances[i])),
-                        list(distances[i]),
-                    ]
-                    for i in range(len(distances))
-                ],
-                axis=0,
-            )
-            edges = np.concatenate(
-                [
-                    np.c_[
-                        np.repeat(i, len(edges[i])),
-                        list(edges[i]),
-                    ]
-                    for i in range(len(edges))
-                ],
-                axis=0,
-            )
-            col = np.r_[col, idxs[[y for (x, y) in edges]]]
-            row = np.r_[row, idxs[[x for (x, y) in edges]]]
-
-        E = (
-            sp.sparse.coo_matrix(
-                (np.ones(len(col)), (row, col)), shape=(len(ad), len(ad))
-            )
-        ).tocsr()
-
-        anndata.AnnData(E).write_h5ad(connectivity_matrix_template % (radius, "rad"))
-
-        ad = anndata.read_h5ad(h5ad_location)
-        connectivity_matrix = anndata.read_h5ad(
-            connectivity_matrix_template % (radius, "rad")
-        ).X
-        gene_lookup = {x: i for (i, x) in enumerate(ad.var.index)}
+    for response_gene in tqdm.notebook.tqdm(response_genes):
 
         trainX, trainY, feature_names = construct_problem(
             (ad.obs["Animal_ID"] <= 30),
             response_gene,
             neighset,
             oset,
-            synthetic_mode=synth_experiment,
         )
         testX, testY, feature_names = construct_problem(
             (ad.obs["Animal_ID"] > 30),
             response_gene,
             neighset,
             oset,
-            synthetic_mode=synth_experiment,
         )
         print(trainX.shape, trainY.shape)
         print(testX.shape, testY.shape)
@@ -504,7 +427,7 @@ for synth_experiment in ["Nonlinear"]:
         model = HistGradientBoostingRegressor(
             loss="squared_error",
             min_samples_leaf=2,
-            verbose=1,
+            verbose=0,
             random_state=129,
             max_iter=1000,
             n_iter_no_change=10,
@@ -512,35 +435,41 @@ for synth_experiment in ["Nonlinear"]:
         )
 
         model.fit(trainX, trainY)
-        results_dict[f"LightGBM {radius_value} {synth_experiment}"] = np.mean(
+        results_dict[f"LightGBM {radius_value}"] = results_dict.get(
+            f"LightGBM {radius_value}", 0
+        )
+        results_dict[f"LightGBM {radius_value}"] += np.mean(
             (model.predict(testX) - testY) ** 2
-        )
-        shap_values = shap.TreeExplainer(model).shap_values(df)
-        shap.summary_plot(shap_values, df, show=False)
-        plt.title(f"(LightGBM, {radius_value}, {synth_experiment})")
-        plt.rcParams["figure.dpi"] = 100
-        plt.rcParams["savefig.dpi"] = 100
-        plt.savefig(
-            f"static/shap/(LightGBM, {radius_value}, {synth_experiment}).png",
-            bbox_inches="tight",
-        )
-        plt.clf()
+        ) / len(response_genes)
+        if SHAP:
+            shap_values = shap.TreeExplainer(model).shap_values(df)
+            shap.summary_plot(shap_values, df, show=False)
+            plt.title(f"(LightGBM, {radius_value})")
+            plt.rcParams["figure.dpi"] = 100
+            plt.rcParams["savefig.dpi"] = 100
+            plt.savefig(
+                f"static/shap/(LightGBM, {radius_value}).png",
+                bbox_inches="tight",
+            )
+            plt.clf()
 
         model = sklearn.linear_model.LinearRegression()
         model.fit(trainX, trainY)
-        results_dict[f"OLS {radius_value} {synth_experiment}"] = np.mean(
-            np.mean((model.predict(testX) - testY) ** 2)
-        )
-        shap_values = shap.LinearExplainer(model, trainX).shap_values(df)
-        shap.summary_plot(shap_values, df, show=False)
-        plt.title(f"(LightGBM, {radius_value}, {synth_experiment})")
-        plt.rcParams["figure.dpi"] = 100
-        plt.rcParams["savefig.dpi"] = 100
-        plt.savefig(
-            f"static/shap/(OLS, {radius_value}, {synth_experiment}).png",
-            bbox_inches="tight",
-        )
-        plt.clf()
+        results_dict[f"OLS {radius_value}"] = results_dict.get(f"OLS {radius_value}", 0)
+        results_dict[f"OLS {radius_value}"] += np.mean(
+            (model.predict(testX) - testY) ** 2
+        ) / len(response_genes)
+        if SHAP:
+            shap_values = shap.LinearExplainer(model, trainX).shap_values(df)
+            shap.summary_plot(shap_values, df, show=False)
+            plt.title(f"(LightGBM, {radius_value})")
+            plt.rcParams["figure.dpi"] = 100
+            plt.rcParams["savefig.dpi"] = 100
+            plt.savefig(
+                f"static/shap/(OLS, {radius_value}).png",
+                bbox_inches="tight",
+            )
+            plt.clf()
 
         model = sklearn.linear_model.Ridge()
         tuned_parameters = {"alpha": [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]}
@@ -548,23 +477,25 @@ for synth_experiment in ["Nonlinear"]:
             model, tuned_parameters, scoring="neg_mean_squared_error", cv=5
         )
         grid_search.fit(trainX, trainY)
-        results_dict[f"Ridge {radius_value} {synth_experiment}"] = np.mean(
-            np.mean((grid_search.predict(testX) - testY) ** 2)
+        results_dict[f"Ridge {radius_value}"] = results_dict.get(
+            f"Ridge {radius_value}", 0
         )
-
-        df = pd.DataFrame(testX, columns=feature_names)
-        shap_values = shap.LinearExplainer(
-            grid_search.best_estimator_, trainX
-        ).shap_values(df)
-        shap.summary_plot(shap_values, df, show=False)
-        plt.title(f"(Ridge, {radius_value}, {synth_experiment})")
-        plt.rcParams["figure.dpi"] = 100
-        plt.rcParams["savefig.dpi"] = 100
-        plt.savefig(
-            f"static/shap/(Ridge, {radius_value}, {synth_experiment}).png",
-            bbox_inches="tight",
-        )
-        plt.clf()
+        results_dict[f"Ridge {radius_value}"] += np.mean(
+            (grid_search.predict(testX) - testY) ** 2
+        ) / len(response_genes)
+        if SHAP:
+            shap_values = shap.LinearExplainer(
+                grid_search.best_estimator_, trainX
+            ).shap_values(df)
+            shap.summary_plot(shap_values, df, show=False)
+            plt.title(f"(Ridge, {radius_value})")
+            plt.rcParams["figure.dpi"] = 100
+            plt.rcParams["savefig.dpi"] = 100
+            plt.savefig(
+                f"static/shap/(Ridge, {radius_value}).png",
+                bbox_inches="tight",
+            )
+            plt.clf()
 
         model = sklearn.linear_model.Lasso(alpha=0.1)
         tuned_parameters = {"alpha": [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]}
@@ -572,48 +503,53 @@ for synth_experiment in ["Nonlinear"]:
             model, tuned_parameters, scoring="neg_mean_squared_error", cv=5
         )
         grid_search.fit(trainX, trainY)
-        results_dict[f"Lasso {radius_value} {synth_experiment}"] = np.mean(
-            np.mean((grid_search.predict(testX) - testY) ** 2)
+        results_dict[f"Lasso {radius_value}"] = results_dict.get(
+            f"Lasso {radius_value}", 0
         )
+        results_dict[f"Lasso {radius_value}"] += np.mean(
+            (grid_search.predict(testX) - testY) ** 2
+        ) / len(response_genes)
+        if SHAP:
+            shap_values = shap.LinearExplainer(
+                grid_search.best_estimator_, trainX
+            ).shap_values(df)
+            shap.summary_plot(shap_values, df, show=False)
+            plt.title(f"(Lasso, {radius_value})")
+            plt.rcParams["figure.dpi"] = 100
+            plt.rcParams["savefig.dpi"] = 100
+            plt.savefig(
+                f"static/shap/(Lasso, {radius_value}).png",
+                bbox_inches="tight",
+            )
+            plt.clf()
 
-        shap_values = shap.LinearExplainer(
-            grid_search.best_estimator_, trainX
-        ).shap_values(df)
-        shap.summary_plot(shap_values, df, show=False)
-        plt.title(f"(Lasso, {radius_value}, {synth_experiment})")
-        plt.rcParams["figure.dpi"] = 100
-        plt.rcParams["savefig.dpi"] = 100
-        plt.savefig(
-            f"static/shap/(Lasso, {radius_value}, {synth_experiment}).png",
-            bbox_inches="tight",
-        )
-        plt.clf()
+        # model = sklearn.linear_model.ElasticNet(alpha=0.1, l1_ratio=0.5)
+        # tuned_parameters = {
+        #     "alpha": [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
+        #     "l1_ratio": [0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.95, 0.99],
+        # }
+        # grid_search = GridSearchCV(
+        #     model, tuned_parameters, scoring="neg_mean_squared_error", cv=5
+        # )
+        # grid_search.fit(trainX, trainY)
+        # results_dict[f"ElasticNet {radius_value}"] =
+        # results_dict.get(f"ElasticNet {radius_value}", 0)
+        # results_dict[f"ElasticNet {radius_value}"] += np.mean(
+        #     (grid_search.predict(testX) - testY) ** 2
+        # ) / len(response_genes)
+        # if SHAP:
+        #     shap_values = shap.LinearExplainer(
+        #         grid_search.best_estimator_, trainX
+        #     ).shap_values(df)
+        #     shap.summary_plot(shap_values, df, show=False)
+        #     plt.title(f"(ElasticNet, {radius_value})")
+        #     plt.rcParams["figure.dpi"] = 100
+        #     plt.rcParams["savefig.dpi"] = 100
+        #     plt.savefig(
+        #         f"static/shap/(ElasticNet, {radius_value}).png",
+        #         bbox_inches="tight",
+        #     )
+        #     plt.clf()
 
-        model = sklearn.linear_model.ElasticNet(alpha=0.1, l1_ratio=0.5)
-        tuned_parameters = {
-            "alpha": [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
-            "l1_ratio": [0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.95, 0.99],
-        }
-        grid_search = GridSearchCV(
-            model, tuned_parameters, scoring="neg_mean_squared_error", cv=5
-        )
-        grid_search.fit(trainX, trainY)
-        results_dict[f"ElasticNet {radius_value} {synth_experiment}"] = np.mean(
-            np.mean((grid_search.predict(testX) - testY) ** 2)
-        )
-
-        shap_values = shap.LinearExplainer(
-            grid_search.best_estimator_, trainX
-        ).shap_values(df)
-        shap.summary_plot(shap_values, df, show=False)
-        plt.title(f"(ElasticNet, {radius_value}, {synth_experiment})")
-        plt.rcParams["figure.dpi"] = 100
-        plt.rcParams["savefig.dpi"] = 100
-        plt.savefig(
-            f"static/shap/(ElasticNet, {radius_value}, {synth_experiment}).png",
-            bbox_inches="tight",
-        )
-        plt.clf()
-
-        with open("LightGBM_synthetic_results.json", "w") as synth_results:
-            json.dump(results_dict, synth_results)
+        with open("LightGBM_results.json", "w") as results:
+            json.dump(results_dict, results)

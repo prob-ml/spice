@@ -4,7 +4,7 @@ bands:
 # i/o parameters
 verbose: True
 checkpoint: ${paths.root}
-device: "cuda:${gpus.0}"
+device: "cuda:${gpus.7}"
 output_file: "${paths.data}/var_params.pt"
 batch_size: 1
 save_model_summary: True

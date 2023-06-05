@@ -1,10 +1,15 @@
 plotting: True
-n_epochs: 600
+n_epochs: 1200
 logger_name: response142
 save_model_summary: False
 batch_size: 1
 dropout: True
-early_stopping: False
+early_stopping:
+  monitor: "val_loss"
+  min_delta: 0.00
+  patience: 30
+  verbose: False
+  mode: "min"
 log_transform: True
 seed: False
 trainer:
@@ -12,6 +17,7 @@ trainer:
   logger: True
   enable_checkpointing: True
   gpus: ${gpus}
+  accelerator: "gpu"
   auto_select_gpus: False
   max_epochs: ${training.n_epochs}
   min_epochs: 0
@@ -20,4 +26,4 @@ trainer:
   check_val_every_n_epoch: 1
 #  strategy: dp
   log_every_n_steps: 10
-filepath: ${model.name}__${model.kwargs.hidden_dimensions}__${model.kwargs.response_genes}__${radius}__${training.logger_name}
+filepath: ${model.name}__${model.kwargs.hidden_dimensions}__${radius}__${training.logger_name}__${optimizer.name}

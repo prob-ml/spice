@@ -68,7 +68,11 @@ def setup_early_stopping(cfg, callbacks):
     early_stop_callback = False
     if cfg.training.early_stopping:
         early_stop_callback = EarlyStopping(
-            monitor="val_loss", min_delta=0.00, patience=10, verbose=False, mode="min"
+            monitor=cfg.training.early_stopping.monitor,
+            min_delta=cfg.training.early_stopping.min_delta,
+            patience=cfg.training.early_stopping.patience,
+            verbose=cfg.training.early_stopping.verbose,
+            mode=cfg.training.early_stopping.mode,
         )
         callbacks.append(early_stop_callback)
     return callbacks
@@ -99,8 +103,9 @@ def train(cfg: DictConfig, data=None, validate_only=False):
     val_loader = DataLoader(val_data, batch_size=cfg.training.batch_size, num_workers=2)
 
     # ensuring data dimension is correct
-    if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:
-        raise AssertionError("Data dimension not in line with observables dimension.")
+    # THE BELOW SHOULD BE REWRITTEN BASED ON AN UPDATED CRITERIA
+    # if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:
+    #     raise AssertionError("Data dimension not in line with observables dimension.")
 
     if cfg.model.kwargs.attach_mask:
         OmegaConf.update(

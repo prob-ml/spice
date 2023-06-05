@@ -1,7 +1,8 @@
 import torch
 import torch_geometric
 from torch.nn import functional as fcl
-from torch_sparse import SparseTensor
+
+# from torch_sparse import SparseTensor
 
 
 def construct_dense_relu_network(
@@ -29,7 +30,7 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
         final_relu=False,
         dropout=0,
         include_skip_connections=True,
-        **gmmargs
+        **gmmargs,
     ):
         super().__init__()
         self.use_batchnorm = use_batchnorm
@@ -59,14 +60,25 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
                 [torch.nn.BatchNorm1d(s) for s in sizes[1:]]
             )
 
-    def forward(self, vals, edges, pseudo):
+    def forward(self, vals, edges, pseudo, multi_gpu=True):
         orig_vals = vals
+        num_layers = len(self.gmms)
         for i, (dense, gmmlayer) in enumerate(zip(self.linears, self.gmms)):
+
+            # move all the layers to the appropriate device
+            gpu_to_use = f"cuda:{int(i // (num_layers / 2))}" if multi_gpu else "cuda:0"
+            vals = vals.to(gpu_to_use)
+            edges = edges.to(gpu_to_use)
+            pseudo = pseudo.to(gpu_to_use)
+            gmmlayer = gmmlayer.to(gpu_to_use)
+            dense = dense.to(gpu_to_use)
+            self.batchnorms[i] = self.batchnorms[i].to(gpu_to_use)
+
             if self.dropout:
-                vals = self.dropouts(vals)
-            adj = SparseTensor(row=edges[0], col=edges[1], value=pseudo)
-            vals = gmmlayer(vals, adj.t()) + dense(vals)
-            # vals = gmmlayer(vals, edges, pseudo) + dense(vals)
+                vals = self.dropouts(vals).to(gpu_to_use)
+            # adj = SparseTensor(row=edges[0], col=edges[1], value=pseudo)
+            # vals = gmmlayer(vals, adj.t()) + dense(vals)
+            vals = gmmlayer(vals, edges, pseudo) + dense(vals)
             if (
                 i == len(list(enumerate(zip(self.linears, self.gmms)))) - 2
                 and self.include_skip_connections
@@ -75,10 +87,10 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
 
             # do batchnorm
             if self.use_batchnorm:
-                vals = self.batchnorms[i](vals.float())
+                vals = self.batchnorms[i](vals.float().to(gpu_to_use))
 
             # do relu (or not, if final_relu=False and we're on the last layer)
             if self.final_relu or (i != len(self.gmms) - 1):
-                vals = fcl.relu(vals.float())
+                vals = fcl.relu(vals.float()).to(gpu_to_use)
 
         return vals
