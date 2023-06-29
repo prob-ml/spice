@@ -10,6 +10,7 @@ from spatial.models.monet_ae import (
     MonetAutoencoder2D,
     TrivialAutoencoder,
     MonetDense,
+    TrivialDense,
 )
 from spatial.train import (
     setup_checkpoint_callback,
@@ -60,6 +61,12 @@ def test(cfg: DictConfig, data=None):
             **cfg.model.kwargs,
             optimizer=optimizer,
         )
+    if cfg.model.name == "TrivialDense":
+        model = TrivialDense.load_from_checkpoint(
+            checkpoint_path=checkpoint_path,
+            **cfg.model.kwargs,
+            optimizer=optimizer,
+        )
     if cfg.model.name == "TrivialAutoencoder":
         model = TrivialAutoencoder.load_from_checkpoint(
             checkpoint_path=checkpoint_path,
@@ -77,7 +84,7 @@ def test(cfg: DictConfig, data=None):
 
     # Create trainer.
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
-    trainer_dict.update(dict(logger=logger, callbacks=checkpoint_callback))
+    trainer_dict.update({"logger": logger, "callbacks": checkpoint_callback})
     trainer = pl.Trainer(**trainer_dict)
 
     test_results = trainer.test(model, test_loader, verbose=cfg.predict.verbose)

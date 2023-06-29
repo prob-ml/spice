@@ -60,6 +60,7 @@ class BasicAEMixin(pl.LightningModule):
         include_skip_connections=False,
         optimizer="sgd",
         aggr="mean",
+        pseudo_mode="distance",
     ):
         super().__init__()
         self.observables_dimension = observables_dimension
@@ -84,6 +85,7 @@ class BasicAEMixin(pl.LightningModule):
         self.include_skip_connections = include_skip_connections
         self.optimizer = optimizer
         self.aggregation = aggr
+        self.pseudo_mode = pseudo_mode
 
     @staticmethod
     def calc_loss(pred, val, losstype, celltype_data=None, celltype=None):
@@ -97,7 +99,7 @@ class BasicAEMixin(pl.LightningModule):
         else:
             raise NotImplementedError
 
-    def calc_pseudo(self, edge_index, pos, mode="polar"):
+    def calc_pseudo(self, edge_index, pos):
         """
         Calculate pseudo
 
@@ -111,25 +113,28 @@ class BasicAEMixin(pl.LightningModule):
             (to be used in graph-convnet)
         """
 
-        if mode == "polar":
+        if self.pseudo_mode == "distance":
             coord1 = pos[edge_index[0]]
             coord2 = pos[edge_index[1]]
             edge_dir = coord2 - coord1
             rho = torch.sqrt(edge_dir[:, 0] ** 2 + edge_dir[:, 1] ** 2).unsqueeze(-1)
             # theta = torch.atan2(edge_dir[:, 1], edge_dir[:, 0]).unsqueeze(-1)
-            return (
-                rho if self.radius == 0 else rho / self.radius
-            )  # torch.cat((rho), dim=1)
+            return rho  # torch.cat((rho), dim=1)
 
-        elif mode == "degree":
+        if self.pseudo_mode == "polar":
+            coord1 = pos[edge_index[0]]
+            coord2 = pos[edge_index[1]]
+            edge_dir = coord2 - coord1
+            rho = torch.sqrt(edge_dir[:, 0] ** 2 + edge_dir[:, 1] ** 2).unsqueeze(-1)
+            rho = rho if self.radius == 0 else rho / self.radius
+            theta = torch.atan2(edge_dir[:, 1], edge_dir[:, 0]).unsqueeze(-1)
+            return torch.cat((rho, theta), dim=1)
+
+        elif self.pseudo_mode == "degree":
             degrees = degree(edge_index[0])
             coord1 = (1 / torch.sqrt(degrees[edge_index[0]])).unsqueeze(-1)
             coord2 = (1 / torch.sqrt(degrees[edge_index[1]])).unsqueeze(-1)
-            return (
-                torch.cat((coord1, coord2), dim=1)
-                if self.radius == 0
-                else torch.cat((coord1, coord2), dim=1) / self.radius
-            )
+            return torch.cat((coord1, coord2), dim=1)
 
         else:
             raise ValueError("Mode improperly or not specified.")
@@ -226,10 +231,10 @@ class BasicAEMixin(pl.LightningModule):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("train_loss: " + self.loss_type, loss, prog_bar=True)
+        self.log("train_loss_" + self.loss_type, loss, prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
-                "train_loss: " + additional_loss,
+                "train_loss_" + additional_loss,
                 self.calc_loss(
                     reconstruction[~masking_tensor],
                     batch.x[~masking_tensor],
@@ -263,7 +268,7 @@ class BasicAEMixin(pl.LightningModule):
         self.log("val_loss", loss, prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
-                "val_loss: " + additional_loss,
+                "val_loss_" + additional_loss,
                 self.calc_loss(
                     reconstruction[~masking_tensor],
                     batch.x[~masking_tensor],
@@ -299,7 +304,7 @@ class BasicAEMixin(pl.LightningModule):
         )
         for additional_loss in self.other_logged_losses:
             self.log(
-                "test_loss: " + additional_loss,
+                "test_loss_" + additional_loss,
                 self.calc_loss(
                     reconstruction[~masking_tensor],
                     batch.x[~masking_tensor],
@@ -337,21 +342,25 @@ class BasicAEMixin(pl.LightningModule):
     #         torch.nn.functional.l1_loss(self.inputs, self.gene_expressions)
     #     )
 
-    def configure_optimizers(self):
+    def configure_optimizers(self, scheduler=True):
         if self.optimizer["name"] == "Adam":
             optimizer = torch.optim.Adam(self.parameters(), **self.optimizer["params"])
         elif self.optimizer["name"] == "SGD":
             optimizer = torch.optim.SGD(self.parameters(), **self.optimizer["params"])
-        scheduler = {
-            "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer,
-                "min",
-                # MESS AROUND WITH THIS VALUE # , threshold=1e-5, threshold_mode="abs"
-                patience=3,
-            ),
-            "monitor": "val_loss",
-        }
-        return ([optimizer], [scheduler])
+        if scheduler:
+            scheduler = {
+                "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
+                    optimizer,
+                    "min",
+                    # MESS AROUND WITH THIS VALUE
+                    # threshold=1e-5,
+                    # threshold_mode="abs"
+                    patience=3,
+                ),
+                "monitor": "val_loss",
+            }
+            return ([optimizer], [scheduler])
+        return optimizer
 
 
 class MonetDense(BasicAEMixin):
@@ -379,6 +388,7 @@ class MonetDense(BasicAEMixin):
         include_skip_connections,
         optimizer,
         aggr,
+        pseudo_mode,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -406,6 +416,7 @@ class MonetDense(BasicAEMixin):
             include_skip_connections,
             optimizer,
             aggr,
+            pseudo_mode,
         )
 
         self.dim = dim
@@ -434,10 +445,10 @@ class MonetDense(BasicAEMixin):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("train_loss: " + self.loss_type, loss, prog_bar=True)
+        self.log("train_loss_" + self.loss_type, loss, prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
-                "train_loss: " + additional_loss,
+                "train_loss_" + additional_loss,
                 self.calc_loss(
                     responses,
                     batch.x[:, self.response_genes],
@@ -462,7 +473,7 @@ class MonetDense(BasicAEMixin):
         self.log("val_loss", loss, prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
-                "val_loss: " + additional_loss,
+                "val_loss_" + additional_loss,
                 self.calc_loss(
                     responses,
                     batch.x[:, self.response_genes],
@@ -485,7 +496,7 @@ class MonetDense(BasicAEMixin):
         )
         for additional_loss in self.other_logged_losses:
             self.log(
-                "test_loss: " + additional_loss,
+                "test_loss_" + additional_loss,
                 self.calc_loss(
                     responses,
                     batch.x[:, self.response_genes],
@@ -520,8 +531,162 @@ class MonetDense(BasicAEMixin):
         non_response_genes = torch.ones(batch.x.shape[1], dtype=bool)
         non_response_genes[self.response_genes] = False
         output = self.dense_network(
-            batch.x[:, non_response_genes], batch.edge_index, pseudo, multi_GPU=True
+            batch.x[:, non_response_genes], batch.edge_index, pseudo, num_gpus=3
         )
+        return batch.x, output
+
+
+class TrivialDense(BasicAEMixin):
+    def __init__(
+        self,
+        observables_dimension,
+        hidden_dimensions,
+        output_dimension,
+        loss_type,
+        other_logged_losses,
+        radius,
+        mask_random_prop,
+        mask_cells_prop,
+        mask_genes_prop,
+        response_genes,
+        celltypes,
+        batchnorm,
+        final_relu,
+        attach_mask,
+        dropout,
+        responses,
+        hide_responses,
+        include_skip_connections,
+        optimizer,
+    ):
+        """
+        observables_dimension -- number of values associated with each graph node
+        hidden_dimensions -- list of hidden values to associate with each graph node
+        output_dimension -- the output dimension of the dense network
+        """
+        super().__init__(
+            observables_dimension,
+            hidden_dimensions,
+            output_dimension,
+            loss_type,
+            other_logged_losses,
+            radius,
+            mask_random_prop,
+            mask_cells_prop,
+            mask_genes_prop,
+            response_genes,
+            celltypes,
+            batchnorm,
+            final_relu,
+            attach_mask,
+            dropout,
+            responses,
+            hide_responses,
+            include_skip_connections,
+            optimizer,
+        )
+
+        self.dense_network = base_networks.construct_dense_relu_network(
+            [observables_dimension] + list(hidden_dimensions) + [output_dimension],
+            use_batchnorm=self.batchnorm,
+            dropout=self.dropout,
+        )
+
+    def training_step(self, batch, batch_idx):
+
+        _, responses = self(batch)
+        loss = self.calc_loss(
+            responses,
+            batch.x[:, self.response_genes],
+            self.loss_type,
+            # celltype_data=batch.y[:, 1],
+            # celltype="Excitatory",
+        )
+        self.log("train_loss_" + self.loss_type, loss, prog_bar=True)
+        for additional_loss in self.other_logged_losses:
+            self.log(
+                "train_loss_" + additional_loss,
+                self.calc_loss(
+                    responses,
+                    batch.x[:, self.response_genes],
+                    additional_loss,
+                ),
+                prog_bar=True,
+            )
+        self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+
+        _, responses = self(batch)
+        # print(f"This validation batch has {batch.x.shape[0]} cells.")
+        loss = self.calc_loss(
+            responses,
+            batch.x[:, self.response_genes],
+            self.loss_type,
+            # celltype_data=batch.y[:, 1],
+            # celltype="Excitatory",
+        )
+        self.log("val_loss", loss, prog_bar=True)
+        for additional_loss in self.other_logged_losses:
+            self.log(
+                "val_loss_" + additional_loss,
+                self.calc_loss(
+                    responses,
+                    batch.x[:, self.response_genes],
+                    additional_loss,
+                ),
+                prog_bar=True,
+            )
+        return loss
+
+    def test_step(self, batch, batch_idx):
+
+        _, responses = self(batch)
+        # print(f"This test batch has {batch.x.shape[0]} cells.")
+        loss = self.calc_loss(
+            responses,
+            batch.x[:, self.response_genes],
+            self.loss_type,
+            # celltype_data=batch.y[:, 1],
+            # celltype="Excitatory",
+        )
+        for additional_loss in self.other_logged_losses:
+            self.log(
+                "test_loss_" + additional_loss,
+                self.calc_loss(
+                    responses,
+                    batch.x[:, self.response_genes],
+                    additional_loss,
+                ),
+                prog_bar=True,
+            )
+        self.log("test_loss", loss, prog_bar=True)
+
+        # save input and output images
+        tensorboard = self.logger.experiment
+        tensorboard.add_image(
+            f"{self.__class__.__name__}/{self.logger.version}/{batch_idx}/input",
+            batch.x,
+            dataformats="HW",
+        )
+        tensorboard.add_image(
+            f"{self.__class__.__name__}/"
+            f"{self.logger.version}/{batch_idx}/reconstruction",
+            responses,
+            dataformats="HW",
+        )
+
+        self.inputs = torch.cat((self.inputs, batch.x.cpu()), 0)
+        self.gene_expressions = torch.cat((self.gene_expressions, responses.cpu()), 0)
+        self.labelinfo = torch.cat((self.labelinfo, batch.y.cpu()), 0)
+
+        return loss
+
+    def forward(self, batch):
+        non_response_genes = torch.ones(batch.x.shape[1], dtype=bool)
+        non_response_genes[self.response_genes] = False
+        output = self.dense_network(batch.x[:, non_response_genes])
         return batch.x, output
 
 

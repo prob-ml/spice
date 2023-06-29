@@ -24,7 +24,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         n_neighbors=3,
         train=True,
         log_transform=True,
-        neighbor_celltypes=False,
+        include_celltypes=False,
         radius=None,
         non_response_genes_file="/home/roko/spatial/spatial/"
         "non_response_blank_removed.txt",
@@ -41,7 +41,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         self.response_genes = list(set(range(155)) - set(self.features))
 
         data_list = self.construct_graphs(
-            n_neighbors, train, log_transform, neighbor_celltypes, radius, splits
+            n_neighbors, train, log_transform, include_celltypes, radius, splits
         )
 
         with h5py.File(self.merfish_hdf5, "r") as h5f:
@@ -179,31 +179,10 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         breg,
         n_neighbors,
         log_transform,
-        neighbor_celltypes,
+        include_celltypes,
         radius,
         splits=0,
     ):
-        def get_neighbors(edges, x_shape):
-            return [edges[:, edges[0] == i][1] for i in range(x_shape)]
-
-        def get_celltype_simplex(cell_behavior_tensor, neighbors_tensor):
-            num_classes = cell_behavior_tensor.max() + 1
-            return torch.cat(
-                [
-                    (
-                        torch.mean(
-                            1.0
-                            * F.one_hot(
-                                cell_behavior_tensor.index_select(0, neighbors),
-                                num_classes=num_classes,
-                            ),
-                            dim=0,
-                        )
-                    ).unsqueeze(0)
-                    for neighbors in neighbors_tensor
-                ],
-                dim=0,
-            )
 
         # get subset of cells in this slice
         good = (data.anids == anid) & (data.bregs == breg)
@@ -247,7 +226,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
 
         for split in graph_splits:
 
-            split_locations = split[:, -2:]
+            split_locations = split[:, -2:].astype(float)
 
             edges = self.calculate_neighborhood(split_locations, radius, n_neighbors)
 
@@ -265,12 +244,11 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             # if we want to first log transform the data, we do it here
             # make this one return statement only changing x
             predictors_x = torch.tensor(subexpression.astype(np.float32))
-            if neighbor_celltypes:
-                test_simplex = get_celltype_simplex(
-                    torch.tensor(labelinfo[:, 1]),
-                    get_neighbors(edges, predictors_x.shape[0]),
+            if include_celltypes:
+                celltypes = 1.0 * F.one_hot(
+                    torch.tensor(celltype_ids), num_classes=len(self.cell_types)
                 )
-                predictors_x = torch.cat((predictors_x, test_simplex), dim=1)
+                predictors_x = torch.cat((predictors_x, celltypes), dim=1)
             predictors_x = self.data_transform(
                 predictors_x, split_locations, log_transform
             )
@@ -293,7 +271,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
         n_neighbors,
         train,
         log_transform=True,
-        neighbor_celltypes=False,
+        include_celltypes=False,
         radius=None,
         splits=0,
     ):
@@ -335,7 +313,7 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
                         breg,
                         n_neighbors,
                         log_transform,
-                        neighbor_celltypes,
+                        include_celltypes,
                         radius,
                         splits=splits,
                     )
@@ -351,7 +329,7 @@ class FilteredMerfishDataset(MerfishDataset):
         n_neighbors=3,
         train=True,
         log_transform=True,
-        neighbor_celltypes=False,
+        include_celltypes=False,
         radius=None,
         non_response_genes_file="/home/roko/spatial/spatial/"
         "non_response_blank_removed.txt",
@@ -392,7 +370,7 @@ class FilteredMerfishDataset(MerfishDataset):
             n_neighbors=n_neighbors,
             train=train,
             log_transform=log_transform,
-            neighbor_celltypes=neighbor_celltypes,
+            include_celltypes=include_celltypes,
             non_response_genes_file=non_response_genes_file,
             radius=radius,
             splits=splits,
@@ -418,7 +396,7 @@ class FilteredMerfishDataset(MerfishDataset):
         n_neighbors,
         train,
         log_transform=True,
-        neighbor_celltypes=False,
+        include_celltypes=False,
         radius=None,
         splits=0,
     ):
@@ -526,7 +504,7 @@ class FilteredMerfishDataset(MerfishDataset):
                     breg,
                     n_neighbors,
                     log_transform,
-                    neighbor_celltypes,
+                    include_celltypes,
                     radius,
                     splits,
                 )
@@ -1551,31 +1529,10 @@ class MerfishDataset3D(MerfishDataset):
         breg,
         n_neighbors,
         log_transform,
-        neighbor_celltypes,
+        include_celltypes,
         radius,
         splits=0,
     ):
-        def get_neighbors(edges, x_shape):
-            return [edges[:, edges[0] == i][1] for i in range(x_shape)]
-
-        def get_celltype_simplex(cell_behavior_tensor, neighbors_tensor):
-            num_classes = cell_behavior_tensor.max() + 1
-            return torch.cat(
-                [
-                    (
-                        torch.mean(
-                            1.0
-                            * F.one_hot(
-                                cell_behavior_tensor.index_select(0, neighbors),
-                                num_classes=num_classes,
-                            ),
-                            dim=0,
-                        )
-                    ).unsqueeze(0)
-                    for neighbors in neighbors_tensor
-                ],
-                dim=0,
-            )
 
         # get subset of cells in this slice
         good = data.anids == anid
@@ -1636,7 +1593,7 @@ class MerfishDataset3D(MerfishDataset):
 
         for split in graph_splits:
 
-            split_locations = split[:, -3:]
+            split_locations = split[:, -3:].astype(float)
 
             edges = self.calculate_neighborhood(split_locations, radius, n_neighbors)
 
@@ -1654,12 +1611,11 @@ class MerfishDataset3D(MerfishDataset):
             # if we want to first log transform the data, we do it here
             # make this one return statement only changing x
             predictors_x = torch.tensor(subexpression.astype(np.float32))
-            if neighbor_celltypes:
-                test_simplex = get_celltype_simplex(
-                    torch.tensor(labelinfo[:, 1]),
-                    get_neighbors(edges, predictors_x.shape[0]),
+            if include_celltypes:
+                celltypes = 1.0 * F.one_hot(
+                    torch.tensor(celltype_ids), num_classes=len(self.cell_types)
                 )
-                predictors_x = torch.cat((predictors_x, test_simplex), dim=1)
+                predictors_x = torch.cat((predictors_x, celltypes), dim=1)
             predictors_x = self.data_transform(
                 predictors_x, split_locations, log_transform
             )

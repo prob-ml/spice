@@ -332,26 +332,6 @@ def construct_problem(
     return covariates, predict, collected_feature_names
 
 
-dataframe = pd.read_csv(csv_location)
-
-dct = {}
-for colnm, dtype in zip(dataframe.keys()[:9], dataframe.dtypes[:9]):
-    if dtype.kind == "O":
-        dct[colnm] = np.require(dataframe[colnm], dtype="U36")
-    else:
-        dct[colnm] = np.require(dataframe[colnm])
-expression = np.array(dataframe[dataframe.keys()[9:]]).astype(np.float64)
-gene_names = np.array(dataframe.keys()[9:], dtype="U80")
-cellid = dct.pop("Cell_ID")
-
-ad = anndata.AnnData(
-    X=expression,
-    var=pd.DataFrame(index=gene_names),
-    obs=pd.DataFrame(dct, index=cellid),
-)
-
-ad.write_h5ad(h5ad_location)
-
 ad = anndata.read_h5ad(h5ad_location)
 animal_ids = np.unique(ad.obs["Animal_ID"])
 bregmas = np.unique(ad.obs["Bregma"])

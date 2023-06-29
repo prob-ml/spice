@@ -33,6 +33,7 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
         **gmmargs,
     ):
         super().__init__()
+        self.sizes = sizes
         self.use_batchnorm = use_batchnorm
         self.final_relu = final_relu
         self.dropout = dropout
@@ -41,14 +42,16 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
         # construct a bunch of gmms
         lst = []
         for i in range(len(sizes) - 1):
-            gmmc = torch_geometric.nn.GMMConv(sizes[i], sizes[i + 1], **gmmargs)
+            gmmc = torch_geometric.nn.GMMConv(
+                self.sizes[i], self.sizes[i + 1], **gmmargs
+            )
             lst.append(gmmc)
         self.gmms = torch.nn.ModuleList(lst)
 
         # and some linears ("self-edges")
         lst = []
         for j in range(len(sizes) - 1):
-            lst.append(torch.nn.Linear(sizes[j], sizes[j + 1], bias=False))
+            lst.append(torch.nn.Linear(self.sizes[j], self.sizes[j + 1], bias=False))
         self.linears = torch.nn.ModuleList(lst)
 
         if self.dropout:
@@ -57,17 +60,21 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
         # construct batchnorm layers we need
         if use_batchnorm:
             self.batchnorms = torch.nn.ModuleList(
-                [torch.nn.BatchNorm1d(s) for s in sizes[1:]]
+                [torch.nn.BatchNorm1d(s) for s in self.sizes[1:]]
             )
 
-    def forward(self, vals, edges, pseudo, multi_gpu=True):
-        orig_vals = vals
+    def forward(self, vals, edges, pseudo, num_gpus=4):
+        orig_vals = []
         num_layers = len(self.gmms)
         for i, (dense, gmmlayer) in enumerate(zip(self.linears, self.gmms)):
-
             # move all the layers to the appropriate device
-            gpu_to_use = f"cuda:{int(i // (num_layers / 2))}" if multi_gpu else "cuda:0"
+            gpu_to_use = (
+                f"cuda:{int(i // (num_layers / num_gpus))}" if num_gpus else "cuda:0"
+            )
+            # create an identity copy if we need a residual block
             vals = vals.to(gpu_to_use)
+            if self.include_skip_connections:
+                orig_vals.append(vals.clone())
             edges = edges.to(gpu_to_use)
             pseudo = pseudo.to(gpu_to_use)
             gmmlayer = gmmlayer.to(gpu_to_use)
@@ -79,11 +86,10 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
             # adj = SparseTensor(row=edges[0], col=edges[1], value=pseudo)
             # vals = gmmlayer(vals, adj.t()) + dense(vals)
             vals = gmmlayer(vals, edges, pseudo) + dense(vals)
-            if (
-                i == len(list(enumerate(zip(self.linears, self.gmms)))) - 2
-                and self.include_skip_connections
-            ):
-                vals = torch.cat([orig_vals, vals], axis=1)
+            if i >= 2 and self.include_skip_connections:
+                for j in range(i + 1):
+                    if self.sizes[j] == self.sizes[i + 1]:
+                        vals += orig_vals[j].to(gpu_to_use)
 
             # do batchnorm
             if self.use_batchnorm:

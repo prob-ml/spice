@@ -7,10 +7,10 @@ dropout: True
 early_stopping:
   monitor: "val_loss"
   min_delta: 0.00
-  patience: 30
+  patience: 10
   verbose: False
   mode: "min"
-log_transform: True
+log_transform: True # why is this not in the data section....
 seed: False
 trainer:
   profiler: simple
@@ -24,6 +24,7 @@ trainer:
   limit_train_batches: 1.0
   limit_val_batches: 1.0
   check_val_every_n_epoch: 1
-#  strategy: dp
+  # strategy: deepspeed_stage_2
   log_every_n_steps: 10
-filepath: ${model.name}__${model.kwargs.hidden_dimensions}__${radius}__${training.logger_name}__${optimizer.name}
+filepath: ${model.name}__${model.kwargs.hidden_dimensions}__${radius}__${training.logger_name}__${optimizer.name} #__${model.kwargs.aggr}
+complete_data: True
