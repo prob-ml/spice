@@ -1,23 +1,30 @@
 plotting: True
-n_epochs: 600
+n_epochs: 1200
 logger_name: response142
 save_model_summary: False
 batch_size: 1
 dropout: True
-early_stopping: False
-log_transform: True
+early_stopping:
+  monitor: "val_loss"
+  min_delta: 0.00
+  patience: 10
+  verbose: False
+  mode: "min"
+log_transform: True # why is this not in the data section....
 seed: False
 trainer:
   profiler: simple
   logger: True
   enable_checkpointing: True
   gpus: ${gpus}
+  accelerator: "gpu"
   auto_select_gpus: False
   max_epochs: ${training.n_epochs}
   min_epochs: 0
   limit_train_batches: 1.0
   limit_val_batches: 1.0
   check_val_every_n_epoch: 1
-#  strategy: dp
+  # strategy: deepspeed_stage_2
   log_every_n_steps: 10
-filepath: ${model.name}__${model.kwargs.hidden_dimensions}__${model.kwargs.response_genes}__${radius}__${training.logger_name}
+filepath: ${model.name}__${model.kwargs.hidden_dimensions}__${radius}__${training.logger_name}__${optimizer.name} #__${model.kwargs.aggr}
+complete_data: True

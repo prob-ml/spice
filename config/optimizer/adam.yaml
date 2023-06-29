@@ -1,4 +1,4 @@
 name: Adam
 params:
-  lr: 0.005
+  lr: 0.01
   weight_decay: 1e-6

@@ -1,16 +1,17 @@
 name: MonetDense
 kwargs:
-  observables_dimension: 155
+  observables_dimension: 170 # 16 more than the 154 genes because of the one hot encoded celltypes
   hidden_dimensions: [128, 128] # try (20, 100, 200) and all 155
-  output_dimension: 155
+  output_dimension: 1
   loss_type: "mse" # laplace (Mae) would be better
   other_logged_losses: ["mse"]
-  dim: 1
-  kernel_size: 25
+  dim: 2
+  kernel_size: 15
+  radius: ${radius}
   mask_random_prop: 0.0
   mask_cells_prop: 0.0
   mask_genes_prop: 1.0
-  response_genes: [0] # empty by default this is none so we can use the responses from the data
+  response_genes:  # empty by default this is none so we can use the responses from the data
   celltypes:
   batchnorm: True
   final_relu: False
@@ -19,3 +20,5 @@ kwargs:
   responses: True
   hide_responses: True
   include_skip_connections: False
+  aggr: "sum"
+  pseudo_mode: "polar"

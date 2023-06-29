@@ -1,5 +1,4 @@
 import os
-import torch
 
 from hydra.utils import instantiate
 
@@ -9,7 +8,8 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-from torch.utils.data import random_split
+
+# from torch.utils.data import random_split
 from torch_geometric.data import DataLoader
 
 from spatial.merfish_dataset import FilteredMerfishDataset, MerfishDataset
@@ -21,6 +21,7 @@ _models = [
     monet_ae.TrivialAutoencoder,
     monet_ae.MonetAutoencoder2D,
     monet_ae.MonetDense,
+    monet_ae.TrivialDense,
 ]
 models = {cls.__name__: cls for cls in _models}
 
@@ -65,10 +66,13 @@ def setup_checkpoint_callback(cfg, logger, filepath):
 
 
 def setup_early_stopping(cfg, callbacks):
-    early_stop_callback = False
     if cfg.training.early_stopping:
         early_stop_callback = EarlyStopping(
-            monitor="val_loss", min_delta=0.00, patience=10, verbose=False, mode="min"
+            monitor=cfg.training.early_stopping.monitor,
+            min_delta=cfg.training.early_stopping.min_delta,
+            patience=cfg.training.early_stopping.patience,
+            verbose=cfg.training.early_stopping.verbose,
+            mode=cfg.training.early_stopping.mode,
         )
         callbacks.append(early_stop_callback)
     return callbacks
@@ -87,11 +91,13 @@ def train(cfg: DictConfig, data=None, validate_only=False):
     # setup training data
     if data is None:
         data = instantiate(cfg.datasets.dataset)
-    n_data = len(data)
-    train_n = round(n_data * 11 / 12)
-    train_data, val_data = random_split(
-        data, [train_n, n_data - train_n], torch.Generator().manual_seed(42)
-    )
+    # n_data = len(data)
+    # train_n = n_data - 1 if cfg.training.complete_data else round(n_data * 11 / 12)
+    # train_data, val_data = random_split(
+    #     data, [train_n, n_data - train_n], torch.Generator().manual_seed(42)
+    # )
+    train_data = [sample for sample in data if sample.anid != 30]
+    val_data = [sample for sample in data if sample.anid == 30]
 
     train_loader = DataLoader(
         train_data, batch_size=cfg.training.batch_size, num_workers=2
@@ -99,8 +105,9 @@ def train(cfg: DictConfig, data=None, validate_only=False):
     val_loader = DataLoader(val_data, batch_size=cfg.training.batch_size, num_workers=2)
 
     # ensuring data dimension is correct
-    if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:
-        raise AssertionError("Data dimension not in line with observables dimension.")
+    # THE BELOW SHOULD BE REWRITTEN BASED ON AN UPDATED CRITERIA
+    # if cfg.model.kwargs.observables_dimension != data[0].x.shape[1]:
+    #     raise AssertionError("Data dimension not in line with observables dimension.")
 
     if cfg.model.kwargs.attach_mask:
         OmegaConf.update(
@@ -128,10 +135,10 @@ def train(cfg: DictConfig, data=None, validate_only=False):
     # setup trainer
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
     trainer_dict.update(
-        dict(
-            logger=logger,
-            callbacks=callbacks,
-        )
+        {
+            "logger": logger,
+            "callbacks": callbacks,
+        }
     )
     trainer = pl.Trainer(**trainer_dict)
 

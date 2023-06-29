@@ -1,0 +1,31 @@
+defaults:
+  - _self_
+  - optimizer: sgd
+  - datasets: SyntheticNonlinear
+  - model: MonetDense
+  - training: default
+  - predict: default
+
+mode: train
+
+n_neighbors: 3
+
+radius: 10
+
+gpus:
+  - 1
+
+
+paths:
+  root: ${oc.env:SPATIAL_HOME}
+  data: ${paths.root}/data
+  models: ${paths.root}/models
+  output: ${paths.root}/output
+
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: '0,1,2,3,4,5,6,7'
+  output_subdir: null
+  run:
+    dir: .

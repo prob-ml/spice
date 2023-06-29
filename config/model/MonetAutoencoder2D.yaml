@@ -7,6 +7,7 @@ kwargs:
   other_logged_losses: ["mse"]
   dim: 1
   kernel_size: 25
+  radius: ${radius}
   mask_random_prop: 0.0
   mask_cells_prop: 0.0
   mask_genes_prop: 1.0
