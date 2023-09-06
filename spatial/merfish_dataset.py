@@ -1519,6 +1519,102 @@ class SyntheticNonlinear(MerfishDataset):
             h5f.create_dataset("gene_names", data=gene_names)
 
 
+class SyntheticFDR(MerfishDataset):
+    @property
+    def raw_file_names(self):
+        return ["synthFDR.csv", "synthFDR.hdf5"]
+
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "synthFDR.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "synthFDR.hdf5")
+
+    @staticmethod
+    def _f(edges, data, i, LIGAND_INDEX_1=20):
+        all_neighbors = edges[:, edges[0] == i][1]
+        random_neighbor = all_neighbors[torch.randint(len(all_neighbors), (1,)).item()]
+        return torch.exp(data[random_neighbor, LIGAND_INDEX_1])
+
+    def download(self):
+
+        LIGAND_INDEX_1 = 20
+        LIGAND_INDEX_2 = 38
+
+        # download csv if necessary
+        if not os.path.exists(self.merfish_csv):
+            with open(self.merfish_csv, "wb") as csvf:
+                csvf.write(requests.get(self.url, timeout=180).content)
+
+        # process csv if necessary
+        dataframe = pd.read_csv(self.merfish_csv)
+        preserve_columns = dataframe.columns
+        torch.manual_seed(88)
+        new_dataframe = pd.DataFrame(columns=preserve_columns)
+        FDR_radius = 20
+        unique_slices = dataframe.drop_duplicates(["Animal_ID", "Bregma"])[
+            ["Animal_ID", "Bregma"]
+        ]
+        for i in range(len(unique_slices)):
+            animal_id, bregma = unique_slices.iloc[i]
+            sub_dataframe = dataframe[
+                (dataframe["Animal_ID"] == animal_id) & (dataframe["Bregma"] == bregma)
+            ]
+            edges = self.calculate_neighborhood(
+                torch.tensor(sub_dataframe.to_numpy()[:, 5:7].astype("float64")),
+                radius=FDR_radius,
+                n_neighbors=None,
+            ).to("cuda:0")
+            sub_dataframe = sub_dataframe.to_numpy()
+            sub_dataframe[:, 9:] = torch.distributions.half_normal.HalfNormal(
+                (torch.pi / 2) ** 2
+            ).sample(sub_dataframe[:, 9:].shape)
+            expressions = torch.tensor(sub_dataframe[:, 9:].astype("float64")).to(
+                "cuda:0"
+            )
+            sub_dataframe[:, 9:][:, 0] = np.exp(
+                expressions[:, LIGAND_INDEX_1].cpu().numpy()
+            )
+            sub_dataframe[:, 9:][:, LIGAND_INDEX_2] = torch.arange(
+                len(sub_dataframe), dtype=torch.float64
+            ).apply_(
+                lambda i, edges=edges, x=expressions: self._f(
+                    edges, x, i, LIGAND_INDEX_1
+                )
+            )
+            new_dataframe = new_dataframe.append(
+                pd.DataFrame(sub_dataframe, columns=preserve_columns)
+            )
+
+        new_dataframe = new_dataframe.astype(
+            {
+                "Animal_ID": "int64",
+                "Bregma": "float64",
+                "Centroid_X": "float64",
+                "Centroid_Y": "float64",
+            }
+        )
+
+        with h5py.File(self.merfish_hdf5, "w") as h5f:
+            # pylint: disable=no-member
+            for colnm, dtype in zip(new_dataframe.keys()[:9], new_dataframe.dtypes[:9]):
+                if dtype.kind == "O":
+                    data = np.require(new_dataframe[colnm], dtype="S36")
+                    h5f.create_dataset(colnm, data=data)
+                else:
+                    h5f.create_dataset(colnm, data=np.require(new_dataframe[colnm]))
+
+            expression = np.array(new_dataframe[new_dataframe.keys()[9:]]).astype(
+                np.float64
+            )
+            h5f.create_dataset("expression", data=expression, dtype="float64")
+
+            gene_names = np.array(new_dataframe.keys()[9:], dtype="S80")
+            h5f.create_dataset("gene_names", data=gene_names)
+
+
 class MerfishDataset3D(MerfishDataset):
 
     # pylint: disable=too-many-statements

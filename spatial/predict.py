@@ -80,7 +80,7 @@ def test(cfg: DictConfig, data=None):
             optimizer=optimizer,
         )
 
-    test_loader = DataLoader(data, batch_size=cfg.predict.batch_size, num_workers=2)
+    test_loader = DataLoader(data, batch_size=cfg.predict.batch_size, num_workers=8)
 
     # Create trainer.
     trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
