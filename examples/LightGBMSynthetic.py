@@ -405,7 +405,7 @@ with open("LightGBM_synthetic_results.json", "r") as synth_results:
 
 response_gene = "Ace2"  # make the response gene the first response
 
-for synth_experiment in ["Nonlinear"]:
+for synth_experiment in ["FDR"]:
     for radius_value in range(0, 65, 5):
 
         # Build the Current Radius Graph
@@ -569,31 +569,31 @@ for synth_experiment in ["Nonlinear"]:
         )
         plt.clf()
 
-        model = sklearn.linear_model.ElasticNet(alpha=0.1, l1_ratio=0.5)
-        tuned_parameters = {
-            "alpha": [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
-            "l1_ratio": [0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.95, 0.99],
-        }
-        grid_search = GridSearchCV(
-            model, tuned_parameters, scoring="neg_mean_squared_error", cv=5
-        )
-        grid_search.fit(trainX, trainY)
-        results_dict[f"ElasticNet {radius_value} {synth_experiment}"] = np.mean(
-            np.mean((grid_search.predict(testX) - testY) ** 2)
-        )
+        # model = sklearn.linear_model.ElasticNet(alpha=0.1, l1_ratio=0.5)
+        # tuned_parameters = {
+        #     "alpha": [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
+        #     "l1_ratio": [0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.95, 0.99],
+        # }
+        # grid_search = GridSearchCV(
+        #     model, tuned_parameters, scoring="neg_mean_squared_error", cv=5
+        # )
+        # grid_search.fit(trainX, trainY)
+        # results_dict[f"ElasticNet {radius_value} {synth_experiment}"] = np.mean(
+        #     np.mean((grid_search.predict(testX) - testY) ** 2)
+        # )
 
-        shap_values = shap.LinearExplainer(
-            grid_search.best_estimator_, trainX
-        ).shap_values(df)
-        shap.summary_plot(shap_values, df, show=False)
-        plt.title(f"(ElasticNet, {radius_value}, {synth_experiment})")
-        plt.rcParams["figure.dpi"] = 100
-        plt.rcParams["savefig.dpi"] = 100
-        plt.savefig(
-            f"static/shap/(ElasticNet, {radius_value}, {synth_experiment}).png",
-            bbox_inches="tight",
-        )
-        plt.clf()
+        # shap_values = shap.LinearExplainer(
+        #     grid_search.best_estimator_, trainX
+        # ).shap_values(df)
+        # shap.summary_plot(shap_values, df, show=False)
+        # plt.title(f"(ElasticNet, {radius_value}, {synth_experiment})")
+        # plt.rcParams["figure.dpi"] = 100
+        # plt.rcParams["savefig.dpi"] = 100
+        # plt.savefig(
+        #     f"static/shap/(ElasticNet, {radius_value}, {synth_experiment}).png",
+        #     bbox_inches="tight",
+        # )
+        # plt.clf()
 
         with open("LightGBM_synthetic_results.json", "w") as synth_results:
             json.dump(results_dict, synth_results)
