@@ -2,18 +2,18 @@ defaults:
   - _self_
   - optimizer: adam
   - datasets: SyntheticFDR
-  - model: MonetDense
+  - model: MonetDenseSynthetic
   - training: FD
   - predict: default
 
-mode: train
+mode: predict
 
 n_neighbors: 3
 
 radius: 10
 
 gpus:
-  - 1
+  - 2
 
 
 paths:

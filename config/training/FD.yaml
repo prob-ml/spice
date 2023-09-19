@@ -1,6 +1,6 @@
 plotting: True
 n_epochs: 250
-logger_name: FD
+logger_name: FDR_test
 save_model_summary: False
 batch_size: 1
 dropout: True
