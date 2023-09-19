@@ -4,6 +4,7 @@ bands:
 # i/o parameters
 verbose: True
 checkpoint: ${paths.root}
+filepath: ${training.filepath} # ensure we are predicting the same thing as the training filepath
 device: "cuda:${gpus.7}"
 output_file: "${paths.data}/var_params.pt"
 batch_size: 1

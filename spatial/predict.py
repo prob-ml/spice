@@ -49,8 +49,8 @@ def test(cfg: DictConfig, data=None):
     optimizer = setup_optimizer(cfg)
 
     checkpoint_path = (
-        f"{cfg.paths.root}/output/lightning_logs/checkpoints/{cfg.model.name}/"
-        + cfg.training.filepath
+        f"{cfg.paths.output}/lightning_logs/checkpoints/{cfg.model.name}/"
+        + cfg.predict.filepath
         + ".ckpt"
     )
 
