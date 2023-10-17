@@ -2,8 +2,6 @@ import torch
 import torch_geometric
 from torch.nn import functional as fcl
 
-# from torch_sparse import SparseTensor
-
 
 def construct_dense_relu_network(
     sizes, use_batchnorm=True, final_relu=False, dropout=0
@@ -69,7 +67,9 @@ class DenseReluGMMConvNetwork(torch.nn.Module):
         for i, (dense, gmmlayer) in enumerate(zip(self.linears, self.gmms)):
             # move all the layers to the appropriate device
             gpu_to_use = (
-                f"cuda:{int(i // (num_layers / num_gpus))}" if num_gpus else "cuda:0"
+                f"cuda:{int(i // (num_layers / num_gpus))}"
+                if num_gpus > 1
+                else "cuda:0"
             )
             # create an identity copy if we need a residual block
             vals = vals.to(gpu_to_use)

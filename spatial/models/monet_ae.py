@@ -163,7 +163,8 @@ class BasicAEMixin(pl.LightningModule):
                 (1, n_genes), device=new_batch_obj.x.device, dtype=bool
             )
             masked_indeces[:, self.response_genes] = ~(
-                torch.rand(1, len(self.response_genes)) < self.mask_genes_prop
+                torch.rand((1, len(self.response_genes)), device=new_batch_obj.x.device)
+                < self.mask_genes_prop
             )
         new_batch_obj.x *= masked_indeces
 
@@ -182,7 +183,8 @@ class BasicAEMixin(pl.LightningModule):
                 (n_cells, n_genes), device=batch.x.device, dtype=bool
             )
             masked_indeces[:, self.response_genes] = ~(
-                torch.rand(n_cells, len(self.response_genes)) < self.mask_random_prop
+                torch.rand(n_cells, len(self.response_genes), device=batch.x.device)
+                < self.mask_random_prop
             )
         new_batch_obj = deepcopy(batch)
         new_batch_obj.x *= masked_indeces
@@ -335,12 +337,6 @@ class BasicAEMixin(pl.LightningModule):
         self.labelinfo = torch.cat((self.labelinfo, batch.y.cpu()), 0)
 
         return loss
-
-    # def test_step_end(self, output_results):
-    #     # this out is now the full size of the batch
-    #     self.L1_losses.append(
-    #         torch.nn.functional.l1_loss(self.inputs, self.gene_expressions)
-    #     )
 
     def configure_optimizers(self, scheduler=True):
         if self.optimizer["name"] == "Adam":
@@ -770,7 +766,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         self,
         observables_dimension,
         hidden_dimensions,
-        output_dimension,
+        latent_dimension,
         loss_type,
         other_logged_losses,
         dim,
@@ -797,7 +793,7 @@ class MonetAutoencoder2D(BasicAEMixin):
         super().__init__(
             observables_dimension,
             hidden_dimensions,
-            output_dimension,
+            latent_dimension,
             loss_type,
             other_logged_losses,
             radius,
@@ -842,8 +838,239 @@ class MonetAutoencoder2D(BasicAEMixin):
 
     def forward(self, batch):
         pseudo = self.calc_pseudo(batch.edge_index, batch.pos)
-        latent_loadings = self.encoder_network(batch.x, batch.edge_index, pseudo)
+        latent_loadings = self.encoder_network(
+            batch.x, batch.edge_index, pseudo, num_gpus=1
+        )
         expr_reconstruction = self.decoder_network(
-            latent_loadings, batch.edge_index, pseudo
+            latent_loadings, batch.edge_index, pseudo, num_gpus=1
         )
         return latent_loadings, expr_reconstruction
+
+
+class MonetVAE(MonetAutoencoder2D):
+    """Variational Autoencoder for graph data whose nodes are embedded in 2d"""
+
+    def __init__(
+        self,
+        observables_dimension,
+        hidden_dimensions,
+        latent_dimension,
+        loss_type,
+        other_logged_losses,
+        dim,
+        kernel_size,
+        radius,
+        mask_random_prop,
+        mask_cells_prop,
+        mask_genes_prop,
+        response_genes,
+        celltypes,
+        batchnorm,
+        final_relu,
+        attach_mask,
+        dropout,
+        responses,
+        hide_responses,
+        include_skip_connections,
+        optimizer,
+    ):
+        super().__init__(
+            observables_dimension,
+            hidden_dimensions,
+            latent_dimension,
+            loss_type,
+            other_logged_losses,
+            dim,
+            kernel_size,
+            radius,
+            mask_random_prop,
+            mask_cells_prop,
+            mask_genes_prop,
+            response_genes,
+            celltypes,
+            batchnorm,
+            final_relu,
+            attach_mask,
+            dropout,
+            responses,
+            hide_responses,
+            include_skip_connections,
+            optimizer,
+        )
+
+        self.decoder_network = base_networks.DenseReluGMMConvNetwork(
+            [self.latent_dimension // 2]
+            + list(reversed(self.hidden_dimensions))
+            + [self.observables_dimension],
+            use_batchnorm=self.batchnorm,
+            dropout=self.dropout,
+            dim=self.dim,
+            kernel_size=self.kernel_size,
+            include_skip_connections=self.include_skip_connections,
+        )
+
+    def training_step(self, batch, batch_idx):
+
+        new_batch_obj, celltype_mask = self.mask_celltypes(batch, self.celltypes)
+        new_batch_obj, random_mask = self.mask_at_random(new_batch_obj)
+        new_batch_obj, gene_mask = self.mask_genes(new_batch_obj)
+        new_batch_obj, cell_mask = self.mask_cells(new_batch_obj)
+        if self.hide_responses:
+            new_batch_obj = self.remove_responses(new_batch_obj)
+        masking_tensor = (celltype_mask * random_mask * gene_mask * cell_mask).bool()
+        if self.attach_mask:
+            new_batch_obj.x = torch.cat((new_batch_obj.x, masking_tensor), dim=1)
+        z_means, z_logvars, reconstruction = self(new_batch_obj)
+        # print(f"This training batch has {batch.x.shape[0]} cells.")
+        loss = self.calc_loss(
+            reconstruction[~masking_tensor],
+            batch.x[~masking_tensor],
+            self.loss_type,
+            z_means,
+            z_logvars
+            # celltype_data=batch.y[:, 1],
+            # celltype="Excitatory",
+        )
+        self.log("train_loss_" + self.loss_type, loss, prog_bar=True)
+        for additional_loss in self.other_logged_losses:
+            self.log(
+                "train_loss_" + additional_loss,
+                self.calc_loss(
+                    reconstruction[~masking_tensor],
+                    batch.x[~masking_tensor],
+                    additional_loss,
+                    z_means,
+                    z_logvars,
+                ),
+                prog_bar=True,
+            )
+        self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+
+        new_batch_obj, celltype_mask = self.mask_celltypes(batch, self.celltypes)
+        new_batch_obj, random_mask = self.mask_at_random(new_batch_obj)
+        new_batch_obj, gene_mask = self.mask_genes(new_batch_obj)
+        new_batch_obj, cell_mask = self.mask_cells(new_batch_obj)
+        if self.hide_responses:
+            new_batch_obj = self.remove_responses(new_batch_obj)
+        masking_tensor = (celltype_mask * random_mask * gene_mask * cell_mask).bool()
+        if self.attach_mask:
+            new_batch_obj.x = torch.cat((new_batch_obj.x, masking_tensor), dim=1)
+        z_means, z_logvars, reconstruction = self(new_batch_obj)
+        # print(f"This training batch has {batch.x.shape[0]} cells.")
+        loss = self.calc_loss(
+            reconstruction[~masking_tensor],
+            batch.x[~masking_tensor],
+            self.loss_type,
+            z_means,
+            z_logvars
+            # celltype_data=batch.y[:, 1],
+            # celltype="Excitatory",
+        )
+        self.log("val_loss", loss, prog_bar=True)
+        for additional_loss in self.other_logged_losses:
+            self.log(
+                "val_loss_" + additional_loss,
+                self.calc_loss(
+                    reconstruction[~masking_tensor],
+                    batch.x[~masking_tensor],
+                    additional_loss,
+                    z_means,
+                    z_logvars,
+                ),
+                prog_bar=True,
+            )
+        return loss
+
+    gene_expressions = torch.tensor([])
+    inputs = torch.tensor([])
+    labelinfo = torch.tensor([])
+
+    def test_step(self, batch, batch_idx):
+
+        new_batch_obj, celltype_mask = self.mask_celltypes(batch, self.celltypes)
+        new_batch_obj, random_mask = self.mask_at_random(new_batch_obj)
+        new_batch_obj, gene_mask = self.mask_genes(new_batch_obj)
+        new_batch_obj, cell_mask = self.mask_cells(new_batch_obj)
+        if self.hide_responses:
+            new_batch_obj = self.remove_responses(new_batch_obj)
+        masking_tensor = (celltype_mask * random_mask * gene_mask * cell_mask).bool()
+        if self.attach_mask:
+            new_batch_obj.x = torch.cat((new_batch_obj.x, masking_tensor), dim=1)
+        z_means, z_logvars, reconstruction = self(new_batch_obj)
+        # print(f"This training batch has {batch.x.shape[0]} cells.")
+        loss = self.calc_loss(
+            reconstruction[~masking_tensor],
+            batch.x[~masking_tensor],
+            self.loss_type,
+            z_means,
+            z_logvars
+            # celltype_data=batch.y[:, 1],
+            # celltype="Excitatory",
+        )
+        for additional_loss in self.other_logged_losses:
+            self.log(
+                "test_loss_" + additional_loss,
+                self.calc_loss(
+                    reconstruction[~masking_tensor],
+                    batch.x[~masking_tensor],
+                    additional_loss,
+                    z_means,
+                    z_logvars,
+                ),
+                prog_bar=True,
+            )
+        self.log("test_loss", loss, prog_bar=True)
+
+        # save input and output images
+        tensorboard = self.logger.experiment
+        tensorboard.add_image(
+            f"{self.__class__.__name__}/{self.logger.version}/{batch_idx}/input",
+            batch.x,
+            dataformats="HW",
+        )
+        tensorboard.add_image(
+            f"{self.__class__.__name__}/"
+            f"{self.logger.version}/{batch_idx}/reconstruction",
+            reconstruction,
+            dataformats="HW",
+        )
+
+        self.inputs = torch.cat((self.inputs, batch.x.cpu()), 0)
+        self.gene_expressions = torch.cat(
+            (self.gene_expressions, reconstruction.cpu()), 0
+        )
+        self.labelinfo = torch.cat((self.labelinfo, batch.y.cpu()), 0)
+
+        return loss
+
+    def calc_loss(self, pred, val, losstype, z_mean, z_logvar):
+        reconstruction_loss = BasicAEMixin.calc_loss(pred, val, losstype)
+        kl_loss = 0.5 * torch.mean(
+            torch.sum(-(1 + z_logvar) + z_mean.pow(2) + z_logvar.exp(), 1)
+        )
+        return (
+            reconstruction_loss + kl_loss
+        )  # maximizing evidence - KL is the same as minimizing reconstruction + KL
+
+    def reparameterize(self, z_mean, z_logvar):
+        epsilon = torch.distributions.normal.Normal(0, 1).rsample()
+        return z_mean + torch.exp(z_logvar) * epsilon
+
+    def forward(self, batch):
+        pseudo = self.calc_pseudo(batch.edge_index, batch.pos)
+        latent_loadings = self.encoder_network(
+            batch.x, batch.edge_index, pseudo, num_gpus=1
+        )
+        latent_dim = latent_loadings.shape[1]
+        z_means, z_logvars = (
+            latent_loadings[:, : (latent_dim // 2)],
+            latent_loadings[:, (latent_dim // 2) :],
+        )
+        z_sample = self.reparameterize(z_means, z_logvars)
+        expr_reconstruction = self.decoder_network(
+            z_sample, batch.edge_index, pseudo, num_gpus=1
+        )
+        return z_means, z_logvars, expr_reconstruction

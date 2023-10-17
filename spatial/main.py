@@ -11,7 +11,7 @@ def conditional_resolver(condition, true_val, false_val):
 OmegaConf.register_new_resolver("conditional", conditional_resolver)
 
 
-@hydra.main(config_path="../config", config_name="configFDR")
+@hydra.main(config_path="../config", config_name="config")
 def main(cfg):
     if cfg.mode == "train":
         from spatial.train import train as task
