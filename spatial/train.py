@@ -11,6 +11,7 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 # from torch.utils.data import random_split
 from torch_geometric.data import DataLoader
+from torch_geometric.data.lightning import LightningDataset
 
 from spatial.merfish_dataset import FilteredMerfishDataset, MerfishDataset
 from spatial.models import monet_ae
@@ -22,6 +23,7 @@ _models = [
     monet_ae.MonetAutoencoder2D,
     monet_ae.MonetDense,
     monet_ae.TrivialDense,
+    monet_ae.MonetVAE,
 ]
 models = {cls.__name__: cls for cls in _models}
 
@@ -30,19 +32,11 @@ def setup_logger(cfg, filepath):
     logger = False
     if cfg.training.trainer.logger:
 
-        if cfg.model.name == "MonetAutoencoder2D":
-            logger = TensorBoardLogger(
-                save_dir=cfg.paths.output,
-                name=cfg.training.logger_name,
-                version=(filepath),
-            )
-
-        else:
-            logger = TensorBoardLogger(
-                save_dir=cfg.paths.output,
-                name=cfg.training.logger_name,
-                version=(filepath),
-            )
+        logger = TensorBoardLogger(
+            save_dir=cfg.paths.output,
+            name=cfg.training.logger_name,
+            version=(filepath),
+        )
 
     return logger
 
@@ -82,7 +76,7 @@ def setup_optimizer(cfg):
     return {"name": cfg.optimizer.name, "params": cfg.optimizer.params}
 
 
-def train(cfg: DictConfig, data=None, validate_only=False):
+def train(cfg: DictConfig, data=None, validate_only=False, lightning_integration=True):
 
     # if this is a non-zero int, the run will have a seed
     if cfg.training.seed:
@@ -186,14 +180,29 @@ def train(cfg: DictConfig, data=None, validate_only=False):
     # GPU Memory logging (NOT YET IMPLETMENED)
 
     # train or validate
-    if validate_only:
-        checkpoint_dir = f"lightning_logs/checkpoints/{cfg.model.name}"
-        checkpoint_dir = os.path.join(cfg.paths.output, checkpoint_dir)
-        ckpt_path_for_validation = os.path.join(
-            checkpoint_dir, cfg.training.filepath + ".ckpt"
+    if lightning_integration:
+        datamodule = LightningDataset(
+            train_dataset=train_data, val_dataset=val_data, batch_size=1, num_workers=4
         )
-        trainer.validate(model, val_loader, ckpt_path=ckpt_path_for_validation)
+        if validate_only:
+            checkpoint_dir = f"lightning_logs/checkpoints/{cfg.model.name}"
+            checkpoint_dir = os.path.join(cfg.paths.output, checkpoint_dir)
+            ckpt_path_for_validation = os.path.join(
+                checkpoint_dir, cfg.training.filepath + ".ckpt"
+            )
+            trainer.validate(model, val_loader, ckpt_path=ckpt_path_for_validation)
+        else:
+            trainer.fit(model, datamodule)
+
     else:
-        trainer.fit(model, train_loader, val_loader)
+        if validate_only:
+            checkpoint_dir = f"lightning_logs/checkpoints/{cfg.model.name}"
+            checkpoint_dir = os.path.join(cfg.paths.output, checkpoint_dir)
+            ckpt_path_for_validation = os.path.join(
+                checkpoint_dir, cfg.training.filepath + ".ckpt"
+            )
+            trainer.validate(model, val_loader, ckpt_path=ckpt_path_for_validation)
+        else:
+            trainer.fit(model, train_loader, val_loader)
 
     return model, trainer
