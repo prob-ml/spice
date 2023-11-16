@@ -1,6 +1,6 @@
 plotting: True
 n_epochs: 1200
-logger_name: DEFAULTNAME
+logger_name: GREATLAKES
 save_model_summary: False
 batch_size: 1
 dropout: True
@@ -16,9 +16,9 @@ trainer:
   profiler: simple
   logger: True
   enable_checkpointing: True
-  gpus: ${gpus}
+  devices: ${gpus}
   accelerator: "gpu"
-  # strategy: "deepspeed_stage_2_offload"
+  strategy: "fsdp"
   auto_select_gpus: False
   max_epochs: ${training.n_epochs}
   min_epochs: 0
