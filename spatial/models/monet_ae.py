@@ -61,6 +61,7 @@ class BasicAEMixin(pl.LightningModule):
         optimizer="sgd",
         aggr="mean",
         pseudo_mode="distance",
+        num_gpus=2,
     ):
         super().__init__()
         self.observables_dimension = observables_dimension
@@ -86,6 +87,7 @@ class BasicAEMixin(pl.LightningModule):
         self.optimizer = optimizer
         self.aggregation = aggr
         self.pseudo_mode = pseudo_mode
+        self.num_gpus = num_gpus
 
     @staticmethod
     def calc_loss(pred, val, losstype, celltype_data=None, celltype=None):
@@ -385,6 +387,7 @@ class MonetDense(BasicAEMixin):
         optimizer,
         aggr,
         pseudo_mode,
+        num_gpus,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -413,6 +416,7 @@ class MonetDense(BasicAEMixin):
             optimizer,
             aggr,
             pseudo_mode,
+            num_gpus
         )
 
         self.dim = dim
@@ -527,7 +531,7 @@ class MonetDense(BasicAEMixin):
         non_response_genes = torch.ones(batch.x.shape[1], dtype=bool)
         non_response_genes[self.response_genes] = False
         output = self.dense_network(
-            batch.x[:, non_response_genes], batch.edge_index, pseudo, num_gpus=3
+            batch.x[:, non_response_genes], batch.edge_index, pseudo, num_gpus=self.num_gpus
         )
         return batch.x, output
 

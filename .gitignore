@@ -157,3 +157,6 @@ examples/reproduce/MESSI.py
 examples/static/shap/
 examples/static/shap_recovery/
 examples/static/syntheticFDR.JPG
+
+# great lakes
+multirun.sh
