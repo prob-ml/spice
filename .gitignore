@@ -160,3 +160,6 @@ examples/static/syntheticFDR.JPG
 
 # great lakes
 multirun.sh
+
+# images
+*.png

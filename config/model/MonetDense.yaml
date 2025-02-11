@@ -7,7 +7,7 @@ kwargs:
   loss_type: "mse"
   other_logged_losses: ["mse"]
   dim: 2
-  kernel_size: 15
+  kernel_size: 10
   radius: ${radius}
   mask_random_prop: 0.0
   mask_cells_prop: 0.0

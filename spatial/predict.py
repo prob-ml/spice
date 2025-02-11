@@ -1,7 +1,10 @@
-from hydra.utils import instantiate
+# import datetime
+import json
 
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
+
+from hydra.utils import instantiate
 
 # from torch.nn import functional as F
 from torch_geometric.data import DataLoader
@@ -11,6 +14,8 @@ from spatial.models.monet_ae import (
     TrivialAutoencoder,
     MonetDense,
     TrivialDense,
+    # MonetVAE,
+    # GraphUNetDense,
 )
 from spatial.train import (
     setup_checkpoint_callback,
@@ -80,6 +85,12 @@ def test(cfg: DictConfig, data=None):
             optimizer=optimizer,
         )
 
+    # Number of Parameters
+    print(
+        f"The number of parameters for radius {cfg.radius}"
+        f"is {sum(p.numel() for p in model.parameters() if p.requires_grad)}"
+    )
+
     test_loader = DataLoader(data, batch_size=cfg.predict.batch_size, num_workers=8)
 
     # Create trainer.
@@ -90,6 +101,11 @@ def test(cfg: DictConfig, data=None):
     test_results = trainer.test(model, test_loader, verbose=cfg.predict.verbose)
 
     l1_losses = "currently unneeded"  # F.l1_loss(model.inputs, model.gene_expressions)
+
+    with open(
+        "/home/roko/spatial/examples/recent_result.json", "w+", encoding="utf-8"
+    ) as deepst_result:
+        json.dump({"result": test_results[0]["test_loss"]}, deepst_result)
 
     # first is needed for testing, the rest is for jupyter notebook exploration fun!
     return (

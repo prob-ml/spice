@@ -1,8 +1,15 @@
 """A graph convolutional autoencoder for MERFISH data."""
 from copy import deepcopy
+
+# from typing import Any
 import pytorch_lightning as pl
+
+# from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch
 from torch_geometric.utils import degree
+from torch_geometric.nn.models import GraphUNet
+
+# from torch_geometric.nn import GCNConv
 
 from spatial.models import base_networks
 
@@ -235,7 +242,7 @@ class BasicAEMixin(pl.LightningModule):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("train_loss_" + self.loss_type, loss, prog_bar=True)
+        self.log("train_loss_" + self.loss_type, loss.item(), prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
                 "train_loss_" + additional_loss,
@@ -243,7 +250,7 @@ class BasicAEMixin(pl.LightningModule):
                     reconstruction[~masking_tensor],
                     batch.x[~masking_tensor],
                     additional_loss,
-                ),
+                ).item(),
                 prog_bar=True,
             )
         self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
@@ -269,7 +276,7 @@ class BasicAEMixin(pl.LightningModule):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("val_loss", loss, prog_bar=True)
+        self.log("val_loss", loss.item(), prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
                 "val_loss_" + additional_loss,
@@ -277,7 +284,7 @@ class BasicAEMixin(pl.LightningModule):
                     reconstruction[~masking_tensor],
                     batch.x[~masking_tensor],
                     additional_loss,
-                ),
+                ).item(),
                 prog_bar=True,
             )
         return loss
@@ -313,10 +320,10 @@ class BasicAEMixin(pl.LightningModule):
                     reconstruction[~masking_tensor],
                     batch.x[~masking_tensor],
                     additional_loss,
-                ),
+                ).item(),
                 prog_bar=True,
             )
-        self.log("test_loss", loss, prog_bar=True)
+        self.log("test_loss", loss.item(), prog_bar=True)
 
         # save input and output images
         tensorboard = self.logger.experiment
@@ -353,7 +360,8 @@ class BasicAEMixin(pl.LightningModule):
                     # MESS AROUND WITH THIS VALUE
                     # threshold=1e-5,
                     # threshold_mode="abs"
-                    patience=3,
+                    patience=5,
+                    factor=0.1,
                 ),
                 "monitor": "val_loss",
             }
@@ -364,30 +372,30 @@ class BasicAEMixin(pl.LightningModule):
 class MonetDense(BasicAEMixin):
     def __init__(
         self,
-        observables_dimension,
-        hidden_dimensions,
-        output_dimension,
-        loss_type,
-        other_logged_losses,
-        dim,
-        kernel_size,
-        radius,
-        mask_random_prop,
-        mask_cells_prop,
-        mask_genes_prop,
-        response_genes,
-        celltypes,
-        batchnorm,
-        final_relu,
-        attach_mask,
-        dropout,
-        responses,
-        hide_responses,
-        include_skip_connections,
-        optimizer,
-        aggr,
-        pseudo_mode,
-        num_gpus,
+        observables_dimension=155,
+        hidden_dimensions=(512, 512, 512),
+        output_dimension=155,
+        loss_type="mae",
+        other_logged_losses=("mse"),
+        dim=2,
+        kernel_size=5,
+        radius=0,
+        mask_random_prop=0,
+        mask_cells_prop=0.05,
+        mask_genes_prop=0,
+        response_genes=None,
+        celltypes=None,
+        batchnorm=True,
+        final_relu=False,
+        attach_mask=False,
+        dropout=0,
+        responses=False,
+        hide_responses=True,
+        include_skip_connections=False,
+        optimizer="sgd",
+        aggr="mean",
+        pseudo_mode="distance",
+        num_gpus=2,
     ):
         """
         observables_dimension -- number of values associated with each graph node
@@ -416,7 +424,7 @@ class MonetDense(BasicAEMixin):
             optimizer,
             aggr,
             pseudo_mode,
-            num_gpus
+            num_gpus,
         )
 
         self.dim = dim
@@ -445,7 +453,7 @@ class MonetDense(BasicAEMixin):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("train_loss_" + self.loss_type, loss, prog_bar=True)
+        self.log("train_loss_" + self.loss_type, loss.item(), prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
                 "train_loss_" + additional_loss,
@@ -453,7 +461,7 @@ class MonetDense(BasicAEMixin):
                     responses,
                     batch.x[:, self.response_genes],
                     additional_loss,
-                ),
+                ).item(),
                 prog_bar=True,
             )
         self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
@@ -470,7 +478,7 @@ class MonetDense(BasicAEMixin):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("val_loss", loss, prog_bar=True)
+        self.log("val_loss", loss.item(), prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
                 "val_loss_" + additional_loss,
@@ -478,7 +486,7 @@ class MonetDense(BasicAEMixin):
                     responses,
                     batch.x[:, self.response_genes],
                     additional_loss,
-                ),
+                ).item(),
                 prog_bar=True,
             )
         return loss
@@ -501,24 +509,24 @@ class MonetDense(BasicAEMixin):
                     responses,
                     batch.x[:, self.response_genes],
                     additional_loss,
-                ),
+                ).item(),
                 prog_bar=True,
             )
-        self.log("test_loss", loss, prog_bar=True)
+        self.log("test_loss", loss.item(), prog_bar=True)
 
-        # save input and output images
-        tensorboard = self.logger.experiment
-        tensorboard.add_image(
-            f"{self.__class__.__name__}/{self.logger.version}/{batch_idx}/input",
-            batch.x,
-            dataformats="HW",
-        )
-        tensorboard.add_image(
-            f"{self.__class__.__name__}/"
-            f"{self.logger.version}/{batch_idx}/reconstruction",
-            responses,
-            dataformats="HW",
-        )
+        # # save input and output images
+        # tensorboard = self.logger.experiment
+        # tensorboard.add_image(
+        #     f"{self.__class__.__name__}/{self.logger.version}/{batch_idx}/input",
+        #     batch.x,
+        #     dataformats="HW",
+        # )
+        # tensorboard.add_image(
+        #     f"{self.__class__.__name__}/"
+        #     f"{self.logger.version}/{batch_idx}/reconstruction",
+        #     responses,
+        #     dataformats="HW",
+        # )
 
         self.inputs = torch.cat((self.inputs, batch.x.cpu()), 0)
         self.gene_expressions = torch.cat((self.gene_expressions, responses.cpu()), 0)
@@ -531,7 +539,10 @@ class MonetDense(BasicAEMixin):
         non_response_genes = torch.ones(batch.x.shape[1], dtype=bool)
         non_response_genes[self.response_genes] = False
         output = self.dense_network(
-            batch.x[:, non_response_genes], batch.edge_index, pseudo, num_gpus=self.num_gpus
+            batch.x[:, non_response_genes],
+            batch.edge_index,
+            pseudo,
+            num_gpus=self.num_gpus,
         )
         return batch.x, output
 
@@ -602,7 +613,7 @@ class TrivialDense(BasicAEMixin):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("train_loss_" + self.loss_type, loss, prog_bar=True)
+        self.log("train_loss_" + self.loss_type, loss.item(), prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
                 "train_loss_" + additional_loss,
@@ -610,7 +621,7 @@ class TrivialDense(BasicAEMixin):
                     responses,
                     batch.x[:, self.response_genes],
                     additional_loss,
-                ),
+                ).item(),
                 prog_bar=True,
             )
         self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
@@ -627,7 +638,7 @@ class TrivialDense(BasicAEMixin):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("val_loss", loss, prog_bar=True)
+        self.log("val_loss", loss.item(), prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
                 "val_loss_" + additional_loss,
@@ -635,7 +646,7 @@ class TrivialDense(BasicAEMixin):
                     responses,
                     batch.x[:, self.response_genes],
                     additional_loss,
-                ),
+                ).item(),
                 prog_bar=True,
             )
         return loss
@@ -658,10 +669,10 @@ class TrivialDense(BasicAEMixin):
                     responses,
                     batch.x[:, self.response_genes],
                     additional_loss,
-                ),
+                ).item(),
                 prog_bar=True,
             )
-        self.log("test_loss", loss, prog_bar=True)
+        self.log("test_loss", loss.item(), prog_bar=True)
 
         # save input and output images
         tensorboard = self.logger.experiment
@@ -935,7 +946,7 @@ class MonetVAE(MonetAutoencoder2D):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("train_loss_" + self.loss_type, loss, prog_bar=True)
+        self.log("train_loss_" + self.loss_type, loss.item(), prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
                 "train_loss_" + additional_loss,
@@ -945,7 +956,7 @@ class MonetVAE(MonetAutoencoder2D):
                     additional_loss,
                     z_means,
                     z_logvars,
-                ),
+                ).item(),
                 prog_bar=True,
             )
         self.log("gpu_allocated", torch.cuda.memory_allocated() / (1e9), prog_bar=True)
@@ -973,7 +984,7 @@ class MonetVAE(MonetAutoencoder2D):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("val_loss", loss, prog_bar=True)
+        self.log("val_loss", loss.item(), prog_bar=True)
         for additional_loss in self.other_logged_losses:
             self.log(
                 "val_loss_" + additional_loss,
@@ -983,7 +994,7 @@ class MonetVAE(MonetAutoencoder2D):
                     additional_loss,
                     z_means,
                     z_logvars,
-                ),
+                ).item(),
                 prog_bar=True,
             )
         return loss
@@ -1023,10 +1034,10 @@ class MonetVAE(MonetAutoencoder2D):
                     additional_loss,
                     z_means,
                     z_logvars,
-                ),
+                ).item(),
                 prog_bar=True,
             )
-        self.log("test_loss", loss, prog_bar=True)
+        self.log("test_loss", loss.item(), prog_bar=True)
 
         # save input and output images
         tensorboard = self.logger.experiment
@@ -1078,3 +1089,51 @@ class MonetVAE(MonetAutoencoder2D):
             z_sample, batch.edge_index, pseudo, num_gpus=1
         )
         return z_means, z_logvars, expr_reconstruction
+
+
+class GraphUNetDense(MonetDense):
+    def __init__(
+        self,
+        in_channels,
+        hidden_channels,
+        out_channels,
+        depth,
+        response_genes,
+        loss_type,
+        other_logged_losses,
+        pool_ratios=0.5,
+        optimizer=None,
+    ):
+
+        super().__init__(
+            observables_dimension=in_channels,
+            hidden_dimensions=[hidden_channels] * depth,
+            output_dimension=out_channels,
+            loss_type=loss_type,
+            other_logged_losses=other_logged_losses,
+            response_genes=response_genes,
+        )
+
+        self.graph_unet = GraphUNet(
+            in_channels=in_channels,
+            hidden_channels=hidden_channels,
+            out_channels=out_channels,
+            depth=depth,
+            pool_ratios=pool_ratios,
+        )
+
+        for name, param in self.graph_unet.named_parameters():
+            if "weight" in name:
+                torch.nn.init.xavier_uniform_(param)
+
+        self.hidden_dimensions = [hidden_channels] * depth
+        self.response_genes = response_genes
+        self.loss_type = loss_type
+        self.other_logged_losses = other_logged_losses
+        self.optimizer = optimizer
+
+    def forward(self, batch):
+        non_response_genes = torch.ones(batch.x.shape[1], dtype=bool)
+        non_response_genes[self.response_genes] = False
+        output = self.graph_unet(batch.x[:, non_response_genes], batch.edge_index)
+        return batch.x, output

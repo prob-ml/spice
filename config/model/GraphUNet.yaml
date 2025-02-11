@@ -1,0 +1,11 @@
+name: GraphUNetDense
+_includes_celltypes: ${datasets.dataset.include_celltypes}
+kwargs:
+  in_channels: ${conditional:${model._includes_celltypes},87,71}
+  hidden_channels: 32
+  out_channels: 84
+  depth: 2
+  response_genes: # decided by the data
+  loss_type: "mse"
+  other_logged_losses: ["mae"]
+  pool_ratios: 0.5
