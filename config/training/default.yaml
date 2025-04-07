@@ -1,14 +1,14 @@
 plotting: True
 n_epochs: 1200
-logger_name: KFOLD_test
+logger_name: XENIUM
 save_model_summary: False
 batch_size: 1
-folds: 10
+folds: 1
 dropout: True
 early_stopping:
   monitor: "val_loss"
   min_delta: 0.00
-  patience: 15
+  patience: 10
   verbose: False
   mode: "min"
 log_transform: True # why is this not in the data section....
@@ -26,5 +26,4 @@ trainer:
   limit_val_batches: 1.0
   check_val_every_n_epoch: 1
   log_every_n_steps: 10
-filepath: ${model.name}__${model.kwargs.hidden_dimensions}__${radius}__${training.logger_name}__${optimizer.name} #__${model.kwargs.aggr}
-complete_data: True
+filepath: ${model.name}__${model.kwargs.kernel_size}__${radius}__${training.logger_name}__${optimizer.name}__NUM_SPLITS=${datasets.dataset.splits}

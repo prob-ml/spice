@@ -1,0 +1,26 @@
+name: MonetDense
+_includes_celltypes: ${datasets.dataset.include_celltypes}
+kwargs:
+  observables_dimension: 100
+  hidden_dimensions: [512, 512, 512, 512, 512, 512]
+  output_dimension: 148
+  loss_type: "mse"
+  other_logged_losses: ["mse"]
+  dim: 2
+  kernel_size: 10
+  radius: ${radius}
+  mask_random_prop: 0.0
+  mask_cells_prop: 0.0
+  mask_genes_prop: 1.0
+  response_genes:  # empty by default this is none so we can use the responses from the data
+  celltypes:
+  batchnorm: True
+  final_relu: False
+  attach_mask: False
+  dropout: 0
+  responses: True
+  hide_responses: True
+  include_skip_connections: True
+  aggr: "sum"
+  pseudo_mode: "polar"
+  num_gpus: ${gpus}

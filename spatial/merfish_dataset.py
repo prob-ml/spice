@@ -322,6 +322,240 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
             return sum(data_list, [])
 
 
+class XeniumDataset(torch_geometric.data.InMemoryDataset):
+    def __init__(
+        self,
+        root,
+        pre_transform=T.ToSparseTensor(),
+        n_neighbors=3,
+        train=True,
+        log_transform=True,
+        include_celltypes=False,
+        radius=None,
+        non_response_genes_file="/home/roko/spatial/spatial/"
+        "non_response_blank_removed_xenium.txt",
+        splits=0,
+    ):
+
+        super().__init__(root, pre_transform=pre_transform)
+
+        # non-response genes (columns) in MERFISH
+        with open(non_response_genes_file, "r", encoding="utf8") as genes_file:
+            self.features = [int(x) for x in genes_file.read().split(",")]
+            genes_file.close()
+
+        # response genes (columns in MERFISH)
+        self.response_genes = list(set(range(248)) - set(self.features))
+
+        data_list = self.construct_graphs(
+            n_neighbors, train, log_transform, include_celltypes, radius, splits
+        )
+
+        self.data, self.slices = self.collate(data_list)
+
+    @property
+    def raw_file_names(self):
+        return ["xenium.csv", "xenium.hdf5"]
+
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "xenium.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "xenium.hdf5")
+
+    def download(self):
+        # get the csv
+        if not os.path.exists(self.merfish_csv):
+            raise FileNotFoundError(f"File {self.merfish_csv} ")
+
+        # process csv if necessary
+        dataframe = pd.read_csv(self.merfish_csv, index_col="cell_id")
+        with h5py.File(self.merfish_hdf5, "w") as h5f:
+            for colnm in dataframe.keys()[-4:]:
+                h5f.create_dataset(colnm, data=np.require(dataframe[colnm]))
+
+            expression = np.array(dataframe[dataframe.keys()[:-4]]).astype(np.float64)
+            h5f.create_dataset("expression", data=expression)
+
+            gene_names = np.array(dataframe.keys()[:-4], dtype="S80")
+            h5f.create_dataset("gene_names", data=gene_names)
+
+    @staticmethod
+    def data_transform(data, split_locations, log_transform):
+        return torch.log1p(data) if log_transform else data
+
+    @staticmethod
+    def calculate_neighborhood(split_locations, radius, n_neighbors):
+        # include ONLY self edges if n_neighbors is 0
+        if n_neighbors == 0 and radius is None:
+            edges = np.concatenate(
+                [
+                    np.c_[np.array([i]), np.array([i])]
+                    for i in range(split_locations.shape[0])
+                ],
+                axis=0,
+            )
+
+        else:
+
+            if radius is None:
+                nbrs = neighbors.NearestNeighbors(
+                    n_neighbors=n_neighbors + 1, algorithm="ball_tree"
+                )
+                nbrs.fit(split_locations)
+                _, kneighbors = nbrs.kneighbors(split_locations)
+                edges = np.concatenate(
+                    [
+                        np.c_[kneighbors[:, 0], kneighbors[:, i]]
+                        for i in range(n_neighbors + 1)
+                    ],
+                    axis=0,
+                )
+
+            else:
+
+                tree = cKDTree(split_locations)
+                kneighbors = tree.query_ball_point(
+                    split_locations, r=radius, return_sorted=False
+                )
+                edges = np.concatenate(
+                    [
+                        np.c_[
+                            np.repeat(i, len(kneighbors[i])),
+                            list(kneighbors[i]),
+                        ]
+                        for i in range(len(kneighbors))
+                    ],
+                    axis=0,
+                )
+
+        return torch.tensor(edges, dtype=torch.long).T
+
+    # pylint: disable=too-many-statements
+    def construct_graph(
+        self,
+        data,
+        n_neighbors,
+        log_transform,
+        include_celltypes,
+        radius,
+        splits=0,
+    ):
+
+        # index 0, 1, 2 are x, y, z
+        # index 3 is the qv
+        # index 4 onward is the expression
+        data_for_this_slice = np.concatenate(
+            (
+                data.locations,
+                data.qv.reshape(-1, 1),
+                data.expression,
+            ),
+            axis=1,
+        )
+
+        # graph splitting
+        graph_splits = [data_for_this_slice]
+        new_splits = []
+        while splits != 0:
+            for graph in graph_splits:
+                locations = graph[:, :3].astype(np.float32)
+                x_split = np.median(locations, 0)[0].astype(np.float32)
+                x_0 = graph[locations[:, 0] < x_split]
+                x_1 = graph[locations[:, 0] >= x_split]
+                x_0_locations = x_0[:, :3].astype(np.float32)
+                x_1_locations = x_1[:, :3].astype(np.float32)
+                y_split_x_0 = np.median(x_0_locations, 0)[1].astype(np.float32)
+                y_split_x_1 = np.median(x_1_locations, 0)[1].astype(np.float32)
+                x_00 = x_0[x_0_locations[:, 1] < y_split_x_0]
+                x_01 = x_0[x_0_locations[:, 1] >= y_split_x_0]
+                x_10 = x_1[x_1_locations[:, 1] < y_split_x_1]
+                x_11 = x_1[x_1_locations[:, 1] >= y_split_x_1]
+                new_splits += [x_00, x_01, x_10, x_11]
+            graph_splits = new_splits
+            new_splits = []
+            splits -= 1
+
+        data_splits = []
+
+        for split in graph_splits:
+
+            split_locations = split[:, :3].astype(float)
+
+            edges = self.calculate_neighborhood(split_locations, radius, n_neighbors)
+
+            subexpression = split[:, 4:]
+
+            # make it into a torch geometric data object, add it to the list!
+
+            # if we want to first log transform the data, we do it here
+            # make this one return statement only changing x
+            predictors_x = torch.tensor(subexpression.astype(np.float32))
+            if include_celltypes:
+                raise UserWarning(
+                    "The Xenium Data set does not have a celltype feature to include."
+                )
+            predictors_x = self.data_transform(
+                predictors_x, split_locations, log_transform
+            )
+
+            data_splits.append(
+                torch_geometric.data.Data(
+                    x=predictors_x,
+                    edge_index=edges,
+                    pos=torch.tensor(split[:, :3].astype("float")),
+                )
+            )
+
+        return data_splits
+
+    def construct_graphs(
+        self,
+        n_neighbors,
+        train,
+        log_transform=True,
+        include_celltypes=False,
+        radius=None,
+        splits=0,
+    ):
+        # load hdf5
+        with h5py.File(self.merfish_hdf5, "r") as h5f:
+            # pylint: disable=no-member
+
+            data = types.SimpleNamespace(
+                expression=h5f["expression"][:],
+                locations=np.c_[
+                    h5f["x_location"][:], h5f["y_location"][:], h5f["z_location"][:]
+                ],
+                qv=h5f["qv"][:],
+            )
+
+            # store all the slices in this list
+            data_list = []
+            # unlike merfish, there is only one animal here
+            data_list = self.construct_graph(
+                data,
+                n_neighbors,
+                log_transform,
+                include_celltypes,
+                radius,
+                splits=splits,
+            )
+
+            # based on the number of splits...
+            # we need to get the first 5/6 for train or the last 1/6 for test
+            N = len(data_list)
+            print(f"There are {N} graph splits for the Xenium Dataset.")
+            data_list = (
+                data_list[: int(N * 5 / 6)] if train else data_list[int(N * 5 / 6) :]
+            )
+            # print the length and width of each graph
+
+            return data_list
+
+
 class FilteredMerfishDataset(MerfishDataset):
     def __init__(
         self,

@@ -131,6 +131,7 @@ dmypy.json
 # added
 GNN Data
 data
+examples/extracted_data
 lightning_logs
 .vscode
 examples/results/*.csv

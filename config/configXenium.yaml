@@ -1,0 +1,30 @@
+defaults:
+  - _self_
+  - optimizer: adam
+  - datasets: XeniumDataset
+  - model: MonetDenseXenium
+  - training: default
+  - predict: default
+
+mode: train
+
+n_neighbors: 3
+
+radius: 5
+
+gpus: ${oc.env:NUM_GPUS} # len(CUDA_V_D) - 1
+
+
+paths:
+  root: ${oc.env:SPATIAL_HOME}
+  data: ${paths.root}/data
+  models: ${paths.root}/models
+  output: ${paths.root}/output
+
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: '0,1,2,3,4,5,6,7'
+  output_subdir: null
+  run:
+    dir: .

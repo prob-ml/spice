@@ -1,0 +1,10 @@
+dataset:
+  _target_: spatial.merfish_dataset.XeniumDataset
+  root: ${paths.data}
+  n_neighbors: ${n_neighbors}
+  train: True
+  log_transform: True
+  include_celltypes: False
+  radius: ${radius}
+  non_response_genes_file: "/home/roko/spatial/spatial/non_response_blank_removed_xenium.txt"
+  splits: 2
