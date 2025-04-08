@@ -530,7 +530,7 @@ class MonetDense(BasicAEMixin):
 
         self.inputs = torch.cat((self.inputs, batch.x.cpu()), 0)
         self.gene_expressions = torch.cat((self.gene_expressions, responses.cpu()), 0)
-        self.labelinfo = torch.cat((self.labelinfo, batch.y.cpu()), 0)
+        # self.labelinfo = torch.cat((self.labelinfo, batch.y.cpu()), 0)
 
         return loss
 

@@ -19,11 +19,11 @@ trainer:
   enable_checkpointing: True
   devices: ${gpus}
   accelerator: "gpu"
-  strategy: "fsdp"
+  strategy: "ddp"
   max_epochs: ${training.n_epochs}
   min_epochs: 0
   limit_train_batches: 1.0
   limit_val_batches: 1.0
   check_val_every_n_epoch: 1
   log_every_n_steps: 10
-filepath: ${model.name}__${model.kwargs.kernel_size}__${radius}__${training.logger_name}__${optimizer.name}__NUM_SPLITS=${datasets.dataset.splits}
+filepath: ${model.name}__${model.kwargs.hidden_dimensions}__${model.kwargs.kernel_size}__${radius}__${training.logger_name}__${optimizer.name}__NUM_SPLITS=${datasets.dataset.splits}

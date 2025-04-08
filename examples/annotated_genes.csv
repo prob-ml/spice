@@ -1,0 +1,253 @@
+gene,role,sources
+2010300c02rik,neither,
+acsbg1,neither,
+acta2,neither,
+acvrl1,receptor,"OmniPath, NATMI ConnectomeDB2020"
+adamts2,receptor,OmniPath
+adamtsl1,neither,
+adgrl4,receptor,OmniPath
+aldh1a2,neither,
+angpt1,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+ano1,receptor,OmniPath
+aqp4,receptor,OmniPath
+arc,neither,
+arhgap12,neither,
+arhgap25,neither,
+arhgap6,neither,
+arhgef28,neither,
+bcl11b,neither,
+bdnf,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+bhlhe22,neither,
+bhlhe40,neither,
+btbd11,neither,
+cabp7,neither,
+cacna2d2,neither,
+calb1,neither,
+calb2,neither,
+car4,neither,
+carmn,neither,
+cbln1,ligand,OmniPath
+cbln4,ligand,OmniPath
+ccn2,ligand,"OmniPath, NATMI ConnectomeDB2020"
+cd24a,neither,
+cd300c2,neither,
+cd44,ligand_and_receptor,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+cd53,receptor,"OmniPath, NATMI ConnectomeDB2020"
+cd68,receptor,OmniPath
+cd93,receptor,"OmniPath, NATMI ConnectomeDB2020"
+cdh13,receptor,OmniPath
+cdh20,neither,
+cdh4,ligand_and_receptor,"OmniPath, Jin2020 Mouse"
+cdh6,receptor,OmniPath
+cdh9,neither,
+chat,ligand_and_receptor,OmniPath
+chodl,neither,
+chrm2,receptor,OmniPath
+cldn5,ligand_and_receptor,OmniPath
+clmn,neither,
+cntn6,ligand,"OmniPath, NATMI ConnectomeDB2020"
+cntnap4,receptor,OmniPath
+cntnap5b,neither,
+cobll1,neither,
+col19a1,ligand,OmniPath
+col1a1,ligand,"NATMI ConnectomeDB2020, Jin2020 Mouse"
+col6a1,ligand,Jin2020 Mouse
+cort,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+cplx3,neither,
+cpne4,neither,
+cpne6,neither,
+cpne8,neither,
+crh,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+cspg4,ligand_and_receptor,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+cux2,neither,
+cwh43,neither,
+cyp1b1,receptor,OmniPath
+dcn,ligand_and_receptor,"OmniPath, NATMI ConnectomeDB2020"
+deptor,neither,
+dkk3,ligand,OmniPath
+dner,receptor,OmniPath
+dpy19l1,neither,
+dpyd,receptor,OmniPath
+ebf3,neither,
+emcn,neither,
+epha4,ligand_and_receptor,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+eya4,neither,
+fezf2,neither,
+fgd5,neither,
+fhod3,neither,
+fibcd1,neither,
+fign,neither,
+fmod,neither,
+fn1,ligand,"NATMI ConnectomeDB2020, Jin2020 Mouse"
+fos,neither,
+foxp2,neither,
+gad1,receptor,OmniPath
+gad2,receptor,OmniPath
+gadd45a,neither,
+galnt14,neither,
+garnl3,neither,
+gfap,neither,
+gfra2,receptor,"OmniPath, NATMI ConnectomeDB2020"
+gjb2,neither,
+gjc3,neither,
+gli3,neither,
+gm19410,neither,
+gm2115,neither,
+gng12,neither,
+gpr17,receptor,OmniPath
+grik3,receptor,OmniPath
+gsg1l,neither,
+gucy1a1,neither,
+hapln1,ligand,OmniPath
+hat1,receptor,OmniPath
+hpcal1,neither,
+hs3st2,neither,
+htr1f,receptor,OmniPath
+id2,neither,
+igf1,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+igf2,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+igfbp4,ligand,NATMI ConnectomeDB2020
+igfbp5,neither,
+igfbp6,neither,
+igsf21,neither,
+ikzf1,neither,
+inpp4b,receptor,OmniPath
+kcnh5,neither,
+kcnmb2,neither,
+kctd12,neither,
+kctd8,receptor,OmniPath
+kdr,ligand_and_receptor,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+lamp5,neither,
+laptm5,neither,
+ly6a,neither,
+lypd6,neither,
+lyz2,neither,
+mapk4,receptor,OmniPath
+mdga1,neither,
+mecom,neither,
+meis2,neither,
+myl4,neither,
+myo16,neither,
+ndst3,neither,
+ndst4,neither,
+necab1,neither,
+necab2,neither,
+nell1,neither,
+neto2,receptor,OmniPath
+neurod6,neither,
+nostrin,neither,
+npnt,ligand,"OmniPath, NATMI ConnectomeDB2020"
+npy2r,receptor,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+nr2f2,receptor,OmniPath
+nrep,neither,
+nrn1,receptor,OmniPath
+nrp2,receptor,"OmniPath, NATMI ConnectomeDB2020"
+nts,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+ntsr2,receptor,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+nwd2,neither,
+nxph3,ligand,"OmniPath, NATMI ConnectomeDB2020"
+opalin,neither,
+opn3,receptor,OmniPath
+orai2,neither,
+paqr5,receptor,OmniPath
+parm1,neither,
+pcsk5,receptor,OmniPath
+pde11a,receptor,OmniPath
+pde7b,receptor,OmniPath
+pdgfra,receptor,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+pdyn,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+pdzd2,neither,
+pdzrn3,neither,
+pecam1,ligand_and_receptor,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+penk,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+pglyrp1,ligand_and_receptor,"OmniPath, NATMI ConnectomeDB2020"
+pip5k1b,receptor,OmniPath
+pkib,neither,
+plch1,receptor,OmniPath
+plcxd2,neither,
+plcxd3,neither,
+plekha2,neither,
+pln,neither,
+pou3f1,neither,
+ppp1r1b,neither,
+prdm8,neither,
+prox1,neither,
+prph,receptor,OmniPath
+prr16,neither,
+prss35,neither,
+pthlh,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+pvalb,neither,
+rab3b,neither,
+rasgrf2,neither,
+rasl10a,neither,
+rbp4,ligand_and_receptor,"OmniPath, NATMI ConnectomeDB2020"
+rfx4,neither,
+rims3,neither,
+rmst,neither,
+rnf152,neither,
+ror1,receptor,"OmniPath, NATMI ConnectomeDB2020"
+rorb,neither,
+rprm,neither,
+rspo1,ligand,"OmniPath, NATMI ConnectomeDB2020"
+rspo2,ligand_and_receptor,"OmniPath, NATMI ConnectomeDB2020"
+rxfp1,receptor,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+satb2,neither,
+sdk2,receptor,OmniPath
+sema3a,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+sema3d,ligand_and_receptor,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+sema3e,ligand_and_receptor,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+sema5b,ligand_and_receptor,"OmniPath, Jin2020 Mouse"
+sema6a,ligand_and_receptor,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+shisa6,receptor,OmniPath
+siglech,neither,
+sipa1l3,neither,
+sla,neither,
+slc13a4,receptor,OmniPath
+slc17a6,receptor,OmniPath
+slc17a7,neither,
+slc39a12,receptor,OmniPath
+slc44a5,neither,
+slc6a3,receptor,OmniPath
+slfn5,neither,
+slit2,ligand,"OmniPath, NATMI ConnectomeDB2020"
+sncg,neither,
+sntb1,neither,
+sorcs3,receptor,NATMI ConnectomeDB2020
+sox10,neither,
+sox11,neither,
+sox17,neither,
+spag16,neither,
+spi1,neither,
+spp1,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+sst,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+stard5,neither,
+strip2,neither,
+syndig1,neither,
+syt17,neither,
+syt2,neither,
+syt6,neither,
+tacr1,receptor,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+tanc1,neither,
+th,ligand_and_receptor,OmniPath
+thsd7a,neither,
+tle4,neither,
+tmem132d,neither,
+tmem163,neither,
+tmem255a,neither,
+tox,neither,
+trbc2,receptor,OmniPath
+trem2,receptor,"OmniPath, NATMI ConnectomeDB2020"
+trp73,neither,
+trpc4,receptor,OmniPath
+unc13c,neither,
+vat1l,neither,
+vip,ligand,"OmniPath, NATMI ConnectomeDB2020, Jin2020 Mouse"
+vwc2l,ligand,OmniPath
+wfs1,neither,
+zfp366,neither,
+zfp536,neither,
+zfpm2,neither,
+x_location,neither,
+y_location,neither,
+z_location,neither,
+qv,neither,

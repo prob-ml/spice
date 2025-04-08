@@ -12,7 +12,7 @@ n_neighbors: 3
 
 radius: 5
 
-gpus: ${oc.env:NUM_GPUS} # len(CUDA_V_D) - 1
+gpus: [0,1,2] # len(CUDA_V_D) - 1
 
 
 paths:
@@ -24,7 +24,8 @@ paths:
 hydra:
   job:
     env_set:
-      CUDA_VISIBLE_DEVICES: '0,1,2,3,4,5,6,7'
+      CUDA_VISIBLE_DEVICES: '1,2,3'
+      CUDA_LAUNCH_BLOCKING: 1
   output_subdir: null
   run:
     dir: .

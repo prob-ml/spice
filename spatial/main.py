@@ -18,7 +18,7 @@ def main(cfg):
     elif cfg.mode == "generate":
         from spatial.generate_graph import generate_graph as task
     elif cfg.mode == "predict":
-        from spatial.predict import test as task
+        from spatial.predict_xenium import test as task
     else:
         raise KeyError
     # print(cfg)

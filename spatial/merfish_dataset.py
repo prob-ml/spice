@@ -456,6 +456,10 @@ class XeniumDataset(torch_geometric.data.InMemoryDataset):
             axis=1,
         )
 
+        # edges = self.calculate_neighborhood(data.locations, radius, n_neighbors)
+        # print(f"NUMBER OF NEIGHBORS FOR r={radius} is {edges.shape}")
+        # raise ValueError("WERE DONE HERE")
+
         # graph splitting
         graph_splits = [data_for_this_slice]
         new_splits = []
@@ -551,7 +555,6 @@ class XeniumDataset(torch_geometric.data.InMemoryDataset):
             data_list = (
                 data_list[: int(N * 5 / 6)] if train else data_list[int(N * 5 / 6) :]
             )
-            # print the length and width of each graph
 
             return data_list
 

@@ -53,8 +53,9 @@ def setup_logger(cfg, filepath):
 def setup_checkpoint_callback(cfg, logger, filepath):
     callbacks = []
     if cfg.training.trainer.enable_checkpointing:
-        checkpoint_dir = f"lightning_logs/checkpoints/{cfg.model.name}"
-        checkpoint_dir = os.path.join(cfg.paths.output, checkpoint_dir)
+        checkpoint_dir = f"""/nfs/turbo/lsa-regier/scratch/roko/
+                             output/lightning_logs/checkpoints/{cfg.model.name}Xenium"""
+        # checkpoint_dir = os.path.join(cfg.paths.output, checkpoint_dir)
         checkpoint_callback = ModelCheckpoint(
             dirpath=checkpoint_dir,
             verbose=True,
@@ -152,28 +153,25 @@ def train(cfg: DictConfig, data=None, validate_only=False, lightning_integration
     model = models[cfg.model.name](**cfg.model.kwargs, optimizer=optimizer)
 
     if cfg.training.folds > 1:
-
         original_filepath = cfg.training.filepath
-
+        n_graphs = len(data)
+        fold_size = n_graphs // cfg.training.folds
         for fold in range(cfg.training.folds):
-
+            # Update the filepath for each fold
             OmegaConf.update(
                 cfg,
                 "training.filepath",
                 f"{original_filepath}__FOLD={fold}",
             )
-
-            # setup logger
+            # Setup logger for each fold
             logger = setup_logger(cfg, filepath=cfg.training.filepath)
-
-            # setup checkpoints
+            # Setup checkpoints for each fold
             callbacks = setup_checkpoint_callback(
                 cfg, logger, filepath=cfg.training.filepath
             )
-
+            # Add early stopping callback for each fold
             callbacks = setup_early_stopping(cfg, callbacks)
-
-            # setup trainer
+            # Setup trainer for each fold
             trainer_dict = OmegaConf.to_container(cfg.training.trainer, resolve=True)
             trainer_dict.update(
                 {
@@ -182,23 +180,23 @@ def train(cfg: DictConfig, data=None, validate_only=False, lightning_integration
                 }
             )
             trainer = pl.Trainer(**trainer_dict)
-
-            # specify model
+            # Specify model for each fold
             model = models[cfg.model.name](**cfg.model.kwargs, optimizer=optimizer)
-
-            # TO DO: FIX THIS FOR FOLDS.
-            n_graphs = len(data)
-            train_data = data[: int(n_graphs * 0.8)]
-            val_data = data[int(n_graphs * 0.8) :]
-
+            # Split data for each fold
+            start_idx = fold * fold_size
+            end_idx = (
+                (fold + 1) * fold_size if fold < cfg.training.folds - 1 else n_graphs
+            )
+            val_data = data[start_idx:end_idx]
+            train_data = data[:start_idx] + data[end_idx:]
+            # Create data loaders for each fold
             train_loader = DataLoader(
                 train_data, batch_size=cfg.training.batch_size, num_workers=2
             )
             val_loader = DataLoader(
                 val_data, batch_size=cfg.training.batch_size, num_workers=2
             )
-
-            # train or validate
+            # Train or validate for each fold
             if lightning_integration:
                 datamodule = LightningDataset(
                     train_dataset=train_data,
@@ -207,8 +205,8 @@ def train(cfg: DictConfig, data=None, validate_only=False, lightning_integration
                     num_workers=2,
                 )
                 if validate_only:
-                    checkpoint_dir = f"lightning_logs/checkpoints/{cfg.model.name}"
-                    checkpoint_dir = os.path.join(cfg.paths.output, checkpoint_dir)
+                    checkpoint_dir = f"""/nfs/turbo/lsa-regier/scratch/roko/
+                    output/lightning_logs/checkpoints/{cfg.model.name}Xenium"""
                     ckpt_path_for_validation = os.path.join(
                         checkpoint_dir, cfg.training.filepath + ".ckpt"
                     )
@@ -217,11 +215,10 @@ def train(cfg: DictConfig, data=None, validate_only=False, lightning_integration
                     )
                 else:
                     trainer.fit(model, datamodule)
-
             else:
                 if validate_only:
-                    checkpoint_dir = f"lightning_logs/checkpoints/{cfg.model.name}"
-                    checkpoint_dir = os.path.join(cfg.paths.output, checkpoint_dir)
+                    checkpoint_dir = f"""/nfs/turbo/lsa-regier/scratch/roko/
+                    output/lightning_logs/checkpoints/{cfg.model.name}Xenium"""
                     ckpt_path_for_validation = os.path.join(
                         checkpoint_dir, cfg.training.filepath + ".ckpt"
                     )
@@ -230,7 +227,7 @@ def train(cfg: DictConfig, data=None, validate_only=False, lightning_integration
                     )
                 else:
                     trainer.fit(model, train_loader, val_loader)
-
+            # Clear GPU memory after each fold
             torch.cuda.empty_cache()
 
     else:
@@ -238,6 +235,9 @@ def train(cfg: DictConfig, data=None, validate_only=False, lightning_integration
         n_graphs = len(data)
         train_data = data[: int(n_graphs * 0.8)]
         val_data = data[int(n_graphs * 0.8) :]
+        print(f"{n_graphs} graphs in total data.")
+        print(f"{len(train_data)} graphs in train data.")
+        print(f"{len(val_data)} graphs in val data.")
 
         train_loader = DataLoader(
             train_data, batch_size=cfg.training.batch_size, num_workers=2
@@ -255,8 +255,9 @@ def train(cfg: DictConfig, data=None, validate_only=False, lightning_integration
                 num_workers=2,
             )
             if validate_only:
-                checkpoint_dir = f"lightning_logs/checkpoints/{cfg.model.name}"
-                checkpoint_dir = os.path.join(cfg.paths.output, checkpoint_dir)
+                checkpoint_dir = f"""/nfs/turbo/lsa-regier/scratch/roko/
+                output/lightning_logs/checkpoints/{cfg.model.name}Xenium"""
+                # checkpoint_dir = os.path.join(cfg.paths.output, checkpoint_dir)
                 ckpt_path_for_validation = os.path.join(
                     checkpoint_dir, cfg.training.filepath + ".ckpt"
                 )
@@ -266,8 +267,9 @@ def train(cfg: DictConfig, data=None, validate_only=False, lightning_integration
 
         else:
             if validate_only:
-                checkpoint_dir = f"lightning_logs/checkpoints/{cfg.model.name}"
-                checkpoint_dir = os.path.join(cfg.paths.output, checkpoint_dir)
+                checkpoint_dir = f"""/nfs/turbo/lsa-regier/scratch/roko/
+                output/lightning_logs/checkpoints/{cfg.model.name}Xenium"""
+                # checkpoint_dir = os.path.join(cfg.paths.output, checkpoint_dir)
                 ckpt_path_for_validation = os.path.join(
                     checkpoint_dir, cfg.training.filepath + ".ckpt"
                 )
