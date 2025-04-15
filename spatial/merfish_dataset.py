@@ -99,8 +99,15 @@ class MerfishDataset(torch_geometric.data.InMemoryDataset):
     def download(self):
         # download csv if necessary
         if not os.path.exists(self.merfish_csv):
-            with open(self.merfish_csv, "wb") as csvf:
-                csvf.write(requests.get(self.url, timeout=180).content)
+            try:
+                response = requests.get(self.url, timeout=180)
+                response.raise_for_status()  # Raises an HTTPError
+                with open(self.merfish_csv, "wb") as csvf:
+                    csvf.write(response.content)
+            except requests.exceptions.HTTPError as http_err:
+                print(f"HTTP error occurred: {http_err}")
+            # except Exception as err:
+            #     print(f"An error occurred: {err}")
 
         # process csv if necessary
         dataframe = pd.read_csv(self.merfish_csv)

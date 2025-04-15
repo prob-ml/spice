@@ -1,5 +1,6 @@
 # import datetime
 import json
+import os
 
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
@@ -53,8 +54,10 @@ def test(cfg: DictConfig, data=None):
     # setup optimizer
     optimizer = setup_optimizer(cfg)
 
-    checkpoint_dir = f"""/nfs/turbo/lsa-regier/scratch/roko/
-    output/lightning_logs/checkpoints/{cfg.model.name}Xenium/"""
+    checkpoint_dir = os.path.join(
+        "/nfs/turbo/lsa-regier/scratch/roko/output/lightning_logs/checkpoints",
+        f"{cfg.model.name}Xenium/",
+    )
 
     checkpoint_path = checkpoint_dir + cfg.predict.filepath + ".ckpt"
 

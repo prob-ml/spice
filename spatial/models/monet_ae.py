@@ -143,7 +143,19 @@ class BasicAEMixin(pl.LightningModule):
             degrees = degree(edge_index[0])
             coord1 = (1 / torch.sqrt(degrees[edge_index[0]])).unsqueeze(-1)
             coord2 = (1 / torch.sqrt(degrees[edge_index[1]])).unsqueeze(-1)
-            return torch.cat((coord1, coord2), dim=1)
+            return torch.cat((rho, theta, coord1, coord2), dim=1)
+
+        elif self.pseudo_mode == "polar_and_degree":
+            coord1 = pos[edge_index[0]]
+            coord2 = pos[edge_index[1]]
+            edge_dir = coord2 - coord1
+            rho = torch.sqrt(edge_dir[:, 0] ** 2 + edge_dir[:, 1] ** 2).unsqueeze(-1)
+            rho = rho if self.radius == 0 else rho / self.radius
+            theta = torch.atan2(edge_dir[:, 1], edge_dir[:, 0]).unsqueeze(-1)
+            degrees = degree(edge_index[0])
+            coord3 = (1 / torch.sqrt(degrees[edge_index[0]])).unsqueeze(-1)
+            coord4 = (1 / torch.sqrt(degrees[edge_index[1]])).unsqueeze(-1)
+            return torch.cat((rho, theta, coord3, coord4), dim=1)
 
         else:
             raise ValueError("Mode improperly or not specified.")
@@ -242,7 +254,13 @@ class BasicAEMixin(pl.LightningModule):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("train_loss_" + self.loss_type, loss.item(), prog_bar=True)
+        self.log(
+            "train_loss_" + self.loss_type,
+            loss,
+            prog_bar=True,
+            sync_dist=True,
+            on_epoch=True,
+        )
         for additional_loss in self.other_logged_losses:
             self.log(
                 "train_loss_" + additional_loss,
@@ -276,7 +294,7 @@ class BasicAEMixin(pl.LightningModule):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("val_loss", loss.item(), prog_bar=True)
+        self.log("val_loss", loss, prog_bar=True, sync_dist=True, on_epoch=True)
         for additional_loss in self.other_logged_losses:
             self.log(
                 "val_loss_" + additional_loss,
@@ -347,7 +365,7 @@ class BasicAEMixin(pl.LightningModule):
 
         return loss
 
-    def configure_optimizers(self, scheduler=True):
+    def configure_optimizers(self, scheduler=False):
         if self.optimizer["name"] == "Adam":
             optimizer = torch.optim.Adam(self.parameters(), **self.optimizer["params"])
         elif self.optimizer["name"] == "SGD":
@@ -453,7 +471,13 @@ class MonetDense(BasicAEMixin):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("train_loss_" + self.loss_type, loss.item(), prog_bar=True)
+        self.log(
+            "train_loss_" + self.loss_type,
+            loss,
+            prog_bar=True,
+            sync_dist=True,
+            on_epoch=True,
+        )
         for additional_loss in self.other_logged_losses:
             self.log(
                 "train_loss_" + additional_loss,
@@ -478,7 +502,7 @@ class MonetDense(BasicAEMixin):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("val_loss", loss.item(), prog_bar=True)
+        self.log("val_loss", loss, prog_bar=True, sync_dist=True, on_epoch=True)
         for additional_loss in self.other_logged_losses:
             self.log(
                 "val_loss_" + additional_loss,
@@ -613,7 +637,13 @@ class TrivialDense(BasicAEMixin):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("train_loss_" + self.loss_type, loss.item(), prog_bar=True)
+        self.log(
+            "train_loss_" + self.loss_type,
+            loss,
+            prog_bar=True,
+            sync_dist=True,
+            on_epoch=True,
+        )
         for additional_loss in self.other_logged_losses:
             self.log(
                 "train_loss_" + additional_loss,
@@ -638,7 +668,7 @@ class TrivialDense(BasicAEMixin):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("val_loss", loss.item(), prog_bar=True)
+        self.log("val_loss", loss, prog_bar=True, sync_dist=True, on_epoch=True)
         for additional_loss in self.other_logged_losses:
             self.log(
                 "val_loss_" + additional_loss,
@@ -946,7 +976,13 @@ class MonetVAE(MonetAutoencoder2D):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("train_loss_" + self.loss_type, loss.item(), prog_bar=True)
+        self.log(
+            "train_loss_" + self.loss_type,
+            loss,
+            prog_bar=True,
+            sync_dist=True,
+            on_epoch=True,
+        )
         for additional_loss in self.other_logged_losses:
             self.log(
                 "train_loss_" + additional_loss,
@@ -984,7 +1020,7 @@ class MonetVAE(MonetAutoencoder2D):
             # celltype_data=batch.y[:, 1],
             # celltype="Excitatory",
         )
-        self.log("val_loss", loss.item(), prog_bar=True)
+        self.log("val_loss", loss, prog_bar=True, sync_dist=True, on_epoch=True)
         for additional_loss in self.other_logged_losses:
             self.log(
                 "val_loss_" + additional_loss,
