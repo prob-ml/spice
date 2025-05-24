@@ -61,5 +61,6 @@ disable=
     # the overhead it would take to rewrite all the code, it's easier
     # just to disable this warning
     unsubscriptable-object,
+    duplicate-code,
 
 ignore=data_processing.py, __init__.py
