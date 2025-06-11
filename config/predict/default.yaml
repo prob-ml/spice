@@ -1,6 +1,3 @@
-bands:
-  - 2
-
 # i/o parameters
 verbose: True
 checkpoint: ${paths.root}

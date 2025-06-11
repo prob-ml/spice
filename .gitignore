@@ -169,3 +169,7 @@ multirun.sh
 config/config[0-9]*.yaml
 config/configFDR.yaml
 config/configUNET.yaml
+config/training/FD.yaml
+config/training/UNet.yaml
+config/datasets/SyntheticDataset[0-9]*.yaml
+config/datasets/SyntheticFDR.yaml

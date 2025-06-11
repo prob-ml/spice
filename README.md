@@ -28,6 +28,7 @@ CLI overrides, multiruns, syncing multiple configs together, managing outputs, e
 
 Configurations can be found in the /config folder with each config file is represented by the following (GLOBAL STRUCTURE):
 
+```
 defaults:
   - _self_
   - optimizer:
@@ -57,16 +58,33 @@ hydra:
   output_subdir:
   run:
     dir: .
+```
 
 
 ### Training
 
+```
 spatial -m mode=train
+```
 
 ### Training with CLI Hyperparameter Overrides
 
-To
+We can also edit hyperparameters directly from the command line!
+
+```
+spatial -m model.kwargs.kernel_size=15 optimizer.params.lr=0.0001
+```
+
+### Multiple Runs
+
+We can also create a multirun that will sequentially train multiple models with one command call.
+
+```
+spatial -m radius=0,5,10,15,20,25,30
+```
 
 ### Evaluation
 
+```
 spatial -m mode=predict
+```
