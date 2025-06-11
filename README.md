@@ -1,3 +1,7 @@
+Graph Convolutional Networks for Inferring
+Cell-Cell Communication from Spatial
+Transcriptomics Data
+========================================
 SPatial Inference of Communication Effects (SPICE)
 ========================================
 <!-- ![tests](https://github.com/prob-ml/spatial/workflows/tests/badge.svg)
