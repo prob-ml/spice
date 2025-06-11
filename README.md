@@ -25,7 +25,7 @@ You can also force poetry to use your Python3.10 via the command `poetry env use
 
 # Tutorial
 
-Here, we briefly demonstrate how to use SPICE on a subset of Male, Excitatory cells from the [MERFISH Hypothalamus Dataset](https://datadryad.org/dataset/doi:10.5061/dryad.8t8s248).
+Here, we briefly demonstrate how to use SPICE on a random subset of 20000 cells from the [MERFISH Hypothalamus Dataset](https://datadryad.org/dataset/doi:10.5061/dryad.8t8s248).
 
 ### Configuration
 
@@ -85,7 +85,7 @@ spatial mode=train
 We can also edit hyperparameters directly from the command line!
 
 ```
-spatial model.kwargs.kernel_size=15 optimizer.params.lr=0.0001
+spatial model.kwargs.kernel_size=15 optimizer.params.lr=0.0001 radius=10
 ```
 
 ### Multiple Runs

@@ -1,6 +1,6 @@
 plotting: True
 n_epochs: 1200
-logger_name: POLAR_AND_DEGREE
+logger_name: DEMO
 save_model_summary: False
 batch_size: 1
 folds: 1

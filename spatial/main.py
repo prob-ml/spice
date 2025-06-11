@@ -14,11 +14,11 @@ OmegaConf.register_new_resolver("conditional", conditional_resolver)
 @hydra.main(config_path="../config", config_name="configDemo")
 def main(cfg):
     if cfg.mode == "train":
-        from spatial.train_xenium import train as task
+        from spatial.train import train as task
     elif cfg.mode == "generate":
         from spatial.generate_graph import generate_graph as task
     elif cfg.mode == "predict":
-        from spatial.predict_xenium import test as task
+        from spatial.predict import test as task
     else:
         raise KeyError
     # print(cfg)
@@ -27,5 +27,5 @@ def main(cfg):
 
 if __name__ == "__main__":
     with initialize(config_path="../config"):
-        cfg_from_terminal = compose(config_name="configXenium")
+        cfg_from_terminal = compose(config_name="configDemo")
         main(cfg_from_terminal)
