@@ -1,0 +1,31 @@
+defaults:
+  - _self_
+  - optimizer: adam
+  - datasets: DemoDataset
+  - model: MonetDense
+  - training: default
+  - predict: default
+
+mode: train
+
+n_neighbors: 3
+
+radius: 5
+
+gpus: [0,1,2,3] # len(CUDA_V_D) - 1
+
+
+paths:
+  root: .
+  data: demo_data
+  models: models
+  output: output
+
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: '0,1,6,7'
+      CUDA_LAUNCH_BLOCKING: 1
+  output_subdir: null
+  run:
+    dir: .

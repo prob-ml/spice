@@ -60,11 +60,12 @@ hydra:
     dir: .
 ```
 
+For the tutorial we use the `configDemo.yaml`. Creating new config files is recommended for new settings with substantial changes.
 
 ### Training
 
 ```
-spatial -m mode=train
+spatial mode=train
 ```
 
 ### Training with CLI Hyperparameter Overrides
@@ -72,12 +73,12 @@ spatial -m mode=train
 We can also edit hyperparameters directly from the command line!
 
 ```
-spatial -m model.kwargs.kernel_size=15 optimizer.params.lr=0.0001
+spatial model.kwargs.kernel_size=15 optimizer.params.lr=0.0001
 ```
 
 ### Multiple Runs
 
-We can also create a multirun that will sequentially train multiple models with one command call.
+We can also create a multirun (`-m`) that will sequentially train multiple models with one command call.
 
 ```
 spatial -m radius=0,5,10,15,20,25,30
@@ -86,5 +87,5 @@ spatial -m radius=0,5,10,15,20,25,30
 ### Evaluation
 
 ```
-spatial -m mode=predict
+spatial mode=predict
 ```

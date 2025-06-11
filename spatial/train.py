@@ -19,11 +19,11 @@ from torch_geometric.data.lightning import LightningDataset
 # k fold
 from sklearn.model_selection import StratifiedKFold
 
-from spatial.merfish_dataset import FilteredMerfishDataset, MerfishDataset
+from spatial.merfish_dataset import FilteredMerfishDataset, MerfishDataset, DemoDataset
 from spatial.models import monet_ae
 
 
-_datasets = [FilteredMerfishDataset, MerfishDataset]
+_datasets = [FilteredMerfishDataset, MerfishDataset, DemoDataset]
 datasets = {cls.__name__: cls for cls in _datasets}
 _models = [
     monet_ae.TrivialAutoencoder,

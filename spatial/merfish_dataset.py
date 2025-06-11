@@ -1980,3 +1980,17 @@ class MerfishDataset3D(MerfishDataset):
             )
 
         return data_splits
+
+
+class DemoDataset(MerfishDataset):
+    @property
+    def raw_file_names(self):
+        return ["merfish_demo.csv", "merfish_demo.hdf5"]
+
+    @property
+    def merfish_csv(self):
+        return os.path.join(self.raw_dir, "merfish_demo.csv")
+
+    @property
+    def merfish_hdf5(self):
+        return os.path.join(self.raw_dir, "merfish_demo.hdf5")
