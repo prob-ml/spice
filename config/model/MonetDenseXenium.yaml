@@ -2,7 +2,7 @@ name: MonetDense
 _includes_celltypes: ${datasets.dataset.include_celltypes}
 kwargs:
   observables_dimension: 100
-  hidden_dimensions: [1024, 1024, 1024]
+  hidden_dimensions: [512, 512, 512]
   output_dimension: 148
   loss_type: "mse"
   other_logged_losses: []

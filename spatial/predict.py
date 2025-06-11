@@ -103,7 +103,7 @@ def test(cfg: DictConfig, data=None):
     l1_losses = "currently unneeded"  # F.l1_loss(model.inputs, model.gene_expressions)
 
     with open(
-        "/home/roko/spatial/examples/recent_result.json", "w+", encoding="utf-8"
+        "/home/roko/spatial/scratch/recent_result.json", "w+", encoding="utf-8"
     ) as deepst_result:
         json.dump({"result": test_results[0]["test_loss"]}, deepst_result)
 

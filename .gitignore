@@ -131,10 +131,10 @@ dmypy.json
 # added
 GNN Data
 data
-examples/extracted_data
+scratch/extracted_data
 lightning_logs
 .vscode
-examples/results/*.csv
+scratch/results/*.csv
 
 # hydra outputs
 # !/outputs
@@ -148,16 +148,16 @@ output
 multirun
 
 # toy jupyter notebooks for exploring
-# examples
+# scratch
 
 # MESSI stuff
-examples/reproduce/input/*.csv
-examples/reproduce/MESSI.py
+scratch/reproduce/input/*.csv
+scratch/reproduce
 
 # figures
-examples/static/shap/
-examples/static/shap_recovery/
-examples/static/syntheticFDR.JPG
+scratch/static/shap/
+scratch/static/shap_recovery/
+scratch/static/syntheticFDR.JPG
 
 # great lakes
 multirun.sh

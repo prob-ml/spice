@@ -559,8 +559,17 @@ class XeniumDataset(torch_geometric.data.InMemoryDataset):
             # we need to get the first 5/6 for train or the last 1/6 for test
             N = len(data_list)
             print(f"There are {N} graph splits for the Xenium Dataset.")
+            # data_list = (
+            #     data_list[: int(N * 5 / 6)] if train else data_list[int(N * 5 / 6) :]
+            # )
+
+            FOLD = 3
+            N_FOLDS = 4
             data_list = (
-                data_list[: int(N * 5 / 6)] if train else data_list[int(N * 5 / 6) :]
+                data_list[: FOLD * N // N_FOLDS]
+                + data_list[(FOLD + 1) * N // N_FOLDS :]
+                if train
+                else data_list[FOLD * N // N_FOLDS : (FOLD + 1) * N // N_FOLDS]
             )
 
             return data_list

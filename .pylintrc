@@ -63,4 +63,7 @@ disable=
     unsubscriptable-object,
     duplicate-code,
 
+    # variable name warnings are out of control
+    invalid-name,
+
 ignore=data_processing.py, __init__.py
