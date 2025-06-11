@@ -17,9 +17,8 @@ gpus: [0] # len(CUDA_V_D) - 1
 
 paths:
   root: .
-  data: demo_data
-  models: models
-  output: output
+  data: ${paths.root}/demo_data
+  output: ${paths.root}/output
 
 hydra:
   job:

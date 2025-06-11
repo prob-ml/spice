@@ -6,5 +6,5 @@ dataset:
   log_transform: True
   include_celltypes: False
   radius: ${radius}
-  non_response_genes_file: "/home/roko/spatial/spatial/non_response_blank_removed.txt"
+  non_response_genes_file: "${paths.root}/spatial/non_response_blank_removed.txt"
   splits: 0
