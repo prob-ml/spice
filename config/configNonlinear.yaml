@@ -19,7 +19,6 @@ gpus:
 paths:
   root: ${oc.env:SPATIAL_HOME}
   data: ${paths.root}/data
-  models: ${paths.root}/models
   output: ${paths.root}/output
 
 hydra:

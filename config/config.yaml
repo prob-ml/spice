@@ -18,7 +18,6 @@ gpus: ${oc.env:NUM_GPUS} # len(CUDA_V_D) - 1
 paths:
   root: ${oc.env:SPATIAL_HOME}
   data: ${paths.root}/data
-  models: ${paths.root}/models
   output: ${paths.root}/output
 
 hydra:
