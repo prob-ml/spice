@@ -164,3 +164,8 @@ multirun.sh
 
 # images
 *.png
+
+# unnecessary files
+config/config[0-9]*.yaml
+config/configFDR.yaml
+config/configUNET.yaml
