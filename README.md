@@ -26,7 +26,7 @@ Here, we briefly demonstrate how to use SPICE on a subset of Male, Excitatory ce
 SPICE uses [hydra](https://hydra.cc/docs/intro/) for configuring datasets, optimizers, training, testing, and models. Hydra builds upon OmegaConf to offer
 CLI overrides, multiruns, syncing multiple configs together, managing outputs, etc.
 
-Configurations can be found in the /config folder with each config file is represented by the following (GLOBAL STRUCTURE):
+Each configuration file starts with a `defaults` list that determines which sub-configs are loaded for key components such as the model, dataset, and optimizer. The global structure follows this layout:
 
 ```
 defaults:
@@ -61,6 +61,12 @@ hydra:
 ```
 
 For the tutorial we use the `configDemo.yaml`. Creating new config files is recommended for new settings with substantial changes.
+
+### Non-Response Indexes
+
+At present, SPICE datasets need access to txt files that contain the column indexes of ligand and receptor features. We provide `non_response_blank_removed.txt` for the MERFISH dataset and `non_response_blank_removed_xenium.txt` for the Fresh Frozen Mouse Brain Dataset. For this demo, we use the former.
+
+In the event you want to use your own dataset, you would need to create your own class in `merfish_dataset.py` and populate your ligand and receptor index in a txt to be saved in the `spatial/` directory.
 
 ### Training
 
