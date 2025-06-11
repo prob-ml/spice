@@ -54,7 +54,6 @@ gpus:
 paths:
   root:
   data: ${paths.root}/data
-  models: ${paths.root}/models
   output: ${paths.root}/output
 
 hydra:
@@ -100,4 +99,12 @@ spatial -m radius=0,5,10,15,20,25,30
 
 ```
 spatial mode=predict
+```
+
+### Contributing
+
+Finally, if you are planning to contribute code to this repository, consider installing our pre-commit hooks so that your code commits will be checked locally for compliance with our coding conventions:
+
+```
+pre-commit install
 ```
