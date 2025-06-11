@@ -12,10 +12,16 @@ SPatial Inference of Communication Effects (SPICE)
 SPICE uses poetry as its package manager.
 
 ```
+pip install poetry
 poetry install
+poetry self add poetry-plugin-shell
 poetry shell
 pre-commit install
 ```
+
+Please note that at present, SPICE builds pytorch-geometric (PyG) libraries from whl files which are version dependent. By default we use Python3.10. To make the poetry config compatible for other versions, please replace the whls for PyG and the python version in the `pyproject.toml` file and then run `poetry lock` in the commannd line.
+
+You can also force poetry to use your Python3.10 via the command `poetry env use [python3.10 PATH HERE]`.
 
 # Tutorial
 

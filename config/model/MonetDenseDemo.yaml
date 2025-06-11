@@ -2,7 +2,7 @@ name: MonetDense
 _includes_celltypes: ${datasets.dataset.include_celltypes}
 kwargs:
   observables_dimension: ${conditional:${model._includes_celltypes},87,71} # 16 more than the 154 genes because of the one hot encoded celltypes if they are to be included
-  hidden_dimensions: [512, 512, 512, 512, 512, 512]
+  hidden_dimensions: [512, 512]
   output_dimension: 84
   loss_type: "mse"
   other_logged_losses: []

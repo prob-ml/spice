@@ -4,7 +4,7 @@ kwargs:
   hidden_dimensions: [200, 200]
   output_dimension: 10
   loss_type: "mse"
-  other_logged_losses: ["mse"]
+  other_logged_losses: []
   radius: ${radius}
   mask_random_prop: 0.0
   mask_cells_prop: 0.0
